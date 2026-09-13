@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-13: repository initialization and a read-only reference audit are in progress. The frontend stack, application architecture, and first vertical slice remain undecided. The primary prototype starts only after the audit discussion resolves or explicitly delegates those choices.
+2026-09-13: repository initialized; the read-only reference source audit is documented. We are at the UI-direction discussion checkpoint. The frontend stack, application architecture, and first vertical slice remain undecided. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
@@ -31,6 +31,8 @@ Before any credential-bearing integration, document its exact variable names, ad
 
 - [Documentation index](docs/README.md)
 - [Operating instructions](AGENTS.md)
+- [Reference UI audit](docs/reference-ui-audit.md)
+- [Three UI directions and technical comparison](docs/ui-directions.md)
 - [Complete source handoff](docs/20260913_product-ui-experiment-agent-handoff.md)
 
 The reference is `../RCEnergySimulator`, primarily `EnergyAtlasWeb`, with `EnergyAtlasDesktopEto` inspected for hosting context. It is view-only and is not a dependency of this repository. If unavailable on another machine, ask for its exact path or URL.

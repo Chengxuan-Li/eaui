@@ -1,0 +1,199 @@
+{
+  "date": "2026-09-13",
+  "referenceLocation": "../RCEnergySimulator",
+  "head": "545751dd2380a23323d166e02b9fd13f3c62c370",
+  "branch": "backup/code-review-local-2026-09-06",
+  "scope": "Working files; source inspection only; reference not mutated",
+  "statusEntries": [
+    " M Connectors/python/src/energyatlas/models.py",
+    " D EnergyAtlasLib/UBEM/ProducerConsumer/UbemSimplePC.cs",
+    " D EnergyAtlasLib/UBEM/ProducerConsumer/UbemSimplePCSettings.cs",
+    " M EnergyAtlasLib/UBEM/UbemSimple.cs",
+    " M EnergyAtlasLib/UBEM/UbemSimpleSettings.cs",
+    " M EnergyAtlasWeb.ApiTests/SimulationEndpointTests.cs",
+    " M EnergyAtlasWeb/Controllers/SimulationController.cs",
+    " M RCTests/SiteEnergyResultNaNTests.cs",
+    " M RCTests/UBEMRunMethodsBench.cs",
+    " M docs/audit/needs-human-review.md",
+    " M docs/data-flow/README.md",
+    " M docs/data-flow/s05-results-feature-bus.md",
+    " M docs/data-flow/s10-producer-consumer-ubem.md",
+    " M docs/diagrams-artifacts/code-review-summary.md",
+    " M docs/diagrams-artifacts/data/findings.csv",
+    " M docs/diagrams-artifacts/data/findings.json",
+    " M docs/diagrams-artifacts/data/seams.csv",
+    " M docs/flows/flow-gui-workflow.md",
+    " M docs/flows/flow-ubem-run.md",
+    " M docs/issues/drafted/13-infrastructure-shared.md",
+    " M docs/layers-manifest.md",
+    " M docs/layers/05-ubem-scenarios-measures.md",
+    " M docs/layers/13-infrastructure-shared.md",
+    " M docs/layers/14-tests.md",
+    " M docs/superpowers/plans/2026-08-30-streaming-result-pipeline-integration.md",
+    " M docs/superpowers/specs/2026-08-02-gis-properties-store-design.md",
+    " M docs/testing/test-categorization-222.md",
+    "?? RCTests/UbemScenarioRunModesTests.cs"
+  ],
+  "files": [
+    {
+      "path": "EnergyAtlasDesktopEto/EnergyAtlasDesktopEto.csproj",
+      "sha256": "B445AE83A0543E3552BBB53866EB3C6F11C66B98446C2E5E2DC4B038E439765B"
+    },
+    {
+      "path": "EnergyAtlasDesktopEto/Program.cs",
+      "sha256": "96F5EDA314315A1682951284E066772D4D22B42B529A379B2626CE1303E1B42A"
+    },
+    {
+      "path": "EnergyAtlasDesktopEto/MainForm.cs",
+      "sha256": "360B169966EC52AA4F67DDED0F860C6C3C3FE78D65EA0475FC3D976897A9C841"
+    },
+    {
+      "path": "EnergyAtlasWeb/EnergyAtlasWeb.csproj",
+      "sha256": "EE2DB0B59CB674939BC504C3CE8D9B9B1B4D03FCD800D46080EC9F263114941A"
+    },
+    {
+      "path": "EnergyAtlasWeb/Program.cs",
+      "sha256": "6B83478325C825B0E1FCD5A296124B38A78DCE590499D35D3A4C7377D9B31722"
+    },
+    {
+      "path": "EnergyAtlasWeb/WebAppFactory.cs",
+      "sha256": "87C11DC57CE710AA241AD1A67698A14930C19915F33F84F9545A5BDC1147F29C"
+    },
+    {
+      "path": "EnergyAtlasWeb/Properties/launchSettings.json",
+      "sha256": "9D707016115E027F9DC796AAB6964407550227972CEBC1368400EA1D55476F6B"
+    },
+    {
+      "path": "EnergyAtlasWeb/README.md",
+      "sha256": "6965F43F9CCCDA4DE1659E99B8AB16979AC5A1C45A50A91DB5A8636692C01C74"
+    },
+    {
+      "path": "EnergyAtlasWeb/Models/ProjectData.cs",
+      "sha256": "D950C3EB84E7F6527B294062D1ABFE5403C637AF3CC600A42A5D7774219EA17B"
+    },
+    {
+      "path": "EnergyAtlasWeb/Controllers/ProjectController.cs",
+      "sha256": "75430B965633297ECFF7AA973EAC9449CBC8DFC4E63C96F48ED8E19FE8F3CCF6"
+    },
+    {
+      "path": "EnergyAtlasWeb/Controllers/SimulationController.cs",
+      "sha256": "838027750AF1EBA10BA01CAB70CA93AB2DB343E5AC6BC7D0505D98124CD65A21"
+    },
+    {
+      "path": "EnergyAtlasWeb/Controllers/GUIJobRunnerController.cs",
+      "sha256": "5333B1C8847C2AA15B289999C3A4BB5B057EA94FD382A950B23F65C93E587249"
+    },
+    {
+      "path": "EnergyAtlasWeb/Controllers/ResultViewerController.cs",
+      "sha256": "680DB5B31CD8DB7BFF24409CEBD18163EE4CFBDA019DE08F24E056906F946E1C"
+    },
+    {
+      "path": "EnergyAtlasWeb/Utilities/DataHub.cs",
+      "sha256": "AD9474865642D5ADCEC19C661E140B01B27E898887FE2A7DAF79410C328E2C4A"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/index.html",
+      "sha256": "7F02DDA9706475EAC9EAC91E5023AFC671BC3C964B5158AADD8D035D47E529AB"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/menu.html",
+      "sha256": "738C260FD460F47837C09AA283EEAF8A181B66591CC2D9734C44EC81196DF746"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/menuOld.html",
+      "sha256": "75FBF7AC8614C0AED182033499245B30177CAF3125B97BBA47683D584DA5CE10"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/css/main.css",
+      "sha256": "1EBABBFC761A04D3C2B6C5E4F22FDFE61288D87561FD26781B2310887D826110"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/css/resultViewer.css",
+      "sha256": "6C9C9E425DB2CB27AC6E9FFA2010F113F189FFA35DF2DCDC445D091F84C58DB8"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/config.js",
+      "sha256": "6A3913610CBA39DC2F7FD447C8C999693461E83B5540D1E89E81D63D4094F27D"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/progressSidebar.js",
+      "sha256": "2CBEF5DBD2D35D30AF13BE46BD8E2548AAC313BE36520FD18463B47D6F421FAF"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/statusBar.js",
+      "sha256": "10BB347F2DF5A226D5DB337A627EA98752731A47E9D0490A4B52E4BAB1754CAB"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/resultViewer.js",
+      "sha256": "547DF1F8519742DBB67EFB5B2D1BB05FBEC73A7CC39AE7E3E6E3154547609CE5"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/runSimulation.js",
+      "sha256": "829E5A74CCA1D57703A4A7564F41A740B77350DB93713A8B8912C39800E50158"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/js/scenarioDesigner.js",
+      "sha256": "54B2D0EBC33D11E6B7183A547F66E718097784A5496F481F7FB35CB7248F8B6A"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/resultViewer.html",
+      "sha256": "C17D766652C9AA9A2FA93379580DC926FE13761AED36EC40B0C3C022A080879F"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/capResultViewer.html",
+      "sha256": "24CF35B9B312A0C979E61776967F1979440C1834759718DD38570308C4C6EDE0"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/runSimulation.html",
+      "sha256": "9F6E829E68DA602FE58E75620F42BEC18C4B9D64891E22C8259F57406FABDC2F"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/scenarioDesigner.html",
+      "sha256": "3B2F584EBB39BA8BA96428F9D23538DD9076C9F40EAC24DE4197AF9B2415F4E7"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/geoDataPreview.html",
+      "sha256": "D011038DB1CA87EA233F068887F8985E0C29D67E8E92DCBBA0649908133C7E08"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/templateAssignment.html",
+      "sha256": "A747E918EE0979FA20D209DF257E1072CCCDB3FF05535A466A97DC4A4A592057"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/schemaMatching.html",
+      "sha256": "C81E30B097A718ABBF73503AF1C110661DD046A2BCD0DFA066FF893AE277CB01"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/archetypeEditor.html",
+      "sha256": "4083149A43973CE280741AA539D2CC1BE19CEB3B3A163D8045FD2F5FB8F92075"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/measureEditor.html",
+      "sha256": "229FC132E21C359AF1441E049448FF07460CE38EB6B4149C2D447300DC342632"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/buildingDownloader.html",
+      "sha256": "9ABE882E70E86BC5899C09834F30A2CD4AF56B1EE0366392B3A55364B8222DDC"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/config/resultViewerDashboards.json",
+      "sha256": "F1A9CE1CBB8806BFCEA9800500E7FF08267F682B91F9CED2371D948D94FA52DE"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/workflow-pages/simulation/calibrate-baseline.html",
+      "sha256": "C0425B956C059087E36EF632FCB5019FA6A8BFE3A78BCBFAAE44387AB4EBA0B7"
+    },
+    {
+      "path": "EnergyAtlasWeb/wwwroot/workflow-pages/retrofit-scenarios/scenario-results.html",
+      "sha256": "F339736C7C0DDB41FFADB56835730789AA2F2286EBE667AF2395A85A5E65AA10"
+    },
+    {
+      "path": "EnergyAtlasCore/EnergyAtlasCore.csproj",
+      "sha256": "3285495D8971D516091190B9D41F986F5993415CC0AFB1AC0D30688F09190BA2"
+    },
+    {
+      "path": "EnergyAtlasLib/EnergyAtlasLib.csproj",
+      "sha256": "94A4B277A26E81067C168E82738490DBF93DC9F8C6DFF25662B887F35DD9A3EB"
+    }
+  ]
+}
