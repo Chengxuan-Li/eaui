@@ -30,7 +30,7 @@ Before any credential-bearing integration, document its exact variable names, ad
 ## Documentation
 
 - [Documentation index](docs/README.md)
-- [Operating instructions](AGENTS.md)
+- [Operating instructions](AGENTS.md) (imported by [CLAUDE.md](CLAUDE.md) for Claude Code)
 - [Reference UI audit](docs/reference-ui-audit.md)
 - [Three UI directions and technical comparison](docs/ui-directions.md)
 - [Complete source handoff](docs/20260913_product-ui-experiment-agent-handoff.md)
