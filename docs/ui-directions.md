@@ -66,7 +66,7 @@ Final naming and detailed styling can follow these choices. Do not interpret sil
 
 ## Technical-lane discussion (continued 2026-09-14)
 
-Status: still pending; nothing below is accepted. Evidence from the [2026-09-14 drift check](README.md#reference-drift-check-recorded-2026-09-14).
+Status: resolved in part. UI technology accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md): web-only, React/TypeScript/Vite; Blazor (WebAssembly and Hybrid) and WPF are excluded. Contract authorship and routing/hosting rows below remain proposals. Evidence from the [2026-09-14 drift check](README.md#reference-drift-check-recorded-2026-09-14).
 
 ### Reframing: where do authoritative operations live?
 

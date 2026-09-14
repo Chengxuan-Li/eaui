@@ -29,4 +29,4 @@ Read the [complete handoff](docs/20260913_product-ui-experiment-agent-handoff.md
 
 ## Commands and current phase
 
-Documentation/audit only; no stack, runtime, build, tests, or preview selected. Use `git status --short --branch`, `git diff --check`, `git diff --cached`, and `git log --oneline -5`. Update this section and the README when actual commands become known. Do not scaffold the primary prototype before the discussion checkpoint.
+Discussion phase. UI stack accepted (decision 0002: web-only React + TypeScript + Vite); product direction and first slice pending; nothing scaffolded, so no build, tests, or preview exist yet. Use `git status --short --branch`, `git diff --check`, `git diff --cached`, and `git log --oneline -5`. Update this section and the README when actual commands become known. Do not scaffold the primary prototype before the discussion checkpoint.

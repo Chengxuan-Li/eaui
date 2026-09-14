@@ -6,7 +6,7 @@
 - [UI directions](ui-directions.md): three product approaches, technical comparison, recommendation, proposed slice boundaries, and two pending decisions.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-14): setup and source audit complete; technical-lane discussion in progress (see [UI directions](ui-directions.md#technical-lane-discussion-continued-2026-09-14)). No primary prototype or technical stack is selected. Next: choose or revise the proposed experience and technical lane, then record the outcome before implementation.
+Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); product direction under discussion. No primary prototype, packages, or scaffold yet. Next: choose the product direction and first slice, record it, then scaffold.
 
 ## Verification recorded 2026-09-13
 

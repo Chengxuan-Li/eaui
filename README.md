@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-13: repository initialized; the read-only reference source audit is documented. We are at the UI-direction discussion checkpoint. The frontend stack, application architecture, and first vertical slice remain undecided. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction, application architecture, packages, and the first vertical slice remain undecided. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
