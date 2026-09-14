@@ -1,6 +1,7 @@
 # 0002: Web-only UI with React, TypeScript, and Vite
 
-Date: 2026-09-14  
+Date: 2026-09-14
+
 Status: accepted by the user in discussion.
 
 ## Context
