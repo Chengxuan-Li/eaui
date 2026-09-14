@@ -4,9 +4,10 @@
 - [Reference UI audit](reference-ui-audit.md): stack/hosting map, UI inventory, source evidence, legacy risks, reuse assessment, and limitations.
 - [Source manifest](reference-source-manifest.json): hashes of principal inspected reference files; no implementation copied.
 - [UI directions](ui-directions.md): three product approaches, technical comparison, recommendation, proposed slice boundaries, and two pending decisions.
+- [First-slice proposal](first-slice-proposal.md): walking-skeleton layout, state model, working/simulated/planned boundary, and open questions.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); product direction under discussion. No primary prototype, packages, or scaffold yet. Next: choose the product direction and first slice, record it, then scaffold.
+Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell accepted in [decision 0003](decisions/0003-combined-product-shell.md). No packages or scaffold yet. Next: resolve the [first-slice proposal](first-slice-proposal.md) open questions, then choose packages and scaffold.
 
 ## Verification recorded 2026-09-13
 

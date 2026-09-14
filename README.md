@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction, application architecture, packages, and the first vertical slice remain undecided. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell with asset, workflow, reasoning, map, and scenario-control panels ([decision 0003](docs/decisions/0003-combined-product-shell.md)). The [first-slice proposal](docs/first-slice-proposal.md), packages, and scaffold are pending. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
@@ -33,6 +33,7 @@ Before any credential-bearing integration, document its exact variable names, ad
 - [Operating instructions](AGENTS.md) (imported by [CLAUDE.md](CLAUDE.md) for Claude Code)
 - [Reference UI audit](docs/reference-ui-audit.md)
 - [Three UI directions and technical comparison](docs/ui-directions.md)
+- [First-slice proposal](docs/first-slice-proposal.md)
 - [Complete source handoff](docs/20260913_product-ui-experiment-agent-handoff.md)
 
 The reference is `../RCEnergySimulator`, primarily `EnergyAtlasWeb`, with `EnergyAtlasDesktopEto` inspected for hosting context. It is view-only and is not a dependency of this repository. If unavailable on another machine, ask for its exact path or URL.

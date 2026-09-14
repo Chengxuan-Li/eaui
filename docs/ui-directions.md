@@ -2,7 +2,7 @@
 
 Date: 2026-09-13
 
-Status: proposals only. No stack, layout, or vertical slice has been accepted. Grounding: [reference audit](reference-ui-audit.md).
+Status: superseded for decisions. The user chose to combine directions ([decision 0003](decisions/0003-combined-product-shell.md)) and accepted web-only React/TypeScript/Vite ([decision 0002](decisions/0002-web-react-typescript-vite.md)). This document is retained as the alternatives considered; current slice work is in the [first-slice proposal](first-slice-proposal.md). Grounding: [reference audit](reference-ui-audit.md).
 
 ## Recommendation: guided modeling studio
 
