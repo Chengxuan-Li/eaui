@@ -63,3 +63,33 @@ Microsoft documents standalone Blazor WebAssembly as client-rendered and disting
 2. Is **React/TypeScript with deterministic browser-only fixtures first** acceptable, or does C# ownership/native desktop integration need to constrain the first prototype? Recommendation: browser-first, preserve explicit adapter boundaries, defer live integration.
 
 Final naming and detailed styling can follow these choices. Do not interpret silence as acceptance. Record the user's answer and rationale in `docs/decisions/`, update the status/index, and only then define and implement the primary slice.
+
+## Technical-lane discussion (continued 2026-09-14)
+
+Status: still pending; nothing below is accepted. Evidence from the [2026-09-14 drift check](README.md#reference-drift-check-recorded-2026-09-14).
+
+### Reframing: where do authoritative operations live?
+
+The framework choice matters less than the location of the operation layer that manual controls and future agents share.
+
+- Observed: the reference already has two non-browser API consumers besides its pages: the Eto host and a Python client (`Connectors/python/src/energyatlas/client.py`). Model/simulation code is C# (`netstandard2.0` Core/Lib, `net8.0` Web).
+- Interpretation: in production, agents most plausibly operate through the server API, not through browser code. Authoritative model operations therefore belong on the .NET side eventually, whatever the UI technology.
+- Recommendation: in the experiment, define operations as serializable command/result contracts shaped like future HTTP endpoints (IDs, inputs, validation issues, produced artifacts, provenance). Implement them against deterministic fixtures behind an adapter. UI-only state (panel sizes, focus, hover) stays out of that contract. This keeps a TypeScript prototype honest about migration: contracts carry over, fixture implementations do not.
+
+### Sub-decisions inside the technical lane
+
+| Question | Options | Recommendation |
+| --- | --- | --- |
+| UI technology | React/TS/Vite; plain TS modules; Blazor WebAssembly; Blazor Hybrid (see below) | React/TS/Vite, unchanged |
+| Contract authorship | TS types first; schema/OpenAPI first with generated types; C# DTOs first with generated TS | TS types first for the experiment, written to be mirrorable to OpenAPI; defer code generation until a live endpoint is integrated |
+| Routing/hosting proof | Browser dev server only; also load the built bundle through ASP.NET/Eto | Browser-only now. Because the reference host has no SPA fallback route, prefer routes that survive plain static serving (hash or query state) or record that production needs `MapFallbackToFile` |
+
+### Blazor Hybrid variant (not in the original comparison)
+
+Assessment, not verified: .NET documents a WPF `BlazorWebView` in which Razor components run on native .NET and can call C# libraries directly, without WebAssembly. That is the strongest C#-ownership option for a desktop-first product. Costs: the current Eto `WebView` is a different control, so hosting would change; it does not by itself give a browser-deployable build; and map/chart libraries remain JavaScript behind interop. Consider it only if desktop-first C# ownership is a firm constraint.
+
+### What would change the recommendation
+
+- A requirement that C# developers own the UI code, or that the first prototype run inside the Eto host: favor Blazor (Hybrid for desktop-first, WebAssembly for web-first).
+- A requirement for zero frontend build tooling in the production path: favor plain TS modules with an explicit state/operation module.
+- Neither: React/TS/Vite with the contract boundary above.

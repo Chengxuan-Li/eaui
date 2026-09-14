@@ -6,7 +6,7 @@
 - [UI directions](ui-directions.md): three product approaches, technical comparison, recommendation, proposed slice boundaries, and two pending decisions.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-13): setup and source audit complete; discuss UI directions. No primary prototype or technical stack is selected. Next: choose or revise the proposed experience and technical lane, then record the outcome before implementation.
+Current phase (2026-09-14): setup and source audit complete; technical-lane discussion in progress (see [UI directions](ui-directions.md#technical-lane-discussion-continued-2026-09-14)). No primary prototype or technical stack is selected. Next: choose or revise the proposed experience and technical lane, then record the outcome before implementation.
 
 ## Verification recorded 2026-09-13
 
@@ -27,3 +27,11 @@ Machine paths: this repository at `E:/Coding/eaui`, reference at `E:/Coding/RCEn
 - Handoff: committed blob matches the decision 0001 SHA-256. The worktree file hashes differently only because `core.autocrlf=true` converts line endings on checkout; `git status` is clean.
 - `.env.local` was created from `.env.example` per README setup and confirmed ignored by `git check-ignore`.
 - Added `CLAUDE.md`, which imports `AGENTS.md` so Claude Code loads the repository rules automatically.
+
+## Reference drift check recorded 2026-09-14
+
+Audit machine (`C:/github/...`), read-only inspection only.
+
+- Reference branch unchanged (`backup/code-review-local-2026-09-06`), but HEAD advanced one commit from audited `545751dd` to `436a76a7` (2026-09-14, "refactor(ubem)!: merge UbemSimplePC into UbemSimple as a streaming run mode"). Working tree is now clean; the 28 audited status entries were committed or removed.
+- Within `EnergyAtlasWeb` and `EnergyAtlasDesktopEto`, only `Controllers/SimulationController.cs` differs: `/api/simulation/run` accepts `options.executionMode` = `streaming` (default) or `chunked` and returns 400 otherwise. UI surfaces in the audit are unaffected; the run-API description should be read with this addition.
+- Confirmed for the technical-lane discussion: `WebAppFactory.cs` serves `wwwroot` with `UseDefaultFiles`/`UseStaticFiles` and has no SPA fallback route; `Connectors/python/src/energyatlas/` is a Python HTTP client of the web API; no `package.json`, TypeScript, or Razor files exist outside build/dependency folders.
