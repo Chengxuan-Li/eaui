@@ -300,7 +300,7 @@ Branch `feature/basemap`, after `feature/agentic` was merged into it, following 
 
 ### Shell styling, docking, and menus (2026-09-15)
 
-A pass over reported UI problems, on `feature/basemap`. Code in `src/app/global.css`, `src/app/layout/flexlayout-theme.css`, `src/app/layout/layoutController.ts`, `src/app/shell/WorkbenchShell.tsx`, `src/app/shell/Ribbon.tsx`, `src/app/shell/shell.module.css`, `src/app/shell/CommandPalette.tsx`, and `src/app/actions.ts`. Test in `e2e/workbench.spec.ts`.
+A pass over reported UI problems, on `feature/agentic`, after `feature/basemap` was merged into it. Code in `src/app/global.css`, `src/app/layout/flexlayout-theme.css`, `src/app/layout/layoutController.ts`, `src/app/shell/WorkbenchShell.tsx`, `src/app/shell/Ribbon.tsx`, `src/app/shell/shell.module.css`, `src/app/shell/CommandPalette.tsx`, and `src/app/actions.ts`. Test in `e2e/workbench.spec.ts`.
 
 - **Real:**
   - **Scrollbars:** no reserved gutter anywhere (`offsetWidth - clientWidth` is 0); the thumb is a dim rounded rectangle over the content that brightens when pointed at. Firefox keeps a thin dim scrollbar through its own properties.
