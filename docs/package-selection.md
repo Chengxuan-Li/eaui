@@ -88,3 +88,12 @@ If spike 1 fails on keyboard resizing or focus, evaluate flexlayout-react before
 - Add only the accepted packages at pinned versions.
 - Update `AGENTS.md`, `README.md`, and `.gitignore` with verified install, dev, build, test, lint, and preview commands.
 - Run the spikes first and record results here before panels are built.
+
+## Supporting development dependencies
+
+Installed on 2026-09-14 alongside the accepted tools because those tools require them. No runtime dependency outside decision 0007 was added.
+
+- `jsdom`: DOM environment for Vitest component tests.
+- `@testing-library/dom`: peer dependency of `@testing-library/react`.
+- `@eslint/js`, `globals`, `eslint-config-prettier`: ESLint flat configuration and Prettier compatibility.
+- `@types/node`, `@types/react`, `@types/react-dom`: type definitions.

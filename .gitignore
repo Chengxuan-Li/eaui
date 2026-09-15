@@ -33,3 +33,11 @@ playwright-report/
 *.log
 .local/
 tmp/
+
+# Vite, TypeScript, and editors
+dist-ssr/
+*.local
+*.tsbuildinfo
+.vscode/*
+!.vscode/extensions.json
+*.sw?

@@ -29,4 +29,9 @@ Read the [complete handoff](docs/20260913_product-ui-experiment-agent-handoff.md
 
 ## Commands and current phase
 
-Discussion phase. UI stack accepted (decision 0002: web-only React + TypeScript + Vite); combined product shell, docking workbench layout, and first-slice workflow accepted (decisions 0003-0006); packages accepted (decision 0007); scaffold in progress, and verified commands will be listed here. Use `git status --short --branch`, `git diff --check`, `git diff --cached`, and `git log --oneline -5`. Update this section and the README when actual commands become known. Run the package spikes in docs/package-selection.md before building panels.
+Scaffold phase. Decisions 0002-0007 fix the stack, shell, layout, first-slice workflow, scripted agent, and packages. The Vite React TypeScript app was scaffolded on 2026-09-14; run the package spikes in `docs/package-selection.md` before building panels.
+
+- Install with `npm ci` (Node.js 24 LTS, exact pinned versions). Do not add packages outside decision 0007 without recording the reason in `docs/package-selection.md` or a new decision.
+- Develop with `npm run dev`; check a production bundle with `npm run build` and `npm run preview`.
+- Verify before committing: `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, `npm run test:e2e`, `git diff --check`, and `git diff --cached`. Playwright uses the installed Edge by default; elsewhere run `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium`.
+- Keep TypeScript on 6.0 until typescript-eslint supports TypeScript 7. Prettier ignores Markdown so the source handoff stays byte-identical.

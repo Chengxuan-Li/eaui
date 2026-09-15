@@ -8,7 +8,7 @@
 - [Package selection proposal](package-selection.md): researched package recommendations, fallbacks, constraints, spikes, and rejected candidates.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md); scripted agent and layout details in [0006](decisions/0006-scripted-agent-and-layout-details.md). Packages accepted in [0007](decisions/0007-package-selection.md). Next: scaffold, run the [package spikes](package-selection.md#spikes-before-feature-work), then build the [first slice](first-slice-proposal.md).
+Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md); scripted agent and layout details in [0006](decisions/0006-scripted-agent-and-layout-details.md). Packages accepted in [0007](decisions/0007-package-selection.md); app scaffolded and verified 2026-09-14. Next: run the [package spikes](package-selection.md#spikes-before-feature-work), then build the [first slice](first-slice-proposal.md).
 
 ## Verification recorded 2026-09-13
 
@@ -37,3 +37,13 @@ Audit machine (`C:/github/...`), read-only inspection only.
 - Reference branch unchanged (`backup/code-review-local-2026-09-06`), but HEAD advanced one commit from audited `545751dd` to `436a76a7` (2026-09-14, "refactor(ubem)!: merge UbemSimplePC into UbemSimple as a streaming run mode"). Working tree is now clean; the 28 audited status entries were committed or removed.
 - Within `EnergyAtlasWeb` and `EnergyAtlasDesktopEto`, only `Controllers/SimulationController.cs` differs: `/api/simulation/run` accepts `options.executionMode` = `streaming` (default) or `chunked` and returns 400 otherwise. UI surfaces in the audit are unaffected; the run-API description should be read with this addition.
 - Confirmed for the technical-lane discussion: `WebAppFactory.cs` serves `wwwroot` with `UseDefaultFiles`/`UseStaticFiles` and has no SPA fallback route; `Connectors/python/src/energyatlas/` is a Python HTTP client of the web API; no `package.json`, TypeScript, or Razor files exist outside build/dependency folders.
+
+## Scaffold verification recorded 2026-09-14
+
+- Based on the `create-vite` 9.2.1 `react-ts` template, generated outside the repository and merged by hand. The template's demo assets and README were not copied, and its oxlint setup was replaced by ESLint and Prettier per decision 0007.
+- `npm install` with exact versions: 0 vulnerabilities reported.
+- `npm run build` (typecheck plus Vite build) passed; the scaffold bundle is 219.92 kB JS (68.77 kB gzip).
+- `npm run lint` and `npm run format:check` passed.
+- `npm test`: 1 Vitest component test passed.
+- `npm run test:e2e`: 1 Playwright test passed in the installed Microsoft Edge at 1280x800, with no axe violations.
+- The scaffold page implements no workflow; it states that the workbench, workflow, and agent are not implemented yet.

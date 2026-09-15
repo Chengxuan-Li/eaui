@@ -1,0 +1,9 @@
+# Documentation is hand-formatted; the source handoff must stay byte-identical.
+*.md
+docs/
+
+package-lock.json
+dist/
+coverage/
+playwright-report/
+test-results/

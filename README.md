@@ -4,19 +4,27 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Packages accepted ([0007](docs/decisions/0007-package-selection.md)); scaffold and package spikes are in progress. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Packages accepted ([0007](docs/decisions/0007-package-selection.md)); the Vite app is scaffolded and the package spikes are next. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
 ## Setup and commands
 
-This phase requires Git and a text editor only. There is no application, dependency installation, build, test runner, or preview command yet. Add verified commands here when a stack is selected.
+Requires Node.js 24 LTS (22.12 or newer works) and npm. Browser tests use the locally installed Microsoft Edge by default; on machines without Edge, run `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium`.
 
 ```powershell
-git status --short --branch
-git diff --check
-git log --oneline -5
+npm ci                 # install the exact locked dependencies
+npm run dev            # start the Vite dev server
+npm run build          # typecheck, then build to dist/
+npm run preview        # serve the built bundle
+npm run typecheck
+npm run lint
+npm run format:check   # npm run format rewrites files
+npm test               # Vitest unit and component tests
+npm run test:e2e       # Playwright + axe; starts the dev server on 127.0.0.1:5173
 ```
+
+Before committing, also run `git status --short --branch`, `git diff --check`, and `git diff --cached`.
 
 `.env.example` is the tracked configuration template; `.env.local` is its ignored local counterpart. It lists `OPENAI_API_KEY` and `OPENAI_MODEL`, reserved for a future model provider behind the agent adapter; the first slice reads no variables ([decision 0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Never expose keys through `VITE_`-prefixed variables, which Vite bundles into client code. On another machine, create the local counterpart if absent:
 
