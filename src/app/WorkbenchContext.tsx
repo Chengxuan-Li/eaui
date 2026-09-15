@@ -34,15 +34,18 @@ import {
   readAppearancePreference,
   storeAppearancePreference,
 } from './theme.ts'
+import type { ContextMode, ViewState } from './view/viewOperations.ts'
+import { createViewStore, type ViewStore } from './view/viewStore.ts'
+
+export type { ContextMode } from './view/viewOperations.ts'
 
 type CoreServices = {
   storage: Storage | null
   workbench: Workbench
   layout: LayoutController
+  /** Logged view state shared by manual controls and the agent. */
+  view: ViewStore
 }
-
-/** The modes of the right-side context panel (guidelines section 10). */
-export type ContextMode = 'reasoning' | 'inspection'
 
 export type Services = CoreServices & {
   /** The stored choice, which may be "system". */
@@ -83,6 +86,7 @@ function createCoreServices(): CoreServices {
     storage,
     workbench,
     layout: createLayoutController(workbench, storage),
+    view: createViewStore(workbench),
   }
 }
 
@@ -93,7 +97,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
   const [systemDark, setSystemDark] = useState(systemPrefersDark)
   const appearance = resolveAppearance(appearancePreference, systemDark)
-  const [contextMode, setContextModeState] = useState<ContextMode>('reasoning')
+  const contextMode = useStore(core.view.store, (view) => view.context.mode)
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -114,23 +118,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
 
   const services = useMemo<Services>(() => {
-    // Context mode is view state: logged like layout operations so manual
-    // controls and a future agent share one path.
     const setContextMode = (
       mode: ContextMode,
       source: CommandSource = 'manual',
     ) => {
-      setContextModeState(mode)
-      core.workbench.record({
-        type: 'view.setContextMode',
-        title: 'Set context mode',
-        input: { mode },
-        summary:
-          mode === 'inspection'
-            ? 'The context panel shows Inspection.'
-            : 'The context panel shows Reasoning.',
-        source,
-      })
+      core.view.execute({ type: 'context.setMode', input: { mode } }, source)
     }
     return {
       ...core,
@@ -184,6 +176,11 @@ export function useWorkbenchSnapshot<T>(
   selector: (snapshot: WorkbenchSnapshot) => T,
 ): T {
   return useStore(useServices().workbench.store, selector)
+}
+
+/** Reads logged view state (map, table, dashboard, context panel). */
+export function useViewState<T>(selector: (view: ViewState) => T): T {
+  return useStore(useServices().view.store, selector)
 }
 
 export function useStageStates() {

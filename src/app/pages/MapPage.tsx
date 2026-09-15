@@ -14,6 +14,7 @@ import { STAGE_IDS } from '../../domain/workflow.ts'
 import {
   useAppearance,
   useServices,
+  useViewState,
   useWorkbenchSnapshot,
 } from '../WorkbenchContext.tsx'
 import type { DataPalette } from '../appearance/appearances.ts'
@@ -89,8 +90,11 @@ export function MapPage() {
   const palette = appearance.data
   const mapRef = useRef<MapRef>(null)
   const [loaded, setLoaded] = useState(false)
-  const [preferredMetric, setPreferredMetric] = useState<MetricId>('floors')
-  const [showGrid, setShowGrid] = useState(true)
+  const { view } = useServices()
+  const mapView = useViewState((state) => state.map)
+  const preferredMetric = mapView.metric
+  const showGrid = mapView.gridOverlay
+  const handledFocusRequest = useRef(0)
   const [hover, setHover] = useState<Hover | null>(null)
 
   const metrics = useMemo(
@@ -198,6 +202,26 @@ export function MapPage() {
     })
   }, [loaded, bounds])
 
+  // Zoom to the shared selection when a map.focusSelection operation asks for it.
+  const focusRequest = mapView.focusRequest
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !loaded || focusRequest === handledFocusRequest.current) return
+    handledFocusRequest.current = focusRequest
+    const { entityType, ids } = workbench.getState().selection
+    const points =
+      entityType === 'building'
+        ? ids.flatMap((id) => state.buildings[id]?.footprint ?? [])
+        : ids.flatMap((id) => state.gridElements[id]?.coordinates ?? [])
+    const target = boundsOf(points)
+    if (!target) return
+    map.fitBounds(target, {
+      padding: { top: 48, bottom: 48, left: 64, right: 232 },
+      maxZoom: 18,
+      duration: 0,
+    })
+  }, [focusRequest, loaded, workbench, state.buildings, state.gridElements])
+
   // Mirror the shared selection into feature state.
   const selection = state.selection
   useEffect(() => {
@@ -256,7 +280,12 @@ export function MapPage() {
           orientation="horizontal"
           onChange={(value) => {
             const next = METRICS.find((candidate) => candidate.id === value)
-            if (next) setPreferredMetric(next.id)
+            if (next && next.id !== preferredMetric) {
+              view.execute({
+                type: 'map.setMetric',
+                input: { metric: next.id },
+              })
+            }
           }}
         >
           <Label className={formStyles.label}>Color buildings by</Label>
@@ -277,7 +306,9 @@ export function MapPage() {
           className={formStyles.checkbox}
           isSelected={showGrid && hasGrid}
           isDisabled={!hasGrid}
-          onChange={setShowGrid}
+          onChange={(visible) =>
+            view.execute({ type: 'map.setGridOverlay', input: { visible } })
+          }
         >
           Grid overlay
         </Checkbox>

@@ -21,7 +21,11 @@ import type {
   Selection,
 } from '../../domain/types.ts'
 import { STAGE_IDS } from '../../domain/workflow.ts'
-import { useServices, useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
+import {
+  useServices,
+  useViewState,
+  useWorkbenchSnapshot,
+} from '../WorkbenchContext.tsx'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
@@ -91,7 +95,8 @@ export function TablePage() {
   const hasBuildings = useWorkbenchSnapshot(
     (snapshot) => snapshot.state.buildingIds.length > 0,
   )
-  const [view, setView] = useState<'buildings' | 'grid'>('buildings')
+  const { view: viewStore } = useServices()
+  const view = useViewState((state) => state.table.view)
 
   return (
     <section className={styles.page} aria-labelledby={headingId}>
@@ -103,9 +108,15 @@ export function TablePage() {
         <Tabs
           className={styles.tabs}
           selectedKey={view}
-          onSelectionChange={(key) =>
-            setView(key === 'grid' ? 'grid' : 'buildings')
-          }
+          onSelectionChange={(key) => {
+            const next = key === 'grid' ? 'grid' : 'buildings'
+            if (next !== view) {
+              viewStore.execute({
+                type: 'table.setView',
+                input: { view: next },
+              })
+            }
+          }}
         >
           <TabList aria-label="Table views" className={styles.tabList}>
             <Tab id="buildings" className={styles.tab}>
@@ -134,7 +145,7 @@ export function TablePage() {
 }
 
 function BuildingsTable() {
-  const { workbench } = useServices()
+  const { workbench, view } = useServices()
   const buildings = useWorkbenchSnapshot((snapshot) => snapshot.state.buildings)
   const buildingIds = useWorkbenchSnapshot(
     (snapshot) => snapshot.state.buildingIds,
@@ -150,7 +161,29 @@ function BuildingsTable() {
   )
   const selection = useWorkbenchSnapshot((snapshot) => snapshot.state.selection)
   const apiRef = useRef<GridApi<BuildingRow> | null>(null)
-  const [quickFilter, setQuickFilter] = useState('')
+  const storedFilter = useViewState((state) => state.table.quickFilter)
+  // The field edits a local draft so typing stays responsive; the logged view
+  // operation follows after a pause. A filter set elsewhere (for example by the
+  // agent) replaces the draft.
+  const [draft, setDraft] = useState({
+    text: storedFilter,
+    synced: storedFilter,
+  })
+  let quickFilter = draft.text
+  if (draft.synced !== storedFilter) {
+    quickFilter = storedFilter
+    setDraft({ text: storedFilter, synced: storedFilter })
+  }
+  useEffect(() => {
+    if (quickFilter === storedFilter) return
+    const handle = window.setTimeout(() => {
+      view.execute({
+        type: 'table.setQuickFilter',
+        input: { text: quickFilter },
+      })
+    }, 400)
+    return () => window.clearTimeout(handle)
+  }, [quickFilter, storedFilter, view])
   const [editError, setEditError] = useState<string | null>(null)
   const handleSelection = useSelectionHandler<BuildingRow>('building')
 
@@ -270,9 +303,13 @@ function BuildingsTable() {
           aria-label="Filter buildings"
           className={styles.search}
           value={quickFilter}
-          onChange={setQuickFilter}
+          onChange={(text) => setDraft({ text, synced: storedFilter })}
         >
-          <Input className={formStyles.input} placeholder="Filter rows" />
+          <Input
+            className={formStyles.input}
+            placeholder="Filter rows"
+            maxLength={100}
+          />
         </SearchField>
         <span data-testid="pending-count">
           {pendingCount} pending {pendingCount === 1 ? 'edit' : 'edits'}

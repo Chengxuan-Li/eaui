@@ -20,6 +20,7 @@ import {
   useAppearance,
   useServices,
   useStageStates,
+  useViewState,
   useWorkbenchSnapshot,
 } from '../WorkbenchContext.tsx'
 import type { DataPalette } from '../appearance/appearances.ts'
@@ -29,6 +30,7 @@ import componentStyles from '../components/components.module.css'
 import { EmptyState } from '../components/EmptyState.tsx'
 import formStyles from '../components/forms.module.css'
 import { cx } from '../cx.ts'
+import { compileChartSpec, type ChartSpec } from '../view/chartSpec.ts'
 import { EChart, useChartFont } from '../viz/EChart.tsx'
 import {
   annualDemandOption,
@@ -106,17 +108,92 @@ function StatTile({
   )
 }
 
+/** A chart added from a validated specification (decision 0011). */
+function AddedChart({ spec }: { spec: ChartSpec }) {
+  const { view } = useServices()
+  const project = useWorkbenchSnapshot((snapshot) => snapshot.state)
+  const palette = useAppearance().data
+  const font = useChartFont()
+  const compiled = useMemo(
+    () => compileChartSpec(spec, project, palette, font.family),
+    [spec, project, palette, font],
+  )
+  return (
+    <article className={styles.card} aria-label={spec.title}>
+      <div className={styles.addedHeader}>
+        <h4>{spec.title}</h4>
+        <ActionButton
+          label={`Remove the chart ${spec.title}`}
+          disabledReason={null}
+          onPress={() =>
+            view.execute({
+              type: 'dashboard.removeChart',
+              input: { chartId: spec.id },
+            })
+          }
+        >
+          Remove
+        </ActionButton>
+      </div>
+      {compiled.missing.length > 0 ? (
+        <p className={componentStyles.muted}>
+          Not charted because they have no results now:{' '}
+          {compiled.missing.join(', ')}.
+        </p>
+      ) : null}
+      <EChart
+        option={compiled.option}
+        height={compiled.height}
+        label={compiled.summary}
+      />
+      <details className={styles.dataTable}>
+        <summary>Show data table for {spec.title}</summary>
+        <table
+          className={componentStyles.table}
+          aria-label={compiled.table.caption}
+        >
+          <thead>
+            <tr>
+              {compiled.table.columns.map((column) => (
+                <th scope="col" key={column}>
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {compiled.table.rows.map((row) => (
+              <tr key={row[0]}>
+                <th scope="row">{row[0]}</th>
+                {row.slice(1).map((cell, index) => (
+                  <td key={compiled.table.columns[index + 1] ?? index}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </article>
+  )
+}
+
 export function DashboardPage() {
   const headingId = useId()
   const controlsHeadingId = useId()
-  const { workbench, layout } = useServices()
+  const addedChartsHeadingId = useId()
+  const { workbench, layout, view } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const workflow = state.workflow
   const stageStates = useStageStates()
   const palette = useAppearance().data
   const font = useChartFont()
   const [previews, setPreviews] = useState<Record<string, number>>({})
-  const [hiddenIds, setHiddenIds] = useState<string[]>([])
+  const hiddenIds = useViewState(
+    (viewState) => viewState.dashboard.hiddenScenarioIds,
+  )
+  const addedCharts = useViewState((viewState) => viewState.dashboard.charts)
 
   const data = useMemo(
     () => buildDashboardData(state, previews),
@@ -239,11 +316,10 @@ export function DashboardPage() {
                   }
                   isDisabled={!item.shown}
                   onChange={(isSelected) =>
-                    setHiddenIds((ids) =>
-                      isSelected
-                        ? ids.filter((id) => id !== scenario.id)
-                        : [...ids, scenario.id],
-                    )
+                    view.execute({
+                      type: 'dashboard.setScenarioCompared',
+                      input: { scenarioId: scenario.id, compared: isSelected },
+                    })
                   }
                 >
                   Compare {scenario.name}
@@ -501,6 +577,20 @@ export function DashboardPage() {
           )}
         </article>
       </div>
+
+      {addedCharts.length > 0 ? (
+        <section
+          className={styles.addedCharts}
+          aria-labelledby={addedChartsHeadingId}
+        >
+          <h3 id={addedChartsHeadingId}>Added charts</h3>
+          <div className={styles.charts}>
+            {addedCharts.map((spec) => (
+              <AddedChart key={spec.id} spec={spec} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className={styles.planned}>
         <ActionButton
