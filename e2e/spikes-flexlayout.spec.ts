@@ -1,8 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
-// Fallback docking spike (decision 0007): FlexLayout evaluated against the
-// same requirements as dockview. A failure is a finding to record in
+// Docking regression baseline (decision 0008): the FlexLayout requirements
+// proven in the package spikes. A failure is a finding to record in
 // docs/package-selection.md, not something to retry away.
 
 type Probe = {

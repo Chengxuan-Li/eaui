@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { ChartSpike } from './ChartSpike.tsx'
-import { DockingSpike } from './DockingSpike.tsx'
 import { FlexLayoutSpike } from './FlexLayoutSpike.tsx'
 import { FlowSpike } from './FlowSpike.tsx'
 import { GridSpike } from './GridSpike.tsx'
@@ -12,7 +11,6 @@ const SPIKE_TITLES: Record<string, string> = {
   chart: 'ECharts hourly series',
   grid: 'AG Grid with pending edits',
   flow: 'React Flow roadmap',
-  docking: 'dockview workbench',
   flexlayout: 'FlexLayout workbench',
 }
 
@@ -46,13 +44,10 @@ export default function SpikeApp({ name }: { name: string }) {
     case 'flow':
       content = <FlowSpike />
       break
-    case 'flexlayout':
+    default:
       content = (
         <FlexLayoutSpike selectedId={selectedId} select={setSelectedId} />
       )
-      break
-    default:
-      content = <DockingSpike selectedId={selectedId} select={setSelectedId} />
   }
 
   return (

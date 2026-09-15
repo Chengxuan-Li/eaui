@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 
-Status: accepted by the user in discussion.
+Status: accepted by the user in discussion. The docking choice was superseded by [decision 0008](0008-flexlayout-docking.md) after the spikes.
 
 ## Decision
 

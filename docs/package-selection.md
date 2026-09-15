@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 
-Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026-09-14. Spikes ran on 2026-09-14; see [spike results](#spike-results-2026-09-14). The docking library choice awaits user confirmation. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
+Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026-09-14. After the [spike results](#spike-results-2026-09-14), [decision 0008](decisions/0008-flexlayout-docking.md) replaced dockview with FlexLayout for docking. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
 
 ## Method and evidence limits
 
@@ -17,7 +17,7 @@ Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026
 | --- | --- | --- | --- | --- |
 | Toolchain | react/react-dom 19.3.0, vite 8.3.0, @vitejs/plugin-react 6.1.1, TypeScript ~6.0 | MIT / Apache-2.0 | none | Official `react-ts` template; pin TypeScript 6.0 because typescript-eslint does not support TypeScript 7 yet |
 | Runtime | Node.js 24 LTS, npm | n/a | Node 22.12+ | Vitest 5 requires Node 22.12+; Node 20 is end of life ([schedule](https://raw.githubusercontent.com/nodejs/Release/main/schedule.json)) |
-| Docking | dockview-react 8.3.1 (free core only) | MIT | flexlayout-react 0.11.0 | Only candidate documenting always-render DOM preservation, full imperative API, JSON layouts, collapsible edge groups, ARIA, and keyboard docking |
+| Docking | flexlayout-react 0.11.0 (decision 0008; replaced dockview-react 8.3.1) | MIT | dockview free core plus a custom keyboard layer | Spikes: keyboard splitter resizing, ARIA tabs and separators, remappable tabset navigation, mounted hidden tabs, JSON layouts with borders |
 | Map | maplibre-gl 6.9.1 + @vis.gl/react-maplibre 8.1.3 | BSD-3-Clause / MIT | OpenLayers (ol) 10.10.0 | No token, GeoJSON sources, feature-state highlighting, data-driven styles, extrusion, keyboard pan/zoom |
 | Workflow graph | @xyflow/react 12.11.6 + @dagrejs/dagre 3.1.1 (Roadmap); plain accessible HTML list/tree (compact left view) | MIT | elkjs layout (EPL-2.0 or GPL-3.0) | React node components, built-in focus/ARIA; compact view reads better and is more accessible as HTML |
 | Table | ag-grid-community + ag-grid-react 36.1.0 | MIT | @tanstack/react-table v9 + react-aria-components Table | Only candidate with documented ARIA grid, keyboard navigation, editors, filters, and column state in a free tier |
@@ -36,10 +36,10 @@ Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026
 
 ## Constraints the recommendations carry
 
-- **Docking:**
-  - Use only dockview's free core. Auto-hide edge groups, dock-to-edge, layout history, the DnD compass, and pinned/multi-row tabs are Enterprise features ([licence](https://dockview.dev/docs/overview/licence/)).
-  - Side panels use free collapsible edge groups instead.
-  - Pin the exact version; 7.x and 8.0 shipped two months apart.
+- **Docking (decision 0008):**
+  - Pin flexlayout-react exactly; it is pre-1.0 and 0.11.0 contained breaking changes. Keep layout changes behind our typed layout commands.
+  - Panels that must keep state (map, charts) render with `enableRenderOnDemand: false`.
+  - Side panels are left and right borders. Keyboard docking (moving a tab to another tabset) is not documented, so the command palette provides it through `Actions.moveNode`.
   - One docking model owns the whole main area including side panels. Only the ribbon, side (activity) bar, and status bar sit outside it, and they act on it through typed commands.
 - **Map:**
   - Default to no basemap. Token-free basemaps (OpenFreeMap, self-hosted Protomaps) can be added later with their attribution terms.
@@ -68,11 +68,11 @@ Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026
    - pending edits held outside the grid.
 4. **React Flow:** read-only Roadmap keyboard navigation with dragging disabled.
 
-If spike 1 fails on keyboard resizing or focus, evaluate flexlayout-react before building panels; its hidden-tab DOM retention must then be proven.
+Spike 1 failed on keyboard focus and resizing, so flexlayout-react was evaluated with the same tests and adopted in decision 0008.
 
 ## Rejected or deferred candidates
 
-- **Docking:** rc-dock (latest tag is an alpha, no accessibility documentation); react-mosaic-component (tiling without maximize or popouts, heavy react-dnd dependency tree); golden-layout (no release since 2022, no React bindings); @lumino/widgets (React embedding only through JupyterLab packages).
+- **Docking:** dockview-react (free core lacks keyboard navigation and keyboard resizing; enterprise modules are commercial; see spike results); rc-dock (latest tag is an alpha, no accessibility documentation); react-mosaic-component (tiling without maximize or popouts, heavy react-dnd dependency tree); golden-layout (no release since 2022, no React bindings); @lumino/widgets (React embedding only through JupyterLab packages).
 - **Map:** deck.gl (a second rendering stack beyond need); Leaflet with react-leaflet (no WebGL extrusion, core release line stalled at 1.9.4 versus a 2.0 alpha, react-leaflet under Hippocratic-2.1 license).
 - **Graph:** cytoscape with react-cytoscapejs (wrapper last published 2022, canvas nodes without keyboard accessibility).
 - **Table:** glide-data-grid (latest stable 2024, React 19 only in prerelease).
@@ -97,14 +97,14 @@ Installed on 2026-09-14 alongside the accepted tools because those tools require
 - `@testing-library/dom`: peer dependency of `@testing-library/react`.
 - `@eslint/js`, `globals`, `eslint-config-prettier`: ESLint flat configuration and Prettier compatibility.
 - `@types/node`, `@types/react`, `@types/react-dom`: type definitions.
-- `flexlayout-react` 0.11.0: installed as a development dependency to run the docking fallback spike required by decision 0007.
+- `flexlayout-react` 0.11.0 was first installed as a development dependency for the fallback spike and moved to runtime dependencies by decision 0008.
 
 ## Spike results (2026-09-14)
 
 Environment: Windows 11, Node.js 24.14.1, Microsoft Edge through the Playwright `msedge` channel at 1280x800, Vite dev server, synthetic data only.
 
-- Spike pages: `src/spikes/`. Run `npm run dev` and open `/?spike=` with `map`, `chart`, `grid`, `flow`, `docking`, or `flexlayout`.
-- Tests: `e2e/spikes.spec.ts` and `e2e/spikes-flexlayout.spec.ts`, run by `npm run test:e2e`. Final run: 20 passed; the 2 dockview keyboard findings are marked as expected failures.
+- Spike pages: `src/spikes/`. Run `npm run dev` and open `/?spike=` with `map`, `chart`, `grid`, `flow`, or `flexlayout`.
+- Tests: `e2e/spikes.spec.ts` and `e2e/spikes-flexlayout.spec.ts`, run by `npm run test:e2e`. The comparison run passed 20 tests, with the 2 dockview keyboard findings marked as expected failures. After decision 0008 the dockview spike code and tests were removed; its rows below remain as evidence.
 
 | Spike | Requirement | Result |
 | --- | --- | --- |
@@ -138,7 +138,7 @@ The color-contrast findings come from library default themes and spike styling; 
   - The registry lists `dockview-enterprise` 8.3.1 with license "SEE LICENSE IN LICENCE.md". Its commercial terms were not reviewed.
 - **FlexLayout keeps hidden tab content mounted** when `tabEnableRenderOnDemand` is false. This resolves the open question in the fallback row.
 
-### Docking recommendation (pending user confirmation)
+### Docking recommendation (accepted in decision 0008)
 
 Replace dockview with **flexlayout-react 0.11.0** (MIT, no runtime dependencies) as the docking library. In these spikes it met every docking requirement, including keyboard resizing and tabset focus navigation that dockview's free core lacks, and it produced fewer axe findings.
 
@@ -152,4 +152,4 @@ Alternatives:
 - **Keep dockview's free core** and build keyboard navigation and keyboard resizing ourselves on its API (more custom accessibility code).
 - **License dockview-enterprise** (commercial terms not reviewed).
 
-If the recommendation is accepted: record decision 0008, move `flexlayout-react` to runtime dependencies, remove `dockview-react` and the dockview spike, and keep the FlexLayout spike tests as the docking regression baseline.
+Accepted on 2026-09-14 ([decision 0008](decisions/0008-flexlayout-docking.md)): `flexlayout-react` moved to runtime dependencies, `dockview-react` and the dockview spike were removed, and the FlexLayout spike tests remain the docking regression baseline.

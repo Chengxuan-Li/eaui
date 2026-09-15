@@ -15,8 +15,8 @@ import { MapSpike } from './MapSpike.tsx'
 import { exposeInstance } from './probe.ts'
 import styles from './spikes.module.css'
 
-// Same panels as the dockview spike so the two docking libraries are
-// compared on identical content.
+// Workbench-shaped layout used to evaluate FlexLayout (decision 0008): side
+// borders plus two center tabsets holding the map, table, chart, and roadmap.
 const initialLayout: IJsonModel = {
   global: {
     tabEnableRenderOnDemand: false,

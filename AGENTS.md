@@ -29,9 +29,9 @@ Read the [complete handoff](docs/20260913_product-ui-experiment-agent-handoff.md
 
 ## Commands and current phase
 
-Scaffold phase. Decisions 0002-0007 fix the stack, shell, layout, first-slice workflow, scripted agent, and packages. The Vite React TypeScript app was scaffolded on 2026-09-14; package spikes ran on 2026-09-14 (results in `docs/package-selection.md`); confirm the docking library with the user before building panels. Spike pages: `npm run dev`, then `/?spike=` with `map`, `chart`, `grid`, `flow`, `docking`, or `flexlayout`. Two dockview keyboard tests are intentionally marked `test.fail` as recorded findings.
+Scaffold phase. Decisions 0002-0008 fix the stack, shell, layout, first-slice workflow, scripted agent, and packages. The Vite React TypeScript app was scaffolded on 2026-09-14; package spikes ran on 2026-09-14 (results in `docs/package-selection.md`); FlexLayout is the docking library (decision 0008). Spike pages: `npm run dev`, then `/?spike=` with `map`, `chart`, `grid`, `flow`, or `flexlayout`.
 
-- Install with `npm ci` (Node.js 24 LTS, exact pinned versions). Do not add packages outside decision 0007 without recording the reason in `docs/package-selection.md` or a new decision.
+- Install with `npm ci` (Node.js 24 LTS, exact pinned versions). Do not add packages outside decisions 0007 and 0008 without recording the reason in `docs/package-selection.md` or a new decision.
 - Develop with `npm run dev`; check a production bundle with `npm run build` and `npm run preview`.
 - Verify before committing: `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, `npm run test:e2e`, `git diff --check`, and `git diff --cached`. Playwright uses the installed Edge by default; elsewhere run `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium`.
 - Keep TypeScript on 6.0 until typescript-eslint supports TypeScript 7. Prettier ignores Markdown so the source handoff stays byte-identical.

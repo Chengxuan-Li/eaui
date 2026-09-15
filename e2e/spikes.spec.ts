@@ -1,4 +1,3 @@
-import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 // Package spikes from docs/package-selection.md, run against synthetic data.
@@ -21,27 +20,6 @@ type MapInstance = {
   }): Record<string, unknown>
 }
 
-type ChartInstance = {
-  isDisposed(): boolean
-  getDom(): HTMLElement
-  getWidth(): number
-}
-
-type DockPanel = {
-  api: { moveTo(options: object): void; setActive(): void }
-  group: unknown
-}
-
-type DockApi = {
-  getPanel(id: string): DockPanel | undefined
-  maximizeGroup(panel: DockPanel): void
-  exitMaximizedGroup(): void
-  hasMaximizedGroup(): boolean
-  toJSON(): unknown
-  fromJSON(data: unknown): void
-  panels: unknown[]
-}
-
 function annotate(type: string, description: unknown) {
   test.info().annotations.push({
     type,
@@ -50,13 +28,6 @@ function annotate(type: string, description: unknown) {
         ? description
         : JSON.stringify(description),
   })
-}
-
-async function mountCount(page: Page, name: string): Promise<number> {
-  return page.evaluate(
-    (component) => (window as SpikeWindow).__spike?.mounts[component] ?? 0,
-    name,
-  )
 }
 
 async function waitForRenderedBuildings(page: Page): Promise<number> {
@@ -225,169 +196,5 @@ test.describe('React Flow spike', () => {
           null,
       ),
     )
-  })
-})
-
-test.describe('dockview spike', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/?spike=docking')
-    await waitForRenderedBuildings(page)
-  })
-
-  test('keeps map and chart instances alive through hide, move, and maximize', async ({
-    page,
-  }) => {
-    const mapMounts = await mountCount(page, 'map')
-    const chartMounts = await mountCount(page, 'chart')
-
-    // Hide: activate the Table tab in the map's group.
-    await page.getByRole('tab', { name: 'Table' }).click()
-    expect(await mapCanvasState(page)).toMatchObject({
-      connected: true,
-      contextLost: false,
-    })
-
-    // Move: put the map into the chart's group.
-    await page.evaluate(() => {
-      const api = (window as SpikeWindow).__spike?.instances.dockview as DockApi
-      const map = api.getPanel('map')
-      const chart = api.getPanel('chart')
-      if (!map || !chart) throw new Error('Missing spike panels')
-      map.api.moveTo({ group: chart.group, position: 'center' })
-    })
-
-    // Maximize and restore.
-    const maximized = await page.evaluate(() => {
-      const api = (window as SpikeWindow).__spike?.instances.dockview as DockApi
-      const map = api.getPanel('map')
-      if (!map) throw new Error('Missing map panel')
-      map.api.setActive()
-      api.maximizeGroup(map)
-      const wasMaximized = api.hasMaximizedGroup()
-      api.exitMaximizedGroup()
-      return wasMaximized
-    })
-    expect(maximized).toBe(true)
-
-    await waitForRenderedBuildings(page)
-    expect(await mountCount(page, 'map')).toBe(mapMounts)
-    expect(await mountCount(page, 'chart')).toBe(chartMounts)
-
-    await expect
-      .poll(async () => {
-        const state = await mapCanvasState(page)
-        return (
-          !!state &&
-          state.connected &&
-          state.contextLost === false &&
-          state.canvasWidth === state.containerWidth
-        )
-      })
-      .toBe(true)
-
-    const chart = await page.evaluate(() => {
-      const instance = (window as SpikeWindow).__spike?.instances.chart as
-        ChartInstance | undefined
-      if (!instance) return null
-      // ECharts reports an undisposed chart as a falsy value, not strictly false.
-      return {
-        disposed: instance.isDisposed() === true,
-        connected: instance.getDom().isConnected,
-      }
-    })
-    expect(chart).toEqual({ disposed: false, connected: true })
-  })
-
-  test('serializes and restores the layout including edge groups', async ({
-    page,
-  }) => {
-    const result = await page.evaluate(() => {
-      const api = (window as SpikeWindow).__spike?.instances.dockview as DockApi
-      const saved = api.toJSON()
-      const panelCount = api.panels.length
-      api.fromJSON(saved)
-      return {
-        panelCount,
-        restoredCount: api.panels.length,
-        includesEdgeGroups: JSON.stringify(saved).includes('left-edge'),
-      }
-    })
-    annotate('layout round trip', result)
-    expect(result.restoredCount).toBe(result.panelCount)
-    expect(result.includesEdgeGroups).toBe(true)
-  })
-
-  test('links selection from the table to the map', async ({ page }) => {
-    await page.getByRole('tab', { name: 'Table' }).click()
-    await page.locator('[row-index="0"] [col-id="name"]').click()
-    await expect(page.getByTestId('selected-id')).toHaveText('B0001')
-
-    const state = await page.evaluate(() => {
-      const map = (window as SpikeWindow).__spike?.instances.map as MapInstance
-      return map.getFeatureState({ source: 'buildings', id: 'B0001' })
-    })
-    expect(state).toMatchObject({ selected: true })
-  })
-
-  test('exposes tabs with ARIA tab roles', async ({ page }) => {
-    const tablists = await page.getByRole('tablist').count()
-    const tabs = await page.getByRole('tab').count()
-    annotate('tablists and tabs', { tablists, tabs })
-    expect(tabs).toBeGreaterThanOrEqual(7)
-  })
-
-  test('moves focus to another group with F6', async ({ page }) => {
-    test.fail(
-      true,
-      'Finding: keyboardNavigation requires the dockview-enterprise KeyboardNavigation module.',
-    )
-    await page.getByRole('tab', { name: 'Table' }).click()
-    const describeFocus = () =>
-      page.evaluate(() => {
-        const element = document.activeElement
-        return element
-          ? `${element.tagName} ${element.getAttribute('role') ?? ''} ${element.textContent?.trim().slice(0, 40) ?? ''}`
-          : null
-      })
-    const before = await describeFocus()
-    await page.keyboard.press('F6')
-    const after = await describeFocus()
-    annotate('focus before and after F6', { before, after })
-    expect(after).not.toBe(before)
-  })
-
-  test('resizes groups from the keyboard', async ({ page }) => {
-    test.fail(
-      true,
-      'Finding: dockview free-core sashes have no separator role or keyboard resizing.',
-    )
-    const separators = page.getByRole('separator')
-    const count = await separators.count()
-    const sashes = await page.locator('[class*="sash"]').count()
-    annotate('separators and sash elements', { count, sashes })
-    expect(count).toBeGreaterThan(0)
-
-    const mapBox = page.getByTestId('chart-spike')
-    const before = (await mapBox.boundingBox())?.width
-    const separator = separators.first()
-    await separator.focus()
-    await expect(separator).toBeFocused()
-    for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft')
-    const after = (await mapBox.boundingBox())?.width
-    annotate('chart width before and after ArrowLeft x5', { before, after })
-    expect(after).not.toBe(before)
-  })
-
-  test('records axe findings for the docked workbench', async ({ page }) => {
-    const results = await new AxeBuilder({ page }).analyze()
-    annotate(
-      'axe violations',
-      results.violations.map((violation) => ({
-        id: violation.id,
-        impact: violation.impact,
-        nodes: violation.nodes.length,
-      })),
-    )
-    expect(results.violations.length).toBeGreaterThanOrEqual(0)
   })
 })

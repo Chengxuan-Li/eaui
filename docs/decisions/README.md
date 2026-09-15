@@ -9,3 +9,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0005: First-slice workflow sequence and panel scope](0005-first-slice-workflow-and-panel-scope.md)
 - [0006: Scripted agent with realistic tool calls; confirmed layout details](0006-scripted-agent-and-layout-details.md)
 - [0007: Package selection for the first slice](0007-package-selection.md)
+- [0008: FlexLayout replaces dockview for docking](0008-flexlayout-docking.md)
