@@ -27,6 +27,7 @@ import { NotBuiltYet } from '../components/NotBuiltYet.tsx'
 import '../global.css'
 import '../layout/flexlayout-theme.css'
 import { CreatorPage } from '../pages/CreatorPage.tsx'
+import { DashboardPage } from '../pages/DashboardPage.tsx'
 import { IssuesPage } from '../pages/IssuesPage.tsx'
 import { MapPage } from '../pages/MapPage.tsx'
 import { RoadmapPage } from '../pages/RoadmapPage.tsx'
@@ -104,13 +105,7 @@ function renderTabContent(node: TabNode) {
     case 'page.table':
       return <TablePage />
     case 'page.dashboard':
-      return (
-        <NotBuiltYet
-          title="Dashboard"
-          buildStage={3}
-          description="Baseline and scenario comparison with scenario controls."
-        />
-      )
+      return <DashboardPage />
     case 'page.roadmap':
       return <RoadmapPage />
     case 'page.creator':

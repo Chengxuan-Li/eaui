@@ -182,3 +182,26 @@ Code in `src/app/pages/MapPage.tsx`, `src/app/pages/mapMetrics.ts`, `src/app/pag
   - The map canvas is not exposed to screen readers. The page says so and links to the Table page, which shares the selection.
   - The sequential ramp comes from the dataviz reference palette. Categorical slots 1-3 were validated with the dataviz validator against the workbench surfaces (light `#ffffff`, dark `#1d2126`) using `--pairs all`: every check passes, but light-mode aqua is 2.82:1, so any chart using it must ship direct labels or a table view.
 - **Finding:** AG Grid selection events report a `source`. The table ignores programmatic sources so that syncing from the map does not echo back as new selection commands.
+
+### Stage 3c: dashboard (2026-09-15)
+
+Code in `src/app/pages/DashboardPage.tsx`, `src/app/pages/dashboardData.ts`, `src/app/pages/dashboardCharts.ts`, and `src/app/viz/EChart.tsx`. The shared scenario calculation (`computeScenarioResult`) and the `scenario.setAdoption` command live in `src/domain/`. Tests in `src/app/pages/dashboardData.test.ts`, `src/domain/workbench.test.ts`, and `e2e/dashboard.spec.ts`.
+
+- **Real:**
+  - Stat tiles for baseline annual demand and peak, and for each compared scenario with its reduction against the baseline.
+  - A monthly demand line chart and an annual demand bar chart (ECharts), each with a legend or category labels, tooltips, and a data table.
+  - Transformer peak loading meters with a status icon and label; the marker line is 100% of rating.
+  - **Scenario controls:** compare toggles and what-if adoption sliders.
+    - A preview recomputes results with the same `computeScenarioResult` the scenario modeling stage uses, and is labeled "Preview, not saved". Reset discards it.
+    - Apply runs the undoable `scenario.setAdoption` command, which marks the scenario stages stale. The dashboard then shows a stale-results notice with a run action.
+  - An empty state before the baseline exists. Custom widgets and report export are visible and marked planned.
+- **Simulated:** every number.
+- **Not built yet:** Reasoning (stage 4).
+- **Verification (2026-09-15):**
+  - Typecheck, lint, and format check pass; 38 unit tests pass.
+  - `npm run test:e2e` passes 30 tests, including the full dashboard flow (stages, creators, modeling, preview, apply, stale notice, data table) with no serious or critical axe violations.
+  - Screenshots at 1920x1080 reviewed in light mode (with the data table open) and dark mode. The review removed line end labels and the y-axis name, which collided with each other and with the legend, and compacted the annual chart's tick labels.
+- **Design notes:**
+  - Charts compare at most the first three scenarios, matching the three categorical slots validated all-pairs. Further scenarios are listed as not charted.
+  - Colors follow the scenario, not its rank, and the baseline uses the de-emphasis gray.
+  - The light-mode third slot (aqua) is below 3:1 contrast; category labels and data tables provide the required relief.

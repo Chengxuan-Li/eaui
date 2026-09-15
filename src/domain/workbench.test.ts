@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { GROUP } from './assets.ts'
 import { capabilities } from './capabilities.ts'
 import { describeCommands } from './commands.ts'
+import { computeScenarioResult } from './simulation.ts'
 import type { Building } from './types.ts'
 import { createWorkbench, type Workbench } from './workbench.ts'
 import { STAGE_IDS, deriveStageStates, topologicalOrder } from './workflow.ts'
@@ -531,5 +532,78 @@ describe('external operations', () => {
     expect(workbench.getState()).toBe(replacement)
     expect(workbench.store.getState().canUndo).toBe(false)
     expect(workbench.undo().outcome.status).toBe('rejected')
+  })
+})
+
+describe('scenario adoption', () => {
+  function modelOneScenario(workbench: Workbench) {
+    runStages(workbench, [S.location, S.enrichment, S.schema, S.preprocessing])
+    workbench.execute({
+      type: 'workflow.setStageSkipped',
+      input: { stageId: S.shading, skipped: true },
+    })
+    runStages(workbench, [S.archetypes, S.baseline])
+    createEnvelopeScenario(workbench)
+    runStages(workbench, [S.scenarioDefinitions, S.scenarioModeling])
+    const scenario = Object.values(workbench.getState().scenarios)[0]
+    if (!scenario) throw new Error('Scenario was not created')
+    return scenario
+  }
+
+  test('previews use the same calculation as scenario modeling', () => {
+    const workbench = setup()
+    const scenario = modelOneScenario(workbench)
+    const state = workbench.getState()
+    const modeled = state.results.scenarios[scenario.id]
+    const preview = computeScenarioResult(state, scenario, { runId: 'preview' })
+    expect(preview?.totalKwh).toBe(modeled?.totalKwh)
+
+    const higher = computeScenarioResult(state, scenario, {
+      runId: 'preview',
+      adoptionPercent: 100,
+    })
+    expect(higher?.totalKwh).toBeLessThan(modeled?.totalKwh ?? 0)
+  })
+
+  test('setting adoption validates input, marks scenario stages stale, and undoes', () => {
+    const workbench = setup()
+    const scenario = modelOneScenario(workbench)
+
+    expect(
+      workbench.execute({
+        type: 'scenario.setAdoption',
+        input: { scenarioId: 'scenario-999', adoptionPercent: 60 },
+      }).outcome,
+    ).toMatchObject({ status: 'rejected', issues: [{ path: 'scenarioId' }] })
+    expect(
+      workbench.execute({
+        type: 'scenario.setAdoption',
+        input: {
+          scenarioId: scenario.id,
+          adoptionPercent: scenario.adoptionPercent,
+        },
+      }).outcome,
+    ).toMatchObject({
+      status: 'rejected',
+      issues: [{ path: 'adoptionPercent' }],
+    })
+
+    workbench.execute({
+      type: 'scenario.setAdoption',
+      input: { scenarioId: scenario.id, adoptionPercent: 80 },
+    })
+    expect(workbench.getState().scenarios[scenario.id]?.adoptionPercent).toBe(
+      80,
+    )
+    expect(states(workbench)).toMatchObject({
+      [S.scenarioDefinitions]: 'stale',
+      [S.scenarioModeling]: 'stale',
+    })
+
+    workbench.undo()
+    expect(workbench.getState().scenarios[scenario.id]?.adoptionPercent).toBe(
+      scenario.adoptionPercent,
+    )
+    expect(states(workbench)[S.scenarioModeling]).toBe('executed')
   })
 })

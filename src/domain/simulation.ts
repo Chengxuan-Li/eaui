@@ -8,6 +8,7 @@ import type {
   LngLat,
   Provenance,
   ResultSet,
+  Scenario,
   WorkbenchState,
 } from './types.ts'
 import { STAGE_IDS } from './workflow.ts'
@@ -592,6 +593,57 @@ function confirmScenarioDefinitions(state: WorkbenchState): StageRunResult {
   }
 }
 
+export type ScenarioResultOptions = {
+  runId: string
+  /** Overrides the scenario's saved adoption, for what-if previews. */
+  adoptionPercent?: number
+}
+
+/**
+ * Synthetic scenario demand against the baseline. Shared by the scenario
+ * modeling stage and dashboard previews so both use exactly the same formula.
+ */
+export function computeScenarioResult(
+  state: WorkbenchState,
+  scenario: Scenario,
+  options: ScenarioResultOptions,
+): ResultSet | null {
+  const baseline = state.results.baseline
+  if (!baseline) return null
+  const measures = scenario.measureIds.flatMap((id) => {
+    const measure = state.measures[id]
+    return measure ? [measure] : []
+  })
+  const adoption = (options.adoptionPercent ?? scenario.adoptionPercent) / 100
+  const byBuildingKwh: Record<string, number> = {}
+  for (const [buildingId, kwh] of Object.entries(baseline.byBuildingKwh)) {
+    const building = state.buildings[buildingId]
+    const applicable = measures.filter(
+      (measure) =>
+        measure.appliesTo === 'all' || measure.appliesTo === building?.use,
+    )
+    const savingsPercent = Math.min(
+      60,
+      applicable
+        .filter((measure) => measure.kind !== 'pv')
+        .reduce((sum, measure) => sum + measure.savingsPercent, 0),
+    )
+    const pvOffset = applicable.some((measure) => measure.kind === 'pv')
+      ? (building?.pvYieldKwh ?? 0) * adoption
+      : 0
+    byBuildingKwh[buildingId] = Math.max(
+      0,
+      round(kwh * (1 - (savingsPercent / 100) * adoption) - pvOffset),
+    )
+  }
+  return makeResultSet(
+    `result:${scenario.id}`,
+    scenario.name,
+    options.runId,
+    byBuildingKwh,
+  )
+}
+
 function modelScenarios(
   state: WorkbenchState,
   context: StageRunContext,
@@ -611,38 +663,10 @@ function modelScenarios(
   state.results.scenarios = {}
   let bestReduction = 0
   for (const scenario of scenarios) {
-    const measures = scenario.measureIds.flatMap((id) => {
-      const measure = state.measures[id]
-      return measure ? [measure] : []
+    const result = computeScenarioResult(state, scenario, {
+      runId: context.runId,
     })
-    const adoption = scenario.adoptionPercent / 100
-    const byBuildingKwh: Record<string, number> = {}
-    for (const [buildingId, kwh] of Object.entries(baseline.byBuildingKwh)) {
-      const building = state.buildings[buildingId]
-      const applicable = measures.filter(
-        (measure) =>
-          measure.appliesTo === 'all' || measure.appliesTo === building?.use,
-      )
-      const savingsPercent = Math.min(
-        60,
-        applicable
-          .filter((measure) => measure.kind !== 'pv')
-          .reduce((sum, measure) => sum + measure.savingsPercent, 0),
-      )
-      const pvOffset = applicable.some((measure) => measure.kind === 'pv')
-        ? (building?.pvYieldKwh ?? 0) * adoption
-        : 0
-      byBuildingKwh[buildingId] = Math.max(
-        0,
-        round(kwh * (1 - (savingsPercent / 100) * adoption) - pvOffset),
-      )
-    }
-    const result = makeResultSet(
-      `result:${scenario.id}`,
-      scenario.name,
-      context.runId,
-      byBuildingKwh,
-    )
+    if (!result) continue
     state.results.scenarios[scenario.id] = result
     bestReduction = Math.max(
       bestReduction,

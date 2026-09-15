@@ -655,6 +655,42 @@ export const commandDefinitions = {
       return applied(`Created scenario "${input.name}".`)
     },
   }),
+  'scenario.setAdoption': defineCommand({
+    title: 'Set scenario adoption',
+    description:
+      'Change a scenario adoption rate. Scenario definitions and downstream results become stale.',
+    input: z.object({
+      scenarioId: z.string().min(1, 'Choose a scenario.'),
+      adoptionPercent: z
+        .number()
+        .min(0, 'Adoption cannot be negative.')
+        .max(100, 'Adoption must be at most 100%.'),
+    }),
+    undoable: true,
+    run(state, { scenarioId, adoptionPercent }) {
+      const scenario = state.scenarios[scenarioId]
+      if (!scenario) {
+        return rejected(`Unknown scenario "${scenarioId}".`, 'scenarioId')
+      }
+      if (scenario.adoptionPercent === adoptionPercent) {
+        return rejected(
+          `"${scenario.name}" already uses ${adoptionPercent}% adoption.`,
+          'adoptionPercent',
+        )
+      }
+      const previous = scenario.adoptionPercent
+      scenario.adoptionPercent = adoptionPercent
+      const asset = state.assets[`asset:${scenarioId}`]
+      if (asset) {
+        asset.summary = `${scenario.measureIds.length} measure(s) at ${adoptionPercent}% adoption`
+      }
+      const definitions = state.workflow.stages[STAGE_IDS.scenarioDefinitions]
+      if (definitions) definitions.editRevision = nextRevision(state)
+      return applied(
+        `Set adoption for "${scenario.name}" from ${previous}% to ${adoptionPercent}%.`,
+      )
+    },
+  }),
 }
 
 export type CommandType = keyof typeof commandDefinitions
