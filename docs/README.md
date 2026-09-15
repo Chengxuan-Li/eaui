@@ -7,7 +7,7 @@
 - [First-slice proposal](first-slice-proposal.md): layout details, state model, workflow stages, working/simulated/planned boundary, and open questions.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md). No packages or scaffold yet. Next: resolve the remaining [first-slice proposal](first-slice-proposal.md) questions, then choose packages (docking first) and scaffold.
+Current phase (2026-09-14): setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md); scripted agent and layout details in [0006](decisions/0006-scripted-agent-and-layout-details.md). No packages or scaffold yet. Next: evaluate and agree packages (docking first), then scaffold the [first slice](first-slice-proposal.md).
 
 ## Verification recorded 2026-09-13
 

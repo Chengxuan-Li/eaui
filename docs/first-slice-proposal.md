@@ -2,13 +2,13 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status: proposal for discussion. Accepted inputs: [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators. Everything else below is a recommendation. Do not scaffold until the open questions are resolved or delegated.
+Status: proposal for discussion. Accepted inputs: [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details. Everything else below is a recommendation. Do not scaffold until packages are agreed.
 
 ## Goal
 
 A single synthetic project can be taken through the whole 12-stage workflow in the browser. Every required region, panel, and page is present, and every element states honestly whether it works, is simulated, or is planned.
 
-## Layout details (proposals within decision 0004)
+## Layout details (side bar, Roadmap/Dashboard tabs, and status-bar detail tabs confirmed in decision 0006)
 
 - **Side bar:** a narrow icon strip, like the Visual Studio Code activity bar. Each icon switches the left panel between views (Assets, Workflow, Search, and later others). Assets and Workflow can also be shown as stacked, collapsible sections in one view.
 - **Middle window:** pages open as tabs. Docking allows splitting the middle window into several tab groups, for example Map beside Table.
@@ -56,7 +56,7 @@ Whether stage 7 includes running the baseline simulation is an assumption to con
 | Status bar | Open project, stage status, issue/notice counts, background task progress | Compute resources | None yet |
 | Left panel: Assets | Tree over fixture project, selection, open in page, status/provenance badges, stage outputs appear | Result contents | Gas network, document viewer, custom widgets |
 | Left panel: Workflow | Graph/list render, all node states, run/skip/revisit, stale propagation, insert/skip stage | Stage durations and outputs | Free-form graph editing |
-| Right panel: Reasoning | Transcript layout for tool calls, reasoning, actions, and referenced links; chat input; prompt presets; approvals that invoke real operations | Agent responses (see open question 1) | Document grounding |
+| Right panel: Reasoning | Transcript layout for tool calls, reasoning, actions, and referenced links; chat input; prompt presets; approvals that invoke real operations | Agent sessions: scripted replays of realistic tool calls (decision 0006) | Document grounding |
 | Map page | Synthetic footprints plus small grid overlay, linked selection, color by one metric | Metric values | Geometry editing, 3D/shading visuals |
 | Table page | Buildings, zones, grid elements; sort/filter; linked selection; pending edit with apply/cancel and validation | None | User table import |
 | Dashboard page | Baseline vs scenario comparison; scenario controls re-derive outputs | All numbers | Custom widgets, report export |
@@ -80,5 +80,10 @@ Docking layout (first-order: tabs, splits, drag-and-drop, serialization, keyboar
 
 ## Open questions
 
-1. **Agent in slice 1:** a scripted deterministic agent that replays realistic tool calls, reasoning, and links over the shared operations (recommended), or a real model provider? A real provider needs a small local server proxy and a key in `.env.local`, because keys must not ship in the browser bundle.
-2. **Confirm interpretations:** side bar as an icon strip that switches left-panel views; Roadmap and Dashboard as separate tabs; status-bar items opening Issues/Tasks tabs.
+None besides package selection. Package evaluation started 2026-09-14; results go into a package-selection document for discussion before scaffolding.
+
+Proposed scripted agent sessions (decision 0006), at minimum:
+
+- **UI restructuring:** open Map beside Table, focus a selection, and restore the default layout.
+- **Data representation:** color the map by PV yield and add a dashboard chart comparing baseline and scenario.
+- **Model change:** propose a measure or stage change that waits for approval, then show the resulting stale stages.

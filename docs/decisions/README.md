@@ -7,3 +7,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0003: Combined product shell with assets, workflow, reasoning, and map](0003-combined-product-shell.md)
 - [0004: Workbench layout with full docking](0004-workbench-layout-and-docking.md)
 - [0005: First-slice workflow sequence and panel scope](0005-first-slice-workflow-and-panel-scope.md)
+- [0006: Scripted agent with realistic tool calls; confirmed layout details](0006-scripted-agent-and-layout-details.md)

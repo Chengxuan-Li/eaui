@@ -34,4 +34,4 @@ The workflow remains a mutable, state-based directed acyclic graph ([decision 00
 - Agent tool calls shown in the reasoning panel should correspond to entries of the shared operation log, so manual and agent actions share one record.
 - Background task progress, issues, and notices are shown in the status bar ([decision 0004](0004-workbench-layout-and-docking.md)), not in the reasoning panel.
 - Location/footprint, enrichment, preprocessing, shading/PV, and grid stages have no fixtures yet; all are synthetic.
-- Whether slice 1 uses a scripted agent or a real model provider is still open.
+- Whether slice 1 uses a scripted agent or a real model provider was left open here; [decision 0006](0006-scripted-agent-and-layout-details.md) resolves it as scripted.
