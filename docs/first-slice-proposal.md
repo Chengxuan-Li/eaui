@@ -2,7 +2,7 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status: proposal for discussion. Accepted inputs: [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details. Everything else below is a recommendation. Do not scaffold until packages are agreed.
+Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is next (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
 
 ## Goal
 
@@ -80,7 +80,7 @@ Docking layout (first-order: tabs, splits, drag-and-drop, serialization, keyboar
 
 ## Open questions
 
-None besides package selection, now proposed in the [package selection proposal](package-selection.md) for discussion before scaffolding.
+Package selection was resolved in decisions 0007 and 0008. Open questions for stage 4 are listed under [next steps](#next-steps).
 
 Proposed scripted agent sessions (decision 0006), at minimum:
 
@@ -205,3 +205,37 @@ Code in `src/app/pages/DashboardPage.tsx`, `src/app/pages/dashboardData.ts`, `sr
   - Charts compare at most the first three scenarios, matching the three categorical slots validated all-pairs. Further scenarios are listed as not charted.
   - Colors follow the scenario, not its rank, and the baseline uses the de-emphasis gray.
   - The light-mode third slot (aqua) is below 3:1 contrast; category labels and data tables provide the required relief.
+
+## Deviations and gaps (2026-09-15)
+
+Compared with the plan above and the package constraints, the build so far:
+
+- **Reasoning panel:** not built; a labeled placeholder (stage 4).
+- **Keyboard docking:** no command palette entry moves a tab to another tab group (`Actions.moveNode`, promised in decision 0008); tabs move by drag only.
+- **View state:** map metric and overlay, table view and quick filter, and dashboard previews and compare toggles are local component state, not logged operations. The agent cannot drive them yet.
+- **Chart specs:** built directly as ECharts options, not through the planned zod-validated JSON view schema.
+- **Table page:** Buildings and Grid elements only; zones appear as a count column, and there is no column visibility menu.
+- **Fixture variants:** warning and error states are reached by walking the workflow (schema matching's warning, skipped shading with a PV measure, grid modeling's scripted first failure), not by a fixture picker.
+- **Verification breadth:** automated axe runs cover 1280x800 only; 1920x1080, narrow widths, and dark mode were checked by screenshots. The bundle has not been loaded in the reference ASP.NET or Eto host.
+
+## Next steps
+
+Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decision 0006 and the Reasoning row above:
+
+- **Transcript** in the Reasoning panel: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
+- **Chat input and prompt presets**; a preset starts one of the scripted sessions. Free text without a matching script gets an honest "scripted sessions only" answer.
+- **Approvals:** tool calls that change the project model (`undoable` commands) wait for Approve or Reject. Approve runs the command with source `agent`; Reject records a rejected operation. Layout and view tool calls run directly and are logged.
+- **Sessions (at minimum):**
+  - UI restructuring: open Map beside Table, focus a selection, restore the default layout.
+  - Data representation: color the map by PV yield and add a baseline-versus-scenario dashboard chart.
+  - Model change: propose a measure or adoption change, wait for approval, then show the stale stages.
+- **Agent adapter:** a small interface that the scripted player implements, so a real provider can replace it later. The player replays tool calls through `workbench.execute(command, 'agent')` and the layout controller with source `agent`, never through private paths. `describeCommands()` supplies tool schemas.
+
+Prerequisites and open design questions to settle at the start of stage 4:
+
+1. Move the view state listed under deviations into typed, logged view operations (a UI-state store beside the workbench, recorded like layout operations), so agent and manual changes share one path.
+2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
+3. Decide whether "add a dashboard chart" needs the JSON view schema now, or a narrower operation that toggles which series the existing charts compare.
+4. Decide how a replay reacts when project state differs from what its script expects (for example, no baseline yet): stop with an explanation, or offer to run the missing stages with approval.
+
+Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).

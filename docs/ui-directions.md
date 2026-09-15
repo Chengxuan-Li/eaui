@@ -59,6 +59,8 @@ Microsoft documents standalone Blazor WebAssembly as client-rendered and disting
 
 ## Smallest decisions needed next
 
+Resolved 2026-09-14: the user combined the directions rather than choosing one ([decision 0003](decisions/0003-combined-product-shell.md)) and accepted a web-only browser-first stack ([decision 0002](decisions/0002-web-react-typescript-vite.md)). The original questions are kept below for context.
+
 1. Which first experience should this experiment prove: **guided modeling**, **spatial editing**, or **scenario comparison**? Recommendation: guided modeling, keeping the map/table central.
 2. Is **React/TypeScript with deterministic browser-only fixtures first** acceptable, or does C# ownership/native desktop integration need to constrain the first prototype? Recommendation: browser-first, preserve explicit adapter boundaries, defer live integration.
 

@@ -4,7 +4,9 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Packages accepted ([0007](docs/decisions/0007-package-selection.md)); the Vite app is scaffolded and the package spikes have run ([results](docs/package-selection.md#spike-results-2026-09-14)) and FlexLayout was chosen for docking ([decision 0008](docs/decisions/0008-flexlayout-docking.md)); the first slice is in progress, with stages 1 (domain state and commands), 2 (workbench shell), 3a (assets, creator, roadmap), 3b (map and table), and 3c (dashboard) done ([status](docs/first-slice-proposal.md#implementation-status)). The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-15: first slice in progress. A browser-only workbench takes one synthetic project through a 12-stage workflow with docked panels, map, table, dashboard, roadmap, and creators. Built: stages 1 (domain state and commands), 2 (workbench shell), 3a (assets, creator, roadmap), 3b (map and table), and 3c (dashboard) ([status](docs/first-slice-proposal.md#implementation-status)). Next: stage 4, the scripted agent in the Reasoning panel, pending the user's go-ahead ([next steps](docs/first-slice-proposal.md#next-steps)). New contributors start with the [developer guide](docs/developer-guide.md).
+
+Accepted decisions: web-only React + TypeScript + Vite ([0002](docs/decisions/0002-web-react-typescript-vite.md)); a combined shell ([0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)); packages ([0007](docs/decisions/0007-package-selection.md)) with FlexLayout for docking ([0008](docs/decisions/0008-flexlayout-docking.md)). The reference audit and package spikes are recorded in `docs/`.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
@@ -40,6 +42,7 @@ Before any credential-bearing integration, document its exact variable names, ad
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Developer guide](docs/developer-guide.md): architecture, extension recipes, tests, known gaps
 - [Operating instructions](AGENTS.md) (imported by [CLAUDE.md](CLAUDE.md) for Claude Code)
 - [Reference UI audit](docs/reference-ui-audit.md)
 - [Three UI directions and technical comparison](docs/ui-directions.md)
