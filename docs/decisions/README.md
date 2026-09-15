@@ -8,3 +8,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0004: Workbench layout with full docking](0004-workbench-layout-and-docking.md)
 - [0005: First-slice workflow sequence and panel scope](0005-first-slice-workflow-and-panel-scope.md)
 - [0006: Scripted agent with realistic tool calls; confirmed layout details](0006-scripted-agent-and-layout-details.md)
+- [0007: Package selection for the first slice](0007-package-selection.md)

@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 
-Status: proposal for discussion; nothing here is accepted or installed. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
+Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026-09-14. The spikes below are pending. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
 
 ## Method and evidence limits
 
