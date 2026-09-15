@@ -9,6 +9,9 @@ const baseURL = 'http://127.0.0.1:5173'
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
+  // Each worker runs Edge with MapLibre, ECharts, and axe. The default worker
+  // count starved the dev server and timed out tests on a 32-core machine.
+  workers: process.env.CI ? undefined : 4,
   forbidOnly: !!process.env.CI,
   reporter: 'list',
   use: {
