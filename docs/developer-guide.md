@@ -1,6 +1,6 @@
 # Developer guide
 
-Date: 2026-09-15, after the design alignment pass (commit `38e08a3`).
+Date: 2026-09-15, after first-slice stage 4 (scripted agent) on the `feature/agentic` branch.
 
 This guide is for a developer or agent taking over without the original conversation. It describes the code as built, how to extend it without breaking the accepted rules, how it is tested, and what is still missing. Product intent and accepted choices live in the [decision records](decisions/README.md); evidence lives in the [first-slice implementation status](first-slice-proposal.md#implementation-status) and the [design alignment record](design-alignment.md#implementation-status).
 
@@ -20,7 +20,7 @@ A browser-only React application with one synthetic project that can be taken th
 - **Shell:** ribbon (menus, quick buttons, the ▶ Run ▾ split button, command palette), FlexLayout docking area, status bar with tasks, issues, notices, and simulated compute.
 - **Left border (icon side bar):** Assets tree and Workflow panel.
 - **Center pages:** Map, Table, Dashboard, Roadmap, Creator, Settings; Issues and Tasks open from the status bar.
-- **Right border:** the Context panel. Its Reasoning mode is a labeled placeholder until stage 4; its Inspection mode is a read-only view of the shared selection.
+- **Right border:** the Context panel. Its Reasoning mode runs scripted agent sessions with tool calls and approvals; its Inspection mode is a read-only view of the shared selection.
 - **Appearance:** System or one of six curated appearances (Light, Dark, Technical monochrome, Lieflat-inspired, Clean technical light, Dark engineering), set in Geist with a three-size type scale.
 
 There is no server, no model provider, and no real engineering calculation. Every number comes from deterministic synthetic code in `src/domain/simulation.ts`, and the UI discloses it as simulated through the capability registry.
@@ -40,7 +40,8 @@ main.tsx ── Geist font CSS, src/index.css (fallback tokens, fonts, type scal
               ├─ layout        createLayoutController(workbench, storage): FlexLayout model
               ├─ task simulator startTaskSimulator(workbench): advances queued tasks as source "system"
               ├─ appearance    resolveAppearance(preference, system setting), applied to the root element
-              └─ context mode  reasoning | inspection for the Context panel
+              ├─ view          createViewStore(workbench): logged view operations, including context mode
+              └─ agent         createScriptedAgent(workbench, layout, view): sessions behind the agent adapter
             WorkbenchShell (src/app/shell/WorkbenchShell.tsx)
               ├─ Ribbon, CommandPalette, dialogs ── useAppActions() (src/app/actions.ts)
               ├─ <Layout factory=renderTabContent> ── panels and pages by component id
@@ -54,7 +55,7 @@ Data flow is one-directional:
 3. The store publishes a new snapshot `{ state, log, canUndo, canRedo }`; components read it through `useWorkbenchSnapshot(selector)`.
 4. Derived values (stage states, dashboard data, map metrics, asset tree rows, Inspection) are computed from state in pure functions, never stored.
 
-View state that is not project state (layout, appearance, context mode) changes through the layout controller or services and is recorded with `workbench.record`, so it appears in the operation log with its source.
+View state that is not project state changes through the layout controller, the appearance service, or view operations (`src/app/view/`), and is recorded with `workbench.record`, so it appears in the operation log with its source. The agent uses exactly these paths through `src/app/agent/tools.ts`.
 
 ### Domain layer (`src/domain/`, no React)
 
@@ -66,6 +67,7 @@ View state that is not project state (layout, appearance, context mode) changes 
 | `workflow.ts` | Default 12 stages and `STAGE_IDS`, graph helpers (`upstreamIds`, `downstreamIds`, `topologicalOrder`), `deriveStageStates`, `stageRunBlocker`. |
 | `simulation.ts` | Synthetic stage runners (`runSimulatedStage`) and `computeScenarioResult`, shared by scenario modeling and dashboard previews. |
 | `simulator.ts` | Task simulator with an injectable scheduler, so tests step time deterministically. |
+| `stagePlan.ts` | `planStages`: which stages to restore or run, in workflow order, so targets have data or current results. |
 | `assets.ts` | Asset tree skeleton, `GROUP` ids, `upsertAsset`, `assetPath`. |
 | `capabilities.ts` | Working/simulated/planned registry that every honest label reads. |
 | `initialState.ts` | Empty project. |
@@ -74,7 +76,7 @@ Key domain rules:
 
 - **Stage states are derived** in this order: `unavailable` (planned capability), `running` (active task), `skipped`, `failed` (last run failed), `stale` or `executed` (last run succeeded; stale when an upstream revision or the stage's own `editRevision` differs from what the run consumed, or an upstream stage is no longer executed or skipped), `blocked` (an upstream stage failed, is blocked, or is unavailable), `ready` (all upstream satisfied), else `future`. The current stage is only a focus marker. The UI labels `executed` as Complete, `stale` as Outdated, and `unavailable` as Planned.
 - **Revisions:** `revision` changes when a stage's outputs change (run, applied edit of data it owns, skip toggle). `editRevision` changes when inputs owned by the stage change (new measure or scenario, adoption change). Both come from the monotonic `nextId`, which undo never rewinds.
-- **Undo** covers model commands (`undoable: true`): skip or restore, insert stage, apply edits, create measure or scenario, set adoption. Runs, tasks, selection, pending edits, layout, appearance, and context mode are not undoable.
+- **Undo** covers model commands (`undoable: true`): skip or restore, insert stage, apply edits, create measure or scenario, set adoption. Runs, tasks, selection, pending edits, layout, appearance, and view operations are not undoable.
 - **Selection** is one shared `{ entityType, ids }`. Unknown ids are rejected, and an empty selection is explicit rather than meaning "all".
 - **Manual overrides** from applied table edits survive reruns of the stage that generated the field.
 - **Baseline coverage:** the baseline model skips buildings without an archetype or a floor area.
@@ -83,13 +85,15 @@ Key domain rules:
 
 | Area | Files |
 | --- | --- |
-| Services and hooks | `WorkbenchContext.tsx`: `useServices` (including `appearance`, `setAppearance`, `contextMode`, `setContextMode`, `showInspection`), `useAppearance`, `useWorkbenchSnapshot`, `useStageStates`, `useLayoutVersion` |
+| Services and hooks | `WorkbenchContext.tsx`: `useServices` (including `view`, `agent`, `appearance`, `setAppearance`, `contextMode`, `setContextMode`, `showInspection`), `useAppearance`, `useWorkbenchSnapshot`, `useViewState`, `useAgentSnapshot`, `useStageStates`, `useLayoutVersion` |
+| View state | `view/viewOperations.ts` (`ViewState`, operation registry, `describeViewOperations`), `view/viewStore.ts` (`createViewStore`), `view/chartSpec.ts` (chart specification schema, validation, and compilation) |
+| Agent | `agent/types.ts` (the `AgentAdapter` seam and transcript items), `agent/tools.ts` (tool calls, `requiresApproval`, `describeAgentTools`), `agent/sessions.ts` (scripted sessions), `agent/scriptedAgent.ts` (the player) |
 | App actions | `actions.ts` (the registry), `useShortcuts.ts`, `shortcuts.ts` (parsing and matching, unit-tested) |
-| Layout | `layout/layoutController.ts` (`PAGES`, `PANELS`, `DEFAULT_PAGES`, `openPage`, `togglePanel`, `toggleMaximize`, `setCompact`, `reset`, `handleUserAction`), `layout/flexlayout-theme.css` |
+| Layout | `layout/layoutController.ts` (`PAGES`, `PANELS`, `DEFAULT_PAGES`, `openPage`, `togglePanel`, `toggleMaximize`, `setCompact`, `reset`, `placePage`, `splitActiveTab`, `moveActiveTabToNextGroup`, `handleUserAction`), `layout/flexlayout-theme.css` |
 | Appearance | `appearance/appearances.ts` (six appearances: chrome tokens, data palette, `resolveAppearance`), `appearance/contrast.ts`, `theme.ts` (stored preference, `applyAppearance`) |
 | Shell | `shell/WorkbenchShell.tsx`, `Ribbon.tsx` (menus, quick buttons, Run split button), `StatusBar.tsx`, `CommandPalette.tsx`, `HelpDialogs.tsx` |
 | Shared components | `components/ActionButton.tsx` (explains unavailable actions), `StateBadge.tsx` (semantic stage states), `CapabilityBadge.tsx` (`CapabilityBadge` and `StatusTag`), `CapabilityTable.tsx`, `EmptyState.tsx`, `forms.module.css` |
-| Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/ContextPanel.tsx` + `inspection.ts` (read-only Inspection view model) |
+| Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/ContextPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/ReasoningMode.tsx` (agent transcript, approvals, prepared sessions) |
 | Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts` |
 | Visualization | `viz/EChart.tsx` (modular ECharts wrapper and `useChartFont`), `grid/agGrid.ts` (AG Grid theme from CSS tokens) |
 | Persistence and global styles | `persistence.ts`, `storage.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
@@ -117,6 +121,19 @@ These restate [AGENTS.md](../AGENTS.md) as concrete steps.
 5. Test it in `src/domain/workbench.test.ts` through `createWorkbench().execute`, including a rejected case and, when undoable, undo and redo.
 
 Never mutate state outside a command. UI-only concerns (hover, open dialogs, draft input text) stay in React state.
+
+### Add view state: a view operation
+
+1. Add the field to `ViewState` and `createInitialViewState` in `src/app/view/viewOperations.ts`.
+2. Add a `defineViewOperation` entry with a user-facing `title`, an agent-readable `description`, a zod input, and a `run` that checks the project and returns `applied` with a summary or `rejected` with per-field issues.
+3. Read it with `useViewState(selector)` and change it only through `services.view.execute(operation)`; the store records every operation in the operation log with its source.
+4. Test it in `src/app/view/viewStore.test.ts`, including a rejected case.
+
+Transient drafts that would flood the log, such as what-if slider positions or text being typed, stay in React state; commit them as a view operation once they settle, as the table filter does.
+
+### Add or change an agent session
+
+Sessions live in `src/app/agent/sessions.ts`. Build steps with the local helpers (`say`, `reason`, `reference`, `tool`, `propose`, `ensure`); a step can be a function that reads the project when the step is reached. Tool calls use `command`, `viewCall`, or `layoutCall` from `src/app/agent/tools.ts`, which run through the shared paths with source `agent`; a session never changes state directly. Calls that run stages or change the project model always wait for approval (`requiresApproval`), and `ensure` offers missing stages as one approval ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)). Test sessions in `src/app/agent/scriptedAgent.test.ts` with `manualScheduler` and the task simulator, and cover the user flow in `e2e/agent.spec.ts`.
 
 ### Add a user-invokable action or shortcut
 
@@ -175,19 +192,20 @@ Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason i
 
 | Command | What it covers |
 | --- | --- |
-| `npm test` | 69 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model |
-| `npm run test:e2e` | 36 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
+| `npm test` | 95 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools |
+| `npm run test:e2e` | 41 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
 | `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing; see the line-ending pitfall below |
 
 End-to-end specs:
 
 - `e2e/smoke.spec.ts`: renders with no serious or critical axe violations.
-- `e2e/workbench.spec.ts`: shell regions, no visible Working labels, the Run split button and menu, background task progress, explained blocked actions, palette and panel shortcuts, undo, save and layout persistence across reloads, narrow-window overlays, reset layout.
+- `e2e/workbench.spec.ts`: shell regions, no visible Working labels, the Run split button and menu, placing pages side by side and moving tabs from the palette, background task progress, explained blocked actions, palette and panel shortcuts, undo, save and layout persistence across reloads, narrow-window overlays, reset layout.
 - `e2e/pages.spec.ts`: Assets provenance, Creator validation and creation, Roadmap focus and custom stage insertion.
 - `e2e/map-table.spec.ts`: empty states, validated pending table edits, table-map shared selection.
 - `e2e/dashboard.spec.ts`: full manual path to scenario results, preview, apply, outdated notice, data table.
 - `e2e/appearance.spec.ts`: Geist loads, appearance switching persists, axe in all six appearances.
 - `e2e/context.spec.ts`: Inspection follows the shared selection, and the Inspect selection action opens it.
+- `e2e/agent.spec.ts`: the layout session with an approved stage run and a layout restore, a rejected model change, the answer to unmatched free text, and the data representation session with an added chart.
 - `e2e/spikes.spec.ts`, `e2e/spikes-flexlayout.spec.ts`: package spike baselines (`/?spike=`), kept as regression checks for library behavior.
 
 Conventions and pitfalls found while building:
@@ -200,9 +218,12 @@ Conventions and pitfalls found while building:
 - React Aria's `MenuTrigger` names a menu after its trigger button, overriding the menu's own `aria-label`.
 - At 1280 px the Settings tab can sit in FlexLayout's overflow menu; tests open it through the command palette.
 - MapLibre must stay excluded from Vite dependency pre-bundling (`vite.config.ts`), or its worker fails to load.
+- Pass react-maplibre a stable, memoized `mapStyle`. A new style object on every render makes it call `setStyle`, whose diff removes sources added at runtime and loses feature state such as the selection outline.
 - flexlayout-react 0.11.0 stylesheets reference `.map` files the package does not ship, which made the dev server log "Failed to load source map". A small plugin in `vite.config.ts` loads those stylesheets without the comment; remove it once the package ships its maps or drops the comment.
 - Local Playwright runs use 4 workers (`playwright.config.ts`). The default count starved the dev server and timed out tests on a 32-core machine.
 - On a Windows checkout with `core.autocrlf=true`, `npm run format:check` reports files because of CRLF line endings; `npx prettier --check . --end-of-line auto` checks formatting without them.
+- `toBeVisible` does not detect overlap: sticky session controls once covered the newest transcript entries while the tests passed. Review screenshots of new layouts.
+- Agent and planner unit tests step time with `src/testing/manualScheduler.ts`, shared by the agent and the task simulator; long flows call `runAll` with a high limit.
 - For visual review, write throwaway Playwright captures under the ignored `tmp/` folder and delete them afterwards.
 - On machines without Edge: `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium`.
 
@@ -210,11 +231,11 @@ Conventions and pitfalls found while building:
 
 Behavior promised by the plan or decisions but not built yet:
 
-- **Reasoning mode (stage 4):** a placeholder in the Context panel. See [next steps](first-slice-proposal.md#next-steps).
+- **Agent (stage 4):** scripted sessions only. Free text starts a session only when it matches a session's keywords, and otherwise the agent says so. Transcripts, view state, and added charts are not saved with the project, and a stage failure during an approved run ends the session. See [stage 4 status](first-slice-proposal.md#stage-4-scripted-agent-2026-09-15).
 - **Design alignment:** the six-appearance reading of the palette answer is unconfirmed, axe runs in non-Light appearances on the default workbench only, the context mode resets on reload, and Inspection is read-only. See [remaining gaps](design-alignment.md#remaining-gaps).
-- **Keyboard docking:** decision 0008 and the package constraints say the command palette moves a tab to another tab group through `Actions.moveNode`; that command does not exist yet. Tabs move by mouse drag only.
-- **View state is partly command-driven:** layout, appearance, and context mode are logged view operations, but the map metric and grid overlay, the table view and quick filter, and dashboard previews and compare toggles are local React state. The scripted data-representation session of decision 0006 needs them exposed as logged view operations.
-- **Chart specs:** the package constraints call for a zod-validated JSON view schema compiled to ECharts options. Dashboard charts currently build ECharts options directly in `dashboardCharts.ts`.
+- **Keyboard docking:** the command palette splits the active tab and moves it to the next tab group; there is no keyboard way to pick a specific target group or side.
+- **View state:** layout, appearance, and view operations (context mode, map metric and overlay, map zoom, table view and filter, dashboard compare toggles, added charts) are logged. Dashboard what-if previews stay unlogged drafts, and view state resets on reload.
+- **Chart specs:** charts the agent adds use validated specifications (decision 0011); the Dashboard's built-in charts still build ECharts options directly in `dashboardCharts.ts`.
 - **Table:** no Zones view (zone counts are a Buildings column) and no column visibility menu.
 - **Fixture variants:** the plan lists switchable empty, warning, and error fixtures. States are reached by walking the workflow: schema matching always reports a warning, skipping shading warns at scenario definitions when a PV measure is used, and grid modeling fails on its first attempt. There is no fixture picker.
 - **Layout:** at 1280 px with both side panels open, the Settings tab moves into FlexLayout's overflow menu. Layout changes are logged but not undoable.

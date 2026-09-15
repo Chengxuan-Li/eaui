@@ -2,7 +2,7 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is in progress on the `feature/agentic` branch (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The design alignment pass for decisions [0009](decisions/0009-ui-design-guidelines.md) and [0010](decisions/0010-geist-typeface.md) is built; see [design alignment](design-alignment.md#implementation-status). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
+Status (updated 2026-09-15): being implemented; stages 1 to 3c are built on `master`, and stage 4 is built on the `feature/agentic` branch (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The design alignment pass for decisions [0009](decisions/0009-ui-design-guidelines.md) and [0010](decisions/0010-geist-typeface.md) is built; see [design alignment](design-alignment.md#implementation-status). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
 
 ## Goal
 
@@ -206,21 +206,48 @@ Code in `src/app/pages/DashboardPage.tsx`, `src/app/pages/dashboardData.ts`, `sr
   - Colors follow the scenario, not its rank, and the baseline uses the de-emphasis gray.
   - The light-mode third slot (aqua) is below 3:1 contrast; category labels and data tables provide the required relief.
 
+### Stage 4: scripted agent (2026-09-15)
+
+Branch `feature/agentic`: commits `7b6ff81` (view operations and chart specifications), `a0444b5` (layout operations), and the agent commit that follows them. Code in `src/app/view/`, `src/app/layout/layoutController.ts`, `src/domain/stagePlan.ts`, `src/app/agent/`, and `src/app/panels/ReasoningMode.tsx`. Tests in `src/app/view/viewStore.test.ts`, `src/app/layout/layoutController.test.ts`, `src/domain/stagePlan.test.ts`, `src/app/agent/scriptedAgent.test.ts`, `e2e/agent.spec.ts`, and `e2e/workbench.spec.ts`.
+
+- **Real:**
+  - **View operations:** context mode, map metric, grid overlay, map zoom to the selection, table view and filter, dashboard compare toggles, and added charts. Each is validated, recorded in the operation log with its source, and described with a JSON Schema input.
+  - **Chart specifications** ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)): validated against the project, compiled to ECharts with a data table, and removable.
+  - **Layout operations:** place a page beside another, split the active tab, and move it to the next tab group. The command palette entries close the keyboard docking gap.
+  - **Agent adapter and scripted player:** sessions replay tool calls only through the workbench, the view store, and the layout controller with source `agent`. Each tool call in the transcript shows its status, operation ids, summary, and input.
+  - **Approvals:** tool calls that run stages or change the project model wait for Approve or Reject. Rejecting records a rejected operation and ends the session.
+  - **Missing project state:** `planStages` lists the stages to restore or run in workflow order, and the session offers them as one approval. A stage that fails during the run ends the session with its own message.
+  - **Reasoning mode:** a transcript with Markdown messages, collapsible reasoning, tool calls, approvals, and references to pages, stages, and Inspection; prepared sessions; a message field; and Stop.
+  - **Sessions:** Map beside Table with the tallest buildings; a PV yield map and a demand chart from a specification; a scenario change with approvals, the outdated stages, and a rerun; restoring the default layout.
+- **Simulated:** the agent itself, which follows scripts and calls no language model, disclosed once in the Reasoning header; every number.
+- **Limited or planned:** free text starts a session only when it matches a session's keywords, and otherwise the agent says it can only run prepared sessions. Transcripts, view state, and added charts are not saved with the project. No real model provider; the adapter and `describeAgentTools()` are the seam for one.
+- **Verification (2026-09-15):**
+  - Typecheck and lint pass; `npx prettier --check . --end-of-line auto` passes.
+  - `npm test`: 95 tests in 13 files pass, including approvals, rejection, stopping, missing-stage planning, and a model change followed by a second approval that runs nine stages through the task simulator.
+  - `npm run test:e2e`: 41 tests pass with 4 workers, including the four agent flows with axe checks.
+  - Screenshots reviewed at 1920x1080: the pending approval and the finished layout session in Light and Dark engineering, and the data representation session in Light.
+- **Findings from review:**
+  - Sticky session controls covered the newest transcript entries while `toBeVisible` assertions passed. The transcript now scrolls on its own above the controls.
+  - Long tool titles pushed the icon onto its own line; tool rows now use a three-column grid.
+  - Added charts rendered below the built-in charts, out of view after the agent reported them; they now come first.
+  - Zooming right after a tab move could run before the map container resized; the map now resizes and fits two frames later. The five tallest synthetic buildings are spread across the grid, so their zoom stays wide.
+  - Selected buildings were not outlined on the map at all, including selections made in the Table. The map passed a new style object on every render, so react-maplibre called `setStyle`, whose diff removes the sources added at runtime together with their feature state. The style object is now memoized, the selection is re-applied once the map is idle, and outline visibility uses `line-opacity` with a surface-colored halo. A probe screenshot confirmed the outlines; canvas rendering has no automated check, so screenshot review is what caught it.
+
 ## Deviations and gaps (2026-09-15)
 
 Compared with the plan above and the package constraints, the build so far:
 
-- **Reasoning mode:** not built; a labeled placeholder in the Context panel (stage 4).
-- **Keyboard docking:** no command palette entry moves a tab to another tab group (`Actions.moveNode`, promised in decision 0008); tabs move by drag only.
-- **View state:** map metric and overlay, table view and quick filter, and dashboard previews and compare toggles are local component state, not logged operations. The agent cannot drive them yet.
-- **Chart specs:** built directly as ECharts options, not through the planned zod-validated JSON view schema.
+- **Reasoning mode:** built in stage 4 as scripted sessions; free text only matches prepared sessions.
+- **Keyboard docking:** closed in stage 4 for splitting the active tab and moving it to the next group; the palette cannot pick a specific target group or side.
+- **View state:** logged view operations since stage 4, except dashboard what-if previews, which stay unlogged drafts. View state resets on reload.
+- **Chart specs:** charts the agent adds use validated specifications; the Dashboard's built-in charts still build ECharts options directly.
 - **Table page:** Buildings and Grid elements only; zones appear as a count column, and there is no column visibility menu.
 - **Fixture variants:** warning and error states are reached by walking the workflow (schema matching's warning, skipped shading with a PV measure, grid modeling's scripted first failure), not by a fixture picker.
 - **Verification breadth:** automated axe runs cover 1280x800 only; 1920x1080, narrow widths, and dark mode were checked by screenshots. The bundle has not been loaded in the reference ASP.NET or Eto host.
 
 ## Next steps
 
-Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decisions 0006 and 0009 and the Reasoning row above:
+Stage 4 is built on the `feature/agentic` branch; see [stage 4 status](#stage-4-scripted-agent-2026-09-15). The scope it implemented, from decisions 0006, 0009, and 0011 and the Reasoning row above:
 
 - **Context panel** (decision 0009): built in the [design alignment](design-alignment.md) pass with a Reasoning placeholder and a read-only Inspection mode. The items below fill the Reasoning mode; agent tool calls can switch modes with `setContextMode(mode, 'agent')`.
 - **Transcript** in the Reasoning mode: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
@@ -232,12 +259,12 @@ Stage 4, the scripted agent, is next. Start it only after the user confirms. Sco
   - Model change: propose a measure or adoption change, wait for approval, then show the stale stages.
 - **Agent adapter:** a small interface that the scripted player implements, so a real provider can replace it later. The player replays tool calls through `workbench.execute(command, 'agent')` and the layout controller with source `agent`, never through private paths. `describeCommands()` supplies tool schemas.
 
-Prerequisites and open design questions to settle at the start of stage 4:
+Prerequisites and design questions, all resolved:
 
-1. Move the view state listed under deviations into typed, logged view operations (a UI-state store beside the workbench, recorded like layout operations), so agent and manual changes share one path.
-2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
+1. Done in commit `7b6ff81`: move the view state listed under deviations into typed, logged view operations (a UI-state store beside the workbench, recorded like layout operations), so agent and manual changes share one path.
+2. Done in commit `a0444b5`: add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
 3. Resolved 2026-09-15 ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)): the agent adds charts as validated view specifications.
 4. Resolved 2026-09-15 ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)): a session explains missing project state and offers to run the missing stages as one approval.
 5. Resolved and built 2026-09-15: the [design alignment](design-alignment.md) pass (decisions 0009 and [0010](decisions/0010-geist-typeface.md)) came before stage 4. The view state it added, appearance and context mode, is already logged like layout operations.
 
-Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).
+Later candidates, not yet discussed with the user: reviewing and merging `feature/agentic` into `master`, saving added charts and layouts as View assets, remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).
