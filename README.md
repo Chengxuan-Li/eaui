@@ -34,6 +34,7 @@ Before any credential-bearing integration, document its exact variable names, ad
 - [Reference UI audit](docs/reference-ui-audit.md)
 - [Three UI directions and technical comparison](docs/ui-directions.md)
 - [First-slice proposal](docs/first-slice-proposal.md)
+- [Package selection proposal](docs/package-selection.md)
 - [Complete source handoff](docs/20260913_product-ui-experiment-agent-handoff.md)
 
 The reference is `../RCEnergySimulator`, primarily `EnergyAtlasWeb`, with `EnergyAtlasDesktopEto` inspected for hosting context. It is view-only and is not a dependency of this repository. If unavailable on another machine, ask for its exact path or URL.

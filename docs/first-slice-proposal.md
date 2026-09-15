@@ -80,7 +80,7 @@ Docking layout (first-order: tabs, splits, drag-and-drop, serialization, keyboar
 
 ## Open questions
 
-None besides package selection. Package evaluation started 2026-09-14; results go into a package-selection document for discussion before scaffolding.
+None besides package selection, now proposed in the [package selection proposal](package-selection.md) for discussion before scaffolding.
 
 Proposed scripted agent sessions (decision 0006), at minimum:
 

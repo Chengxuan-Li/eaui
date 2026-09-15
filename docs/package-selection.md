@@ -1,0 +1,90 @@
+# Package selection proposal
+
+Date: 2026-09-14
+
+Status: proposal for discussion; nothing here is accepted or installed. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
+
+## Method and evidence limits
+
+- Four read-only research passes on 2026-09-14 consulted official docs, project repositories, and the npm registry. Nothing was installed or cloned.
+- Spot check on 2026-09-14 with `npm view <package> version license`: versions and licenses in the tables below match the registry for dockview-react, ag-grid-community, @vis.gl/react-maplibre, maplibre-gl, @xyflow/react, echarts, zod, zustand, immer, react-aria-components, typescript, vite, @vitejs/plugin-react, vitest, and typescript-eslint. `typescript-eslint` 8.70.0 declares peer `typescript >=4.8.4 <6.1.0`, while `typescript` `latest` is 7.0.2.
+- Other facts (feature lists, accessibility statements, issue states) come from the research passes and are cited with primary URLs. They were not independently re-verified. Items marked **spike** must be proven in code before the dependent feature is built.
+- Local machine: Node.js v24.14.1, npm 11.11.0; pnpm is not installed.
+
+## Recommendations
+
+| Concern | Recommended (version checked) | License | Fallback | Main reason |
+| --- | --- | --- | --- | --- |
+| Toolchain | react/react-dom 19.3.0, vite 8.3.0, @vitejs/plugin-react 6.1.1, TypeScript ~6.0 | MIT / Apache-2.0 | none | Official `react-ts` template; pin TypeScript 6.0 because typescript-eslint does not support TypeScript 7 yet |
+| Runtime | Node.js 24 LTS, npm | n/a | Node 22.12+ | Vitest 5 requires Node 22.12+; Node 20 is end of life ([schedule](https://raw.githubusercontent.com/nodejs/Release/main/schedule.json)) |
+| Docking | dockview-react 8.3.1 (free core only) | MIT | flexlayout-react 0.11.0 | Only candidate documenting always-render DOM preservation, full imperative API, JSON layouts, collapsible edge groups, ARIA, and keyboard docking |
+| Map | maplibre-gl 6.9.1 + @vis.gl/react-maplibre 8.1.3 | BSD-3-Clause / MIT | OpenLayers (ol) 10.10.0 | No token, GeoJSON sources, feature-state highlighting, data-driven styles, extrusion, keyboard pan/zoom |
+| Workflow graph | @xyflow/react 12.11.6 + @dagrejs/dagre 3.1.1 (Roadmap); plain accessible HTML list/tree (compact left view) | MIT | elkjs layout (EPL-2.0 or GPL-3.0) | React node components, built-in focus/ARIA; compact view reads better and is more accessible as HTML |
+| Table | ag-grid-community + ag-grid-react 36.1.0 | MIT | @tanstack/react-table v9 + react-aria-components Table | Only candidate with documented ARIA grid, keyboard navigation, editors, filters, and column state in a free tier |
+| Charts | echarts 6.1.0 (modular imports, thin in-house wrapper) | Apache-2.0 | vega-lite + vega-embed | Canvas, LTTB sampling for 8,760-point series, treemap/Sankey, JSON-like options |
+| Contracts and validation | zod 4.6.5 | MIT | valibot | Native JSON Schema export (future agent tools, OpenAPI mirroring), `flattenError` for forms |
+| State | zustand 5.0.15 (vanilla store) + immer 11.1.18 patches | MIT | @reduxjs/toolkit | One `execute(command)` path; patches give undo and provenance; testable without React; devtools |
+| State machines | none; typed transition tables | n/a | xstate | Stage and task states are small enums; revisit if orchestration gains retries or timeouts |
+| UI primitives | react-aria-components 1.21.1 | Apache-2.0 | none chosen | Only candidate with an accessible Tree (asset panel); also combobox, toolbar, tabs, slider, dialog |
+| Command palette | built from react-aria Autocomplete + Menu in a Dialog | Apache-2.0 | cmdk | Avoids a second component stack; results come from the shared command registry |
+| Transcript | typed transcript items rendered by our components; react-markdown 10.1.0 + remark-gfm for prose only | MIT | markdown-to-jsx | Tool calls, reasoning, and references are structured data, not markdown; no raw HTML |
+| Icons | lucide-react | ISC | none | Typed tree-shakable components; codicons requires attribution and ships as a font |
+| Styling | CSS Modules + CSS custom-property tokens (built into Vite) | n/a | Tailwind CSS 4 | No dependency; light/dark via `[data-theme]` and density tokens suit a dense workbench |
+| Tests | vitest 5.0.0, @testing-library/react, @testing-library/user-event, @playwright/test, @axe-core/playwright | MIT / Apache-2.0 / MPL-2.0 | none | Store/command tests without a browser; keyboard, layout, and axe checks in a real browser |
+| Lint/format | eslint 10 flat config + typescript-eslint + eslint-plugin-react-hooks + prettier | MIT | Biome | Type-aware rules (for example unhandled promises in command handlers); replaces the template's oxlint deliberately |
+| Routing | none in slice 1 | n/a | revisit | Docking tabs replace page routes; layout JSON persists locally; the reference host has no SPA fallback |
+
+## Constraints the recommendations carry
+
+- **Docking:**
+  - Use only dockview's free core. Auto-hide edge groups, dock-to-edge, layout history, the DnD compass, and pinned/multi-row tabs are Enterprise features ([licence](https://dockview.dev/docs/overview/licence/)).
+  - Side panels use free collapsible edge groups instead.
+  - Pin the exact version; 7.x and 8.0 shipped two months apart.
+  - One docking model owns the whole main area including side panels. Only the ribbon, side (activity) bar, and status bar sit outside it, and they act on it through typed commands.
+- **Map:**
+  - Default to no basemap. Token-free basemaps (OpenFreeMap, self-hosted Protomaps) can be added later with their attribution terms.
+  - The canvas is not screen-reader accessible, so the linked table is the accessible equivalent.
+- **Workflow graph:** React Flow arrow keys move nodes. The read-only Roadmap disables node dragging and provides graph navigation ([accessibility](https://reactflow.dev/learn/advanced-use/accessibility)).
+- **Table:**
+  - AG Grid's batch editing is Enterprise. Pending edits, validation, and apply/cancel live in our command store.
+  - Column visibility needs our own menu.
+  - AG Grid documents screen-reader conflicts with virtualization ([accessibility](https://www.ag-grid.com/react-data-grid/accessibility/)).
+- **Charts:**
+  - ECharts documents no keyboard navigation ([aria](https://echarts.apache.org/handbook/en/best-practices/aria/)). Every chart gets an app-rendered data table and keyboard controls.
+  - Saved views use our own JSON view schema (validated by zod) that compiles to ECharts options, without function formatters.
+- **UI primitives:** react-aria-components has no Menubar. The ribbon menubar is built from Toolbar + Menu and tested against the [WAI-ARIA menubar pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/).
+
+## Spikes before feature work
+
+1. **dockview:**
+   - keyboard sash resizing (undocumented);
+   - issue [#1012](https://github.com/mathuo/dockview/issues/1012) (titlebar buttons not keyboard focusable);
+   - a MapLibre canvas and an ECharts chart surviving hide, move, and maximize under the `always` renderer.
+2. **MapLibre:**
+   - a style containing only GeoJSON sources (no basemap);
+   - resize when a docked panel changes size or becomes visible.
+3. **AG Grid Community:**
+   - keyboard navigation and theming inside a docked panel;
+   - pending edits held outside the grid.
+4. **React Flow:** read-only Roadmap keyboard navigation with dragging disabled.
+
+If spike 1 fails on keyboard resizing or focus, evaluate flexlayout-react before building panels; its hidden-tab DOM retention must then be proven.
+
+## Rejected or deferred candidates
+
+- **Docking:** rc-dock (latest tag is an alpha, no accessibility documentation); react-mosaic-component (tiling without maximize or popouts, heavy react-dnd dependency tree); golden-layout (no release since 2022, no React bindings); @lumino/widgets (React embedding only through JupyterLab packages).
+- **Map:** deck.gl (a second rendering stack beyond need); Leaflet with react-leaflet (no WebGL extrusion, core release line stalled at 1.9.4 versus a 2.0 alpha, react-leaflet under Hippocratic-2.1 license).
+- **Graph:** cytoscape with react-cytoscapejs (wrapper last published 2022, canvas nodes without keyboard accessibility).
+- **Table:** glide-data-grid (latest stable 2024, React 19 only in prerelease).
+- **Charts:**
+  - Plotly (about 1.4 MB gzipped minified bundle, open accessibility work); kept only if Sankey/treemap fidelity later outweighs size.
+  - Observable Plot (no release in 19 months, no Sankey); Recharts (JSX rather than serializable specs, no Sankey); visx (too low-level for agent-authored specs).
+- **State:** Jotai (atom-level state disperses the single command log).
+- **UI primitives:** Radix, Base UI, Ariakit (menubar but no accessible tree; adding one would mean two primitive libraries).
+
+## Scaffold outline after acceptance
+
+- Create the app in the repository root with `npm create vite@latest` using the `react-ts` template; npm and its lockfile are tracked.
+- Add only the accepted packages at pinned versions.
+- Update `AGENTS.md`, `README.md`, and `.gitignore` with verified install, dev, build, test, lint, and preview commands.
+- Run the spikes first and record results here before panels are built.
