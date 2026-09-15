@@ -200,6 +200,7 @@ Conventions and pitfalls found while building:
 - React Aria's `MenuTrigger` names a menu after its trigger button, overriding the menu's own `aria-label`.
 - At 1280 px the Settings tab can sit in FlexLayout's overflow menu; tests open it through the command palette.
 - MapLibre must stay excluded from Vite dependency pre-bundling (`vite.config.ts`), or its worker fails to load.
+- flexlayout-react 0.11.0 stylesheets reference `.map` files the package does not ship, which made the dev server log "Failed to load source map". A small plugin in `vite.config.ts` loads those stylesheets without the comment; remove it once the package ships its maps or drops the comment.
 - Local Playwright runs use 4 workers (`playwright.config.ts`). The default count starved the dev server and timed out tests on a 32-core machine.
 - On a Windows checkout with `core.autocrlf=true`, `npm run format:check` reports files because of CRLF line endings; `npx prettier --check . --end-of-line auto` checks formatting without them.
 - For visual review, write throwaway Playwright captures under the ignored `tmp/` folder and delete them afterwards.
