@@ -157,6 +157,26 @@ describe('view store', () => {
     view.execute({ type: 'map.focusSelection', input: {} })
     expect(view.getState().map.focusRequest).toBe(1)
   })
+
+  it('switches the map between 2D and 3D and says when heights are missing', () => {
+    const { view } = setup(modeled)
+    expect(view.getState().map.view3d).toBe(false)
+    const on = view.execute({ type: 'map.set3d', input: { enabled: true } })
+    expect(on.outcome).toMatchObject({ status: 'applied' })
+    expect(view.getState().map.view3d).toBe(true)
+    const off = view.execute({ type: 'map.set3d', input: { enabled: false } })
+    expect(off.outcome).toEqual({
+      status: 'applied',
+      summary: 'The map shows buildings in 2D.',
+    })
+    expect(view.getState().map.view3d).toBe(false)
+    expect(
+      view.execute({
+        type: 'map.set3d',
+        input: { enabled: 'yes' as unknown as boolean },
+      }).outcome.status,
+    ).toBe('rejected')
+  })
 })
 
 describe('chart specifications', () => {

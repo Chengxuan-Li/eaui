@@ -30,6 +30,10 @@ import {
 } from './basemapStyle.ts'
 import { computeMetric, METRICS, type MetricId } from './mapMetrics.ts'
 import styles from './map.module.css'
+import {
+  SelectionSilhouette,
+  type SilhouettePrism,
+} from './SelectionSilhouette.tsx'
 import { useBasemap } from './useBasemap.ts'
 
 const POINT_KINDS = new Set(['transformer', 'utilityPv', 'bus'])
@@ -111,6 +115,12 @@ export function MapPage() {
   const mapView = useViewState((state) => state.map)
   const preferredMetric = mapView.metric
   const showGrid = mapView.gridOverlay
+  const view3d = mapView.view3d
+  const hasHeights = state.buildingIds.some(
+    (id) => (state.buildings[id]?.heightM ?? null) !== null,
+  )
+  // In 3D the extrusions take picking; the flat fill is hidden.
+  const buildingLayer = view3d ? 'buildings-extrusion' : 'buildings-fill'
   const handledFocusRequest = useRef(0)
   const [hover, setHover] = useState<Hover | null>(null)
 
@@ -144,6 +154,7 @@ export function MapPage() {
               id,
               name: building.name,
               value: values.values[id] ?? -1,
+              height: building.heightM ?? 0,
             },
             geometry: {
               type: 'Polygon' as const,
@@ -215,9 +226,22 @@ export function MapPage() {
     // Keep footprints clear of the legend in the top-right corner.
     map.fitBounds(bounds, {
       padding: { top: 24, bottom: 40, left: 64, right: 232 },
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
       duration: 0,
     })
   }, [loaded, bounds])
+
+  // Tilt into 3D, or back to a flat north-up map, when map.set3d changes.
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !loaded) return
+    map.easeTo({
+      pitch: view3d ? 50 : 0,
+      bearing: view3d ? -20 : 0,
+      duration: 0,
+    })
+  }, [loaded, view3d])
 
   // Zoom to the shared selection when a map.focusSelection operation asks for
   // it. The request often arrives with a layout change, so wait two frames for
@@ -240,6 +264,8 @@ export function MapPage() {
         map.fitBounds(target, {
           padding: { top: 48, bottom: 48, left: 64, right: 232 },
           maxZoom: 18,
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
           duration: 0,
         })
       })
@@ -247,8 +273,28 @@ export function MapPage() {
     return () => window.cancelAnimationFrame(frame)
   }, [focusRequest, loaded, workbench, state.buildings, state.gridElements])
 
-  // Mirror the shared selection into feature state.
   const selection = state.selection
+  // In 3D the outline follows each selected building's visible silhouette
+  // instead of its footprint (decision 0013).
+  const selectedPrisms = useMemo<SilhouettePrism[]>(
+    () =>
+      selection.entityType === 'building'
+        ? selection.ids.flatMap((id) => {
+            const building = state.buildings[id]
+            return building
+              ? [
+                  {
+                    footprint: building.footprint,
+                    heightM: building.heightM ?? 0,
+                  },
+                ]
+              : []
+          })
+        : [],
+    [selection, state.buildings],
+  )
+
+  // Mirror the shared selection into feature state.
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!map || !loaded) return
@@ -354,6 +400,15 @@ export function MapPage() {
         >
           Grid overlay
         </Checkbox>
+        <Checkbox
+          className={formStyles.checkbox}
+          isSelected={view3d}
+          onChange={(enabled) =>
+            view.execute({ type: 'map.set3d', input: { enabled } })
+          }
+        >
+          3D buildings
+        </Checkbox>
       </header>
 
       {unavailable.length > 0 ? (
@@ -363,6 +418,13 @@ export function MapPage() {
             .map((candidate) => `${candidate.label} (${candidate.requirement})`)
             .join(' ')}
           {hasGrid ? '' : ' Grid overlay (run "Grid definitions").'}
+        </p>
+      ) : null}
+
+      {view3d && !hasHeights ? (
+        <p className={styles.note} data-testid="map-3d-note">
+          Heights appear after &ldquo;Geospatial preprocessing&rdquo; runs;
+          until then buildings stay flat in 3D.
         </p>
       ) : null}
 
@@ -376,10 +438,12 @@ export function MapPage() {
             zoom: 15,
           }}
           style={{ width: '100%', height: '100%' }}
+          // 2D stays flat and north-up; 3D allows tilting.
+          maxPitch={view3d ? 70 : 0}
           interactiveLayerIds={
             showGrid && hasGrid
-              ? ['buildings-fill', 'grid-lines-layer', 'grid-points-layer']
-              : ['buildings-fill']
+              ? [buildingLayer, 'grid-lines-layer', 'grid-points-layer']
+              : [buildingLayer]
           }
           onLoad={() => setLoaded(true)}
           onError={(event) => {
@@ -396,7 +460,7 @@ export function MapPage() {
               return
             }
             const label =
-              feature?.layer.id === 'buildings-fill'
+              feature?.layer.id === buildingLayer
                 ? `${id}: ${formatValue(values.values[id] ?? null, metric?.unit ?? '')}`
                 : `${String(feature?.properties?.name ?? id)}`
             setHover({ id, label, x: event.point.x, y: event.point.y })
@@ -412,9 +476,7 @@ export function MapPage() {
               return
             }
             const entityType =
-              feature?.layer.id === 'buildings-fill'
-                ? 'building'
-                : 'gridElement'
+              feature?.layer.id === buildingLayer ? 'building' : 'gridElement'
             const additive =
               event.originalEvent.shiftKey &&
               selection.entityType === entityType
@@ -429,7 +491,13 @@ export function MapPage() {
             })
           }}
         >
-          <NavigationControl position="top-left" showCompass={false} />
+          {/* Control options apply at creation, so remount when 3D changes. */}
+          <NavigationControl
+            key={view3d ? '3d' : '2d'}
+            position="top-left"
+            showCompass={view3d}
+            visualizePitch={view3d}
+          />
           <Source
             id="buildings"
             type="geojson"
@@ -440,16 +508,19 @@ export function MapPage() {
             <Layer
               id="buildings-fill"
               type="fill"
+              layout={{ visibility: view3d ? 'none' : 'visible' }}
               paint={{
                 'fill-color': fillExpression(values.min, values.max, palette),
                 'fill-outline-color': ink.surface,
               }}
             />
             {/* A surface-colored halo keeps the selection outline visible on
-                any fill. Feature state drives opacity, not width. */}
+                any fill. Feature state drives opacity, not width. In 3D the
+                silhouette overlay replaces this footprint outline. */}
             <Layer
               id="buildings-selected-halo"
               type="line"
+              layout={{ visibility: view3d ? 'none' : 'visible' }}
               paint={{
                 'line-color': ink.surface,
                 'line-width': 6,
@@ -464,6 +535,7 @@ export function MapPage() {
             <Layer
               id="buildings-selected"
               type="line"
+              layout={{ visibility: view3d ? 'none' : 'visible' }}
               paint={{
                 'line-color': palette.selection,
                 'line-width': 2.5,
@@ -473,6 +545,22 @@ export function MapPage() {
                   1,
                   0,
                 ],
+              }}
+            />
+            <Layer
+              id="buildings-extrusion"
+              type="fill-extrusion"
+              layout={{ visibility: view3d ? 'visible' : 'none' }}
+              paint={{
+                // Selection never changes a building's color; in 3D it is
+                // outlined by SelectionSilhouette.
+                'fill-extrusion-color': fillExpression(
+                  values.min,
+                  values.max,
+                  palette,
+                ),
+                'fill-extrusion-height': ['get', 'height'],
+                'fill-extrusion-opacity': 0.9,
               }}
             />
           </Source>
@@ -530,6 +618,15 @@ export function MapPage() {
           ) : null}
         </MapView>
 
+        <SelectionSilhouette
+          mapRef={mapRef}
+          loaded={loaded}
+          enabled={view3d}
+          prisms={selectedPrisms}
+          selectionColor={palette.selection}
+          haloColor={ink.surface}
+        />
+
         {hover ? (
           <div
             className={styles.tooltip}
@@ -566,6 +663,13 @@ export function MapPage() {
             />{' '}
             No data
           </p>
+          {view3d ? (
+            <>
+              <p className={styles.legendRow}>
+                Height: floors × 3.2 m (synthetic)
+              </p>
+            </>
+          ) : null}
           {showGrid && hasGrid ? (
             <>
               <p className={styles.legendRow}>
@@ -636,6 +740,9 @@ export function MapPage() {
         <span className={styles.a11yNote}>
           The map canvas is not available to screen readers; the Table page
           lists the same buildings and shares the selection.
+          {view3d
+            ? ' With the map focused, Shift+arrow keys rotate and tilt it.'
+            : ''}
         </span>
         <ActionButton
           label="Open the Table page"

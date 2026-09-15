@@ -5,7 +5,7 @@ import { test as base, type Page } from '@playwright/test'
 // offline and repeatable (decision 0012). Call blockBasemap before navigating
 // to exercise the fallback.
 
-export { expect, type Page } from '@playwright/test'
+export { expect, type Locator, type Page } from '@playwright/test'
 
 const OPENFREEMAP = 'https://tiles.openfreemap.org/**'
 const CORS = { 'Access-Control-Allow-Origin': '*' }

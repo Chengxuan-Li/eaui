@@ -46,6 +46,12 @@ export const capabilities = {
     explanation:
       'Shows OpenStreetMap building footprints with synthetic attributes, and synthetic grid elements, with linked selection.',
   },
+  'map.buildings3d': {
+    label: '3D buildings',
+    status: 'working',
+    explanation:
+      'Extrudes footprints to their synthetic heights (floors × 3.2 m) with tilt and rotation; selected buildings are outlined along their visible 3D silhouette.',
+  },
   'map.basemap': {
     label: 'Basemap',
     status: 'working',

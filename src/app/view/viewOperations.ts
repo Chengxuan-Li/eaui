@@ -25,6 +25,8 @@ export type ViewState = {
     gridOverlay: boolean
     /** Increments when a map.focusSelection operation asks the map to zoom. */
     focusRequest: number
+    /** Whether buildings are extruded to their heights (decision 0013). */
+    view3d: boolean
   }
   table: { view: TableView; quickFilter: string }
   dashboard: { hiddenScenarioIds: string[]; charts: ChartSpec[] }
@@ -34,7 +36,12 @@ export type ViewState = {
 export function createInitialViewState(): ViewState {
   return {
     context: { mode: 'reasoning' },
-    map: { metric: 'floors', gridOverlay: true, focusRequest: 0 },
+    map: {
+      metric: 'floors',
+      gridOverlay: true,
+      focusRequest: 0,
+      view3d: false,
+    },
     table: { view: 'buildings', quickFilter: '' },
     dashboard: { hiddenScenarioIds: [], charts: [] },
     nextChartNumber: 1,
@@ -147,6 +154,25 @@ export const viewOperationDefinitions = {
       view.map.focusRequest += 1
       return applied(
         `Zoomed the map to ${ids.length} selected ${entityType === 'building' ? 'building(s)' : 'grid element(s)'}.`,
+      )
+    },
+  }),
+
+  'map.set3d': defineViewOperation({
+    title: 'Show buildings in 3D',
+    description:
+      'Show buildings on the Map as 3D blocks extruded to their synthetic heights, or return to the flat 2D map. Buildings stay flat until "Geospatial preprocessing" has computed heights.',
+    input: z.object({ enabled: z.boolean() }),
+    run(view, { enabled }, project) {
+      view.map.view3d = enabled
+      if (!enabled) return applied('The map shows buildings in 2D.')
+      const hasHeights = project.buildingIds.some(
+        (id) => (project.buildings[id]?.heightM ?? null) !== null,
+      )
+      return applied(
+        hasHeights
+          ? 'The map shows buildings in 3D.'
+          : 'The map is in 3D, but buildings stay flat until "Geospatial preprocessing" computes heights.',
       )
     },
   }),

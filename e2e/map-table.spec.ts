@@ -4,8 +4,24 @@ import {
   expect,
   serveBasemapStub,
   test,
+  type Locator,
   type Page,
 } from './test.ts'
+
+/** Counts pixels the 3D selection outline has painted on its overlay canvas. */
+async function paintedPixels(canvas: Locator): Promise<number> {
+  return canvas.evaluate((element) => {
+    const overlay = element as HTMLCanvasElement
+    const context = overlay.getContext('2d')
+    if (!context || overlay.width === 0 || overlay.height === 0) return 0
+    const { data } = context.getImageData(0, 0, overlay.width, overlay.height)
+    let painted = 0
+    for (let index = 3; index < data.length; index += 4) {
+      if (data[index]) painted += 1
+    }
+    return painted
+  })
+}
 
 // First-slice build stage 3b: Map and Table with linked selection and pending edits.
 
@@ -20,7 +36,11 @@ async function seriousViolations(page: Page): Promise<string[]> {
 }
 
 async function runStages(page: Page, names: string[]) {
-  await page.getByRole('tab', { name: 'Workflow', exact: true }).click()
+  // Clicking an already selected border tab closes its panel.
+  const workflowTab = page.getByRole('tab', { name: 'Workflow', exact: true })
+  if ((await workflowTab.getAttribute('aria-selected')) !== 'true') {
+    await workflowTab.click()
+  }
   const workflow = page.getByRole('region', { name: 'Workflow' })
   for (const name of names) {
     const item = workflow.getByRole('listitem').filter({ hasText: name })
@@ -148,6 +168,55 @@ test('map falls back to a plain background when the basemap cannot load, then re
   await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(
     'OpenFreeMap',
   )
+})
+
+// Decision 0013: 3D building extrusion.
+test('map switches buildings between 2D and 3D and explains missing heights', async ({
+  page,
+}) => {
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+
+  const toggle = page.getByRole('checkbox', { name: '3D buildings' })
+  await expect(toggle).not.toBeChecked()
+  // React Aria keeps the native checkbox visually hidden; use the keyboard.
+  await toggle.focus()
+  await page.keyboard.press('Space')
+  await expect(toggle).toBeChecked()
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'buildings stay flat until "Geospatial preprocessing" computes heights',
+  )
+  await expect(page.getByTestId('map-3d-note')).toBeVisible()
+
+  await runStages(page, [
+    'Geospatial data enriching',
+    'Schema matching',
+    'Geospatial preprocessing',
+  ])
+  await expect(page.getByTestId('map-3d-note')).toHaveCount(0)
+  const legend = page.getByRole('group', { name: 'Map legend' })
+  await expect(legend).toContainText('Height: floors × 3.2 m (synthetic)')
+  await expect(page.getByText('Shift+arrow keys rotate and tilt')).toBeVisible()
+
+  // Selecting a building in 3D paints its silhouette outline on the overlay.
+  const silhouette = page.getByTestId('selection-silhouette')
+  expect(await paintedPixels(silhouette)).toBe(0)
+  await page.getByRole('tab', { name: 'Table', exact: true }).click()
+  await page.locator('[row-index="0"] [col-id="name"]').click()
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+  await expect
+    .poll(() => paintedPixels(silhouette), { timeout: 10_000 })
+    .toBeGreaterThan(0)
+  expect(await seriousViolations(page)).toEqual([])
+
+  await toggle.focus()
+  await page.keyboard.press('Space')
+  await expect(toggle).not.toBeChecked()
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'The map shows buildings in 2D.',
+  )
+  await expect(legend).not.toContainText('Height: floors')
+  await expect.poll(() => paintedPixels(silhouette)).toBe(0)
 })
 
 test('settings turns the basemap off and keeps the choice across reloads', async ({
