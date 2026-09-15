@@ -10,10 +10,10 @@ Stages 1 to 3c were styled from the dataviz reference palette and per-component 
 
 ## Decision
 
-- [docs/20260915_energyatlas_ui_design_guidelines.md](../20260915_energyatlas_ui_design_guidelines.md) is the current source of UI design guidance. It is kept as supplied; changes to it come from the user.
+- [docs/20260915_energyatlas_ui_design_guidelines.md](../20260915_energyatlas_ui_design_guidelines.md) is the current source of UI design guidance. The user maintains it; agents change it only at the user's request. The Geist typeface was added that way on 2026-09-15 ([decision 0010](0010-geist-typeface.md)).
 - In summary (the document governs):
   - a flatter, calmer hierarchy: clear major pane boundaries, internal grouping by alignment, spacing, typography, and restrained surface contrast rather than repeated borders;
-  - two or three type sizes, with hierarchy from weight, tone, spacing, alignment, and emphasis;
+  - two or three type sizes, with hierarchy from weight, tone, spacing, alignment, and emphasis, set in the Geist family (added by decision 0010);
   - restrained analytical charts, with selective annotation, selective direct labels, and quiet scaffolding; editorial emphasis only where it communicates an important result;
   - a small set of curated palettes (technical monochrome, Lieflat-inspired, clean technical light, dark engineering);
   - one semantic color language shared by map, charts, table, workflow graphics, selection, and status;

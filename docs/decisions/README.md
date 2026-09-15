@@ -11,3 +11,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0007: Package selection for the first slice](0007-package-selection.md)
 - [0008: FlexLayout replaces dockview for docking](0008-flexlayout-docking.md)
 - [0009: EnergyAtlas UI design guidelines](0009-ui-design-guidelines.md)
+- [0010: Geist typeface](0010-geist-typeface.md)

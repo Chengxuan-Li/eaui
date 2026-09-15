@@ -25,6 +25,10 @@ Use no more than two or three size levels across the main application. Most hier
 
 Avoid building hierarchy primarily through increasingly large heading sizes. The interface should remain dense enough for technical work while still clearly distinguishing titles, normal content, and secondary metadata.
 
+### Typeface
+
+Use **Geist** as the application font family across all surfaces, including charts, tables, map legends, and the contextual panel. Fallbacks should keep text readable where Geist is unavailable or does not cover the script, such as Chinese.
+
 ## 3. Chart and analytical presentation
 
 Charts should remain valid dashboard elements first. Editorial or infographic-like emphasis can be used selectively where it helps communicate an important result, but it should not become the default treatment.

@@ -238,6 +238,6 @@ Prerequisites and open design questions to settle at the start of stage 4:
 2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
 3. Decide whether "add a dashboard chart" needs the JSON view schema now, or a narrower operation that toggles which series the existing charts compare.
 4. Decide how a replay reacts when project state differs from what its script expects (for example, no baseline yet): stop with an explanation, or offer to run the missing stages with approval.
-5. Decide whether the design-alignment foundation comes before stage 4 ([design alignment](design-alignment.md#open-questions)).
+5. Decide whether the design-alignment foundation, including the Geist typeface of [decision 0010](decisions/0010-geist-typeface.md), comes before stage 4 ([design alignment](design-alignment.md#open-questions)).
 
 Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).

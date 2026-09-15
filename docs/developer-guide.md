@@ -135,6 +135,8 @@ Use React Aria fields with `isInvalid` and a `FieldError` per field, filled from
 
 The [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md) (decision 0009) are the current visual direction, and the build predates them ([design alignment](design-alignment.md)). Build new surfaces in that direction: few type sizes with hierarchy from weight, tone, and spacing; spacing and alignment instead of internal borders; quiet routine states; colors from shared palette tokens rather than literals. Leave exact values to the alignment work.
 
+Text uses the Geist family (decision 0010) through `--font-sans`. Never hard-code a font family; canvas renderers such as ECharts must read the resolved token.
+
 ### Charts and color
 
 Where the guidelines differ from this method, follow the guidelines and update this section. They allow selective direct labels and annotation (peaks, thresholds, scenario divergence) where this method requires a legend, and they call for curated palettes with one semantic color language shared by map, charts, table, and workflow, while the slots below were validated for the single current palette.
@@ -143,7 +145,7 @@ Follow the existing dataviz method (`dashboardCharts.ts`, `viz/palette.ts`): cat
 
 ### Packages
 
-Only packages from decisions 0007 and 0008 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` are installed for the Reasoning transcript and not used yet.
+Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` are installed for the Reasoning transcript and not used yet.
 
 ## Testing
 
@@ -177,7 +179,7 @@ Conventions and pitfalls found while building:
 Behavior promised by the plan or decisions but not built yet:
 
 - **Reasoning panel (stage 4):** placeholder only; decision 0009 makes it a shared Reasoning and Inspection surface. See [next steps](first-slice-proposal.md#next-steps).
-- **Design alignment:** typography, borders, status presentation, palettes, map and legend styling, and the Run control predate decision 0009. See [design alignment](design-alignment.md).
+- **Design alignment:** the Geist typeface (decision 0010, not installed yet), typography, borders, status presentation, palettes, map and legend styling, and the Run control predate decision 0009. See [design alignment](design-alignment.md).
 - **Keyboard docking:** decision 0008 and the package constraints say the command palette moves a tab to another tab group through `Actions.moveNode`; that command does not exist yet. Tabs move by mouse drag only.
 - **View state is not command-driven:** the map metric and grid overlay, the table view and quick filter, and dashboard previews and compare toggles are local React state. The scripted data-representation session of decision 0006 needs them exposed as logged view operations.
 - **Chart specs:** the package constraints call for a zod-validated JSON view schema compiled to ECharts options. Dashboard charts currently build ECharts options directly in `dashboardCharts.ts`.
