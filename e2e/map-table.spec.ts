@@ -1,5 +1,11 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import {
+  blockBasemap,
+  expect,
+  serveBasemapStub,
+  test,
+  type Page,
+} from './test.ts'
 
 // First-slice build stage 3b: Map and Table with linked selection and pending edits.
 
@@ -99,4 +105,80 @@ test('selection is shared between the table and the map', async ({ page }) => {
     'true',
   )
   await expect(page.getByText('0 selected', { exact: true })).toBeVisible()
+})
+
+// Decision 0012: OpenFreeMap basemap over OpenStreetMap footprints. The shared
+// fixture in e2e/test.ts serves a stand-in style and empty tiles.
+
+test('map shows the basemap with credits for the basemap and the footprints', async ({
+  page,
+}) => {
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+  const attribution = page.locator('.maplibregl-ctrl-attrib')
+  await expect(attribution).toContainText('OpenFreeMap')
+  await expect(attribution).toContainText('OpenMapTiles')
+  await expect(attribution).toContainText('OpenStreetMap contributors')
+  await expect(page.getByTestId('basemap-status')).toHaveText('')
+  expect(await seriousViolations(page)).toEqual([])
+})
+
+test('map falls back to a plain background when the basemap cannot load, then retries', async ({
+  page,
+}) => {
+  await blockBasemap(page)
+  await page.reload()
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+
+  const status = page.getByTestId('basemap-status')
+  await expect(status).toContainText('Basemap unavailable')
+  await expect(page.locator('.maplibregl-canvas')).toBeVisible()
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(
+    'OpenStreetMap contributors',
+  )
+  expect(await seriousViolations(page)).toEqual([])
+
+  await serveBasemapStub(page)
+  await page
+    .getByRole('button', { name: 'Try loading the basemap again' })
+    .click()
+  await expect(status).toHaveText('')
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(
+    'OpenFreeMap',
+  )
+})
+
+test('settings turns the basemap off and keeps the choice across reloads', async ({
+  page,
+}) => {
+  // Settings can sit in the tab overflow menu at 1280 px; open it by command.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('open settings')
+  await page.keyboard.press('Enter')
+
+  const toggle = page.getByRole('checkbox', {
+    name: 'Show the OpenFreeMap basemap',
+  })
+  await expect(toggle).toBeChecked()
+  // React Aria keeps the native checkbox visually hidden; use the keyboard.
+  await toggle.focus()
+  await page.keyboard.press('Space')
+  await expect(toggle).not.toBeChecked()
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'The Map shows footprints on a plain background.',
+  )
+
+  await page.reload()
+  await expect(
+    page.getByRole('checkbox', { name: 'Show the OpenFreeMap basemap' }),
+  ).not.toBeChecked()
+
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+  const attribution = page.locator('.maplibregl-ctrl-attrib')
+  await expect(attribution).toContainText('OpenStreetMap contributors')
+  await expect(attribution).not.toContainText('OpenFreeMap')
+  await expect(page.getByTestId('basemap-status')).toHaveText('')
 })

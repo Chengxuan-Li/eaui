@@ -1,4 +1,5 @@
 import { GROUP, upsertAsset } from './assets.ts'
+import backBayBuildings from './fixtures/back-bay-buildings.geo.json'
 import type {
   Archetype,
   Building,
@@ -16,8 +17,9 @@ import { STAGE_IDS } from './workflow.ts'
 // Deterministic stand-ins for the engineering stages of decision 0005.
 // Nothing here is a physical calculation: values are synthetic, seeded by
 // building index, so the workflow, stale propagation, warnings, and failures
-// can be exercised honestly. The district sits near 0°N 0°E (open ocean) so no
-// real site is implied.
+// can be exercised honestly. Footprint geometry comes from a bundled
+// OpenStreetMap extract of Boston Back Bay (decision 0012); every attribute and
+// result is synthetic and does not describe the real buildings.
 
 export type StageRunContext = {
   runId: string
@@ -30,18 +32,73 @@ export type StageRunResult =
   | { ok: true; summary: string; warnings: string[] }
   | { ok: false; message: string }
 
-const GRID_COLUMNS = 20
-const GRID_ROWS = 20
-const HALF_COLUMNS = GRID_COLUMNS / 2
-const HALF_ROWS = GRID_ROWS / 2
 const SPACING_DEGREES = 0.0003
 const METERS_PER_DEGREE = 111_320
 const HOURS_PER_YEAR = 8760
 const PEAK_FACTOR = 1.9
 
+function meanOf(points: LngLat[]): LngLat {
+  let lng = 0
+  let lat = 0
+  for (const [x, y] of points) {
+    lng += x
+    lat += y
+  }
+  const count = Math.max(1, points.length)
+  return [lng / count, lat / count]
+}
+
+/** Vertex mean of a closed ring, ignoring the repeated closing vertex. */
+function centroidOf(ring: LngLat[]): LngLat {
+  return meanOf(ring.length > 1 ? ring.slice(0, -1) : ring)
+}
+
+/** Planar polygon area in square meters; accurate enough at district scale. */
+function ringAreaM2(ring: LngLat[]): number {
+  const [originLng, originLat] = ring[0] ?? [0, 0]
+  const metersPerLng = METERS_PER_DEGREE * Math.cos((originLat * Math.PI) / 180)
+  let sum = 0
+  for (let index = 1; index < ring.length; index++) {
+    const [x1, y1] = ring[index - 1] ?? [originLng, originLat]
+    const [x2, y2] = ring[index] ?? [originLng, originLat]
+    sum +=
+      (x1 - originLng) * (y2 - originLat) - (x2 - originLng) * (y1 - originLat)
+  }
+  return (Math.abs(sum) / 2) * metersPerLng * METERS_PER_DEGREE
+}
+
+type DistrictFootprint = { ring: LngLat[]; sourceRef: string; areaM2: number }
+
+// Real footprint geometry from the bundled OpenStreetMap extract, in file
+// order, which follows the street layout north to south.
+const DISTRICT_FOOTPRINTS: DistrictFootprint[] = backBayBuildings.features.map(
+  (feature) => {
+    const ring = (feature.geometry.coordinates[0] ?? []).map(
+      ([lng, lat]): LngLat => [lng ?? 0, lat ?? 0],
+    )
+    return {
+      ring,
+      sourceRef: `OpenStreetMap ${feature.properties.osm}`,
+      areaM2: ringAreaM2(ring),
+    }
+  },
+)
+
+const DISTRICT_BOUNDS = DISTRICT_FOOTPRINTS.flatMap(
+  (footprint) => footprint.ring,
+).reduce(
+  (bounds, [lng, lat]) => ({
+    west: Math.min(bounds.west, lng),
+    east: Math.max(bounds.east, lng),
+    south: Math.min(bounds.south, lat),
+    north: Math.max(bounds.north, lat),
+  }),
+  { west: Infinity, east: -Infinity, south: Infinity, north: -Infinity },
+)
+
 export const DISTRICT_CENTER: LngLat = [
-  HALF_COLUMNS * SPACING_DEGREES,
-  HALF_ROWS * SPACING_DEGREES,
+  (DISTRICT_BOUNDS.west + DISTRICT_BOUNDS.east) / 2,
+  (DISTRICT_BOUNDS.south + DISTRICT_BOUNDS.north) / 2,
 ]
 
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -124,10 +181,10 @@ function forEachBuilding(
   })
 }
 
-function quadrantOf(index: number): number {
-  const column = index % GRID_COLUMNS
-  const row = Math.floor(index / GRID_COLUMNS)
-  return (column < HALF_COLUMNS ? 0 : 1) + (row < HALF_ROWS ? 0 : 2)
+/** 0 south-west, 1 south-east, 2 north-west, 3 north-east of the district center. */
+function quadrantOf(building: Building): number {
+  const [lng, lat] = centroidOf(building.footprint)
+  return (lng < DISTRICT_CENTER[0] ? 0 : 1) + (lat < DISTRICT_CENTER[1] ? 0 : 2)
 }
 
 function applyOverrides(
@@ -201,42 +258,28 @@ function captureFootprints(
   const provenance = fromStage(STAGE_IDS.location, context)
   const buildings: Record<string, Building> = {}
   const buildingIds: string[] = []
-  for (let row = 0; row < GRID_ROWS; row++) {
-    for (let column = 0; column < GRID_COLUMNS; column++) {
-      const index = row * GRID_COLUMNS + column
-      const id = `B${String(index + 1).padStart(4, '0')}`
-      const width = SPACING_DEGREES * (0.45 + unitRandom(index, 1) * 0.35)
-      const depth = SPACING_DEGREES * (0.45 + unitRandom(index, 2) * 0.35)
-      const x = column * SPACING_DEGREES
-      const y = row * SPACING_DEGREES
-      buildings[id] = {
-        id,
-        name: `Building ${index + 1}`,
-        footprint: [
-          [x, y],
-          [x + width, y],
-          [x + width, y + depth],
-          [x, y + depth],
-          [x, y],
-        ],
-        footprintAreaM2: round(
-          width * METERS_PER_DEGREE * depth * METERS_PER_DEGREE,
-        ),
-        use: null,
-        yearBuilt: null,
-        floors: null,
-        heightM: null,
-        floorAreaM2: null,
-        zoneCount: null,
-        shadingFactor: null,
-        pvYieldKwh: null,
-        archetypeId: null,
-      }
-      buildingIds.push(id)
+  DISTRICT_FOOTPRINTS.forEach((source, index) => {
+    const id = `B${String(index + 1).padStart(4, '0')}`
+    buildings[id] = {
+      id,
+      name: `Building ${index + 1}`,
+      footprint: source.ring.map(([lng, lat]): LngLat => [lng, lat]),
+      footprintAreaM2: round(source.areaM2),
+      sourceRef: source.sourceRef,
+      use: null,
+      yearBuilt: null,
+      floors: null,
+      heightM: null,
+      floorAreaM2: null,
+      zoneCount: null,
+      shadingFactor: null,
+      pvYieldKwh: null,
+      archetypeId: null,
     }
-  }
+    buildingIds.push(id)
+  })
   state.project.location = {
-    name: 'Synthetic district near 0°N 0°E (open ocean)',
+    name: 'Boston Back Bay (OpenStreetMap footprints, synthetic attributes)',
     center: DISTRICT_CENTER,
   }
   state.buildings = buildings
@@ -259,11 +302,11 @@ function captureFootprints(
     parentId: GROUP.gisDatasets,
     provenance,
     capability: 'workflow.stageRuns',
-    summary: `${buildingIds.length} synthetic footprints`,
+    summary: `${buildingIds.length} footprints from OpenStreetMap (© OpenStreetMap contributors, ODbL)`,
   })
   return {
     ok: true,
-    summary: `Captured ${buildingIds.length} synthetic footprints.`,
+    summary: `Captured ${buildingIds.length} building footprints from the bundled OpenStreetMap extract.`,
     warnings: [],
   }
 }
@@ -523,7 +566,7 @@ function setUpBaseline(
   upsertAsset(state, {
     id: 'asset:weather-typical-year',
     kind: 'weather',
-    name: 'Synthetic typical year (equatorial)',
+    name: 'Synthetic typical year (Boston stand-in)',
     parentId: GROUP.weather,
     provenance,
     capability: 'workflow.stageRuns',
@@ -699,15 +742,21 @@ function defineGrid(
   if (state.buildingIds.length === 0) {
     return { ok: false, message: 'No buildings to connect to a grid.' }
   }
-  const centerLatitude = DISTRICT_CENTER[1]
-  const substation: LngLat = [-2 * SPACING_DEGREES, centerLatitude]
+  const substation: LngLat = [
+    DISTRICT_BOUNDS.west - 2 * SPACING_DEGREES,
+    DISTRICT_CENTER[1],
+  ]
+  // North of the district, toward the river; the plant itself is synthetic.
   const utilityPv: LngLat = [
-    -4 * SPACING_DEGREES,
-    centerLatitude + 6 * SPACING_DEGREES,
+    DISTRICT_CENTER[0],
+    DISTRICT_BOUNDS.north + 1.5 * SPACING_DEGREES,
   ]
   const buildingsByQuadrant: string[][] = [[], [], [], []]
-  state.buildingIds.forEach((id, index) => {
-    buildingsByQuadrant[quadrantOf(index)]?.push(id)
+  const centroidsByQuadrant: LngLat[][] = [[], [], [], []]
+  forEachBuilding(state, (building) => {
+    const quadrant = quadrantOf(building)
+    buildingsByQuadrant[quadrant]?.push(building.id)
+    centroidsByQuadrant[quadrant]?.push(centroidOf(building.footprint))
   })
 
   const elements: Record<string, GridElement> = {}
@@ -740,10 +789,9 @@ function defineGrid(
   })
   buildingsByQuadrant.forEach((buildingIds, quadrant) => {
     const number = quadrant + 1
-    const center: LngLat = [
-      ((quadrant % 2) * HALF_COLUMNS + HALF_COLUMNS / 2) * SPACING_DEGREES,
-      (Math.floor(quadrant / 2) * HALF_ROWS + HALF_ROWS / 2) * SPACING_DEGREES,
-    ]
+    const centroids = centroidsByQuadrant[quadrant] ?? []
+    const center: LngLat =
+      centroids.length > 0 ? meanOf(centroids) : DISTRICT_CENTER
     add({
       id: `T${number}`,
       kind: 'transformer',

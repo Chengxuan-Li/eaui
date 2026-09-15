@@ -150,7 +150,7 @@ describe('workbench commands', () => {
     expect(states(workbench)[S.location]).toBe('executed')
     expect(states(workbench)[S.enrichment]).toBe('ready')
     const state = workbench.getState()
-    expect(state.buildingIds).toHaveLength(400)
+    expect(state.buildingIds).toHaveLength(464)
     expect(state.assets['asset:footprints']?.provenance).toEqual({
       kind: 'stage',
       stageId: S.location,

@@ -2,6 +2,9 @@
 *.md
 docs/
 
+# Generated fixture data, written one feature per line by scripts/fetch-osm-buildings.mjs.
+src/domain/fixtures/*.geo.json
+
 package-lock.json
 dist/
 coverage/

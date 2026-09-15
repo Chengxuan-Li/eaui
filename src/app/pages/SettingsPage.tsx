@@ -1,11 +1,12 @@
 import { useId } from 'react'
-import { Label, Radio, RadioGroup } from 'react-aria-components'
+import { Checkbox, Label, Radio, RadioGroup } from 'react-aria-components'
 import { useServices } from '../WorkbenchContext.tsx'
 import { APPEARANCE_LIST, type Appearance } from '../appearance/appearances.ts'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
 import { CapabilityTable } from '../components/CapabilityTable.tsx'
 import styles from '../components/components.module.css'
+import formStyles from '../components/forms.module.css'
 import { isAppearancePreference } from '../theme.ts'
 import pageStyles from './pages.module.css'
 
@@ -31,8 +32,14 @@ function Swatches({ appearance }: { appearance: Appearance }) {
 
 export function SettingsPage() {
   const headingId = useId()
-  const { appearancePreference, appearance, setAppearance, layout } =
-    useServices()
+  const {
+    appearancePreference,
+    appearance,
+    setAppearance,
+    layout,
+    basemapEnabled,
+    setBasemapEnabled,
+  } = useServices()
 
   return (
     <section className={styles.page} aria-labelledby={headingId}>
@@ -88,6 +95,21 @@ export function SettingsPage() {
       >
         Reset layout
       </ActionButton>
+
+      <h3>Map</h3>
+      <Checkbox
+        className={formStyles.checkbox}
+        isSelected={basemapEnabled}
+        onChange={setBasemapEnabled}
+      >
+        Show the OpenFreeMap basemap
+      </Checkbox>
+      <p className={styles.muted}>
+        Streets, water, and labels load from OpenFreeMap over the network and
+        follow the appearance. When off, or when the tiles cannot load,
+        footprints are shown on a plain background. Map data &copy;
+        OpenStreetMap contributors.
+      </p>
 
       <h3>Model provider</h3>
       <p>

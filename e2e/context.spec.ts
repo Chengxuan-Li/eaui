@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test.ts'
 
 // Design alignment (guidelines section 10): Reasoning and Inspection share the
 // right-side context panel, and Inspection follows the shared selection.

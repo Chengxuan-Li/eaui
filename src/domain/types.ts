@@ -51,6 +51,8 @@ export type Building = {
   name: string
   footprint: LngLat[]
   footprintAreaM2: number
+  /** Where the footprint geometry came from, such as "OpenStreetMap way/123"; null for synthetic geometry. */
+  sourceRef: string | null
   use: BuildingUse | null
   yearBuilt: number | null
   floors: number | null

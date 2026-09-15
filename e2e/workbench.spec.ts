@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test.ts'
 
 // First-slice build stage 2: the workbench shell (decisions 0004, 0006, 0008).
 

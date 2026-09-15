@@ -39,6 +39,35 @@
   min-height: 0;
 }
 
+/* MapLibre controls default to white boxes with dark icons; follow the
+   appearance instead. */
+.mapArea :global(.maplibregl-ctrl-group),
+.mapArea :global(.maplibregl-ctrl.maplibregl-ctrl-attrib) {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.mapArea :global(.maplibregl-ctrl-group button + button) {
+  border-top-color: var(--color-border-subtle);
+}
+
+.mapArea :global(.maplibregl-ctrl-attrib) {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-small);
+}
+
+.mapArea :global(.maplibregl-ctrl-attrib a) {
+  color: var(--color-text-muted);
+}
+
+/* The control icons are dark SVG images; invert them on dark surfaces. */
+:global(html[data-theme='dark']) .mapArea :global(.maplibregl-ctrl-icon),
+:global(html[data-theme='dark'])
+  .mapArea
+  :global(.maplibregl-ctrl-attrib-button) {
+  filter: invert(1);
+}
+
 .tooltip {
   position: absolute;
   z-index: 2;
@@ -65,7 +94,8 @@
   max-width: 14rem;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  /* Opaque so basemap labels do not show through the legend text. */
+  background: var(--color-surface);
   font-size: var(--font-size-small);
   line-height: 1.35;
 }
@@ -124,6 +154,11 @@
   align-items: center;
   gap: var(--space-2) var(--space-3);
   padding: var(--space-2) var(--space-4);
+}
+
+.basemapStatus {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
 }
 
 .a11yNote {

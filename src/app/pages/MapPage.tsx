@@ -9,6 +9,7 @@ import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Checkbox, Label, Radio, RadioGroup } from 'react-aria-components'
+import { DISTRICT_CENTER } from '../../domain/simulation.ts'
 import type { LngLat } from '../../domain/types.ts'
 import { STAGE_IDS } from '../../domain/workflow.ts'
 import {
@@ -22,16 +23,22 @@ import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge, StatusTag } from '../components/CapabilityBadge.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import formStyles from '../components/forms.module.css'
+import {
+  BASEMAP_SOURCE_ID,
+  buildBasemapStyle,
+  FOOTPRINT_ATTRIBUTION,
+} from './basemapStyle.ts'
 import { computeMetric, METRICS, type MetricId } from './mapMetrics.ts'
 import styles from './map.module.css'
+import { useBasemap } from './useBasemap.ts'
 
 const POINT_KINDS = new Set(['transformer', 'utilityPv', 'bus'])
 
 type Hover = { id: string; label: string; x: number; y: number }
 
 function baseStyle(background: string): StyleSpecification {
-  // No basemap: synthetic data only, no tiles, no token (decision 0007). The
-  // background is the workbench ground of the active appearance.
+  // Shown while the basemap is off, loading, or unavailable (decision 0012).
+  // The background is the workbench ground of the active appearance.
   return {
     version: 8,
     sources: {},
@@ -84,15 +91,19 @@ function formatValue(value: number | null, unit: string): string {
 
 export function MapPage() {
   const headingId = useId()
-  const { workbench, layout, showInspection } = useServices()
+  const { workbench, layout, showInspection, basemapEnabled } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const appearance = useAppearance()
   const palette = appearance.data
+  const basemap = useBasemap(basemapEnabled)
   // A new style object on every render makes react-maplibre call setStyle,
   // whose diff drops the sources added at runtime and their feature state.
   const mapStyle = useMemo(
-    () => baseStyle(appearance.chrome.bg),
-    [appearance.chrome.bg],
+    () =>
+      basemap.style
+        ? buildBasemapStyle(basemap.style, appearance)
+        : baseStyle(appearance.chrome.bg),
+    [basemap.style, appearance],
   )
   const mapRef = useRef<MapRef>(null)
   const [loaded, setLoaded] = useState(false)
@@ -359,7 +370,11 @@ export function MapPage() {
         <MapView
           ref={mapRef}
           mapStyle={mapStyle}
-          initialViewState={{ longitude: 0.003, latitude: 0.003, zoom: 15 }}
+          initialViewState={{
+            longitude: DISTRICT_CENTER[0],
+            latitude: DISTRICT_CENTER[1],
+            zoom: 15,
+          }}
           style={{ width: '100%', height: '100%' }}
           interactiveLayerIds={
             showGrid && hasGrid
@@ -367,6 +382,12 @@ export function MapPage() {
               : ['buildings-fill']
           }
           onLoad={() => setLoaded(true)}
+          onError={(event) => {
+            // Tile and TileJSON failures name their source. Fall back to the
+            // plain background rather than show an empty basemap.
+            const { sourceId } = event as unknown as { sourceId?: string }
+            if (sourceId === BASEMAP_SOURCE_ID) basemap.reportTileFailure()
+          }}
           onMouseMove={(event) => {
             const feature = event.features?.[0]
             const id: unknown = feature?.properties?.id
@@ -413,6 +434,7 @@ export function MapPage() {
             id="buildings"
             type="geojson"
             data={buildingsGeoJson}
+            attribution={FOOTPRINT_ATTRIBUTION}
             promoteId="id"
           >
             <Layer
@@ -591,6 +613,26 @@ export function MapPage() {
         >
           Inspect
         </ActionButton>
+        <span
+          role="status"
+          data-testid="basemap-status"
+          className={styles.basemapStatus}
+        >
+          {basemap.status === 'loading'
+            ? 'Loading the OpenFreeMap basemap…'
+            : basemap.status === 'failed'
+              ? 'Basemap unavailable: footprints are shown on a plain background. It can be turned off in Settings.'
+              : ''}
+        </span>
+        {basemap.status === 'failed' ? (
+          <ActionButton
+            label="Try loading the basemap again"
+            disabledReason={null}
+            onPress={basemap.retry}
+          >
+            Retry basemap
+          </ActionButton>
+        ) : null}
         <span className={styles.a11yNote}>
           The map canvas is not available to screen readers; the Table page
           lists the same buildings and shares the selection.

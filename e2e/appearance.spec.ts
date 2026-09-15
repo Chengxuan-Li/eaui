@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test.ts'
 
 // Design alignment (decisions 0009 and 0010): Geist typeface and curated appearances.
 

@@ -29,6 +29,7 @@ function building(id: string): Building {
       [0.001, 0.001],
     ],
     footprintAreaM2: 100,
+    sourceRef: null,
     use: 'office',
     yearBuilt: 1990,
     floors: 3,

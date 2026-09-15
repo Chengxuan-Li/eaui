@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test.ts'
 
 // First-slice build stage 4: scripted agent sessions in the Reasoning mode
 // (decisions 0006 and 0011).

@@ -3,9 +3,13 @@ import type { WorkbenchState } from '../domain/types.ts'
 // The prototype's "save": the project model is stored in this browser only.
 // There is no server, no file, and nothing shared between browsers.
 
-const PROJECT_KEY = 'eaui.project.v1'
+// Version 2 holds the Back Bay OpenStreetMap footprints (decision 0012).
+// Version 1 projects used the synthetic ocean grid; they are left in storage
+// but not restored.
+const PROJECT_KEY = 'eaui.project.v2'
+const OUTDATED_PROJECT_KEY = 'eaui.project.v1'
 
-type SavedProject = { version: 1; savedAt: string; state: WorkbenchState }
+type SavedProject = { version: 2; savedAt: string; state: WorkbenchState }
 
 export type SaveResult =
   { ok: true; savedAt: string } | { ok: false; message: string }
@@ -23,7 +27,7 @@ export function saveProject(
     }
   }
   const saved: SavedProject = {
-    version: 1,
+    version: 2,
     savedAt: now.toISOString(),
     state,
   }
@@ -42,7 +46,7 @@ function isSavedProject(value: unknown): value is SavedProject {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Partial<SavedProject>
   return (
-    candidate.version === 1 &&
+    candidate.version === 2 &&
     typeof candidate.savedAt === 'string' &&
     typeof candidate.state === 'object' &&
     candidate.state !== null &&
@@ -70,4 +74,13 @@ export function loadProject(storage: Storage | null): SavedProject | null {
     }
   }
   return parsed
+}
+
+/** True when this browser holds a project saved before decision 0012, which is not restored. */
+export function hasOutdatedProject(storage: Storage | null): boolean {
+  try {
+    return Boolean(storage?.getItem(OUTDATED_PROJECT_KEY))
+  } catch {
+    return false
+  }
 }

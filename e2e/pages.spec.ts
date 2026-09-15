@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test.ts'
 
 // First-slice build stage 3a: Assets panel, Creator, and Roadmap.
 

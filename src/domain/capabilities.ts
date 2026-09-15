@@ -44,7 +44,13 @@ export const capabilities = {
     label: 'Map',
     status: 'working',
     explanation:
-      'Shows synthetic footprints and grid elements with linked selection.',
+      'Shows OpenStreetMap building footprints with synthetic attributes, and synthetic grid elements, with linked selection.',
+  },
+  'map.basemap': {
+    label: 'Basemap',
+    status: 'working',
+    explanation:
+      'Streets, water, and labels from OpenFreeMap tiles over the network, recolored to the appearance; falls back to a plain background when unavailable.',
   },
   'map.geometryEditing': {
     label: 'Geometry editing',

@@ -29,7 +29,11 @@ import {
   createLayoutController,
   type LayoutController,
 } from './layout/layoutController.ts'
-import { loadProject } from './persistence.ts'
+import { hasOutdatedProject, loadProject } from './persistence.ts'
+import {
+  readBasemapPreference,
+  storeBasemapPreference,
+} from './basemapPreference.ts'
 import { getBrowserStorage } from './storage.ts'
 import {
   applyAppearance,
@@ -57,6 +61,9 @@ export type Services = CoreServices & {
   /** The appearance actually shown. */
   appearance: Appearance
   setAppearance: (preference: AppearancePreference) => void
+  /** Whether the Map page shows the OpenFreeMap basemap (decision 0012). */
+  basemapEnabled: boolean
+  setBasemapEnabled: (enabled: boolean) => void
   contextMode: ContextMode
   setContextMode: (mode: ContextMode, source?: CommandSource) => void
   /** Opens the context panel on Inspection, which follows the shared selection. */
@@ -85,6 +92,14 @@ function createCoreServices(): CoreServices {
       summary: `Restored the project saved in this browser at ${new Date(saved.savedAt).toLocaleString()}.`,
       source: 'system',
     })
+  } else if (hasOutdatedProject(storage)) {
+    workbench.record({
+      type: 'project.restore',
+      title: 'Restore saved project',
+      summary:
+        'A project saved before the Back Bay footprints was not restored because its buildings no longer match the map. Run the workflow again to rebuild it.',
+      source: 'system',
+    })
   }
   const layout = createLayoutController(workbench, storage)
   const view = createViewStore(workbench)
@@ -108,6 +123,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     readAppearancePreference(core.storage),
   )
   const [systemDark, setSystemDark] = useState(systemPrefersDark)
+  const [basemapEnabled, setBasemapEnabledState] = useState(() =>
+    readBasemapPreference(core.storage),
+  )
   const appearance = resolveAppearance(appearancePreference, systemDark)
   const contextMode = useStore(core.view.store, (view) => view.context.mode)
 
@@ -153,6 +171,19 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
               : `Appearance set to ${APPEARANCES[next].label}.`,
         })
       },
+      basemapEnabled,
+      setBasemapEnabled: (enabled) => {
+        setBasemapEnabledState(enabled)
+        storeBasemapPreference(core.storage, enabled)
+        core.workbench.record({
+          type: 'view.setBasemap',
+          title: 'Show or hide basemap',
+          input: { enabled },
+          summary: enabled
+            ? 'The Map shows the OpenFreeMap basemap.'
+            : 'The Map shows footprints on a plain background.',
+        })
+      },
       contextMode,
       setContextMode,
       showInspection: (source = 'manual') => {
@@ -162,7 +193,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         setContextMode('inspection', source)
       },
     }
-  }, [core, appearancePreference, appearance, contextMode])
+  }, [core, appearancePreference, appearance, basemapEnabled, contextMode])
 
   return (
     <ServicesContext.Provider value={services}>

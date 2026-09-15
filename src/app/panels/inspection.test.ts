@@ -9,6 +9,7 @@ function building(id: string, patch: Partial<Building> = {}): Building {
     name: `Building ${id}`,
     footprint: [],
     footprintAreaM2: 100,
+    sourceRef: null,
     use: 'office',
     yearBuilt: 1990,
     floors: 3,

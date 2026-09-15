@@ -17,7 +17,7 @@ describe('computeMetric', () => {
 
     const floors = computeMetric(workbench.getState(), 'floors')
     expect(floors.available).toBe(false)
-    expect(Object.keys(floors.values)).toHaveLength(400)
+    expect(Object.keys(floors.values)).toHaveLength(464)
 
     runStage(workbench, STAGE_IDS.enrichment)
     const enriched = computeMetric(workbench.getState(), 'floors')
