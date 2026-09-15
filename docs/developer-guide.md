@@ -7,7 +7,7 @@ This guide is for a developer or agent taking over without the original conversa
 ## Reading order
 
 1. [AGENTS.md](../AGENTS.md): operating rules (reference boundary, Git safety, credentials, verification before commits).
-2. [Decisions 0003 to 0008](decisions/README.md): what the product is (shell, layout, workflow, scripted agent) and which packages are allowed.
+2. [Decisions 0003 to 0009](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, and the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md).
 3. This guide.
 4. [First-slice proposal](first-slice-proposal.md): the plan, the working/simulated/planned boundary, stage-by-stage status, gaps, and next steps.
 5. [Package selection](package-selection.md): constraints each library carries and spike findings.
@@ -125,11 +125,19 @@ Add an `AppAction` in `src/app/actions.ts`. The same entry then appears in the r
 
 Anything that is not real behavior needs a `capabilities.ts` entry and a `CapabilityBadge` or `StatusTag`. Planned controls are visible, focusable (`aria-disabled`, not `disabled`), and explain themselves. Empty states name the missing stage and offer to run it (`EmptyState`).
 
+Decision 0009 asks for status that describes application state, with routine states kept quiet. That does not remove the disclosure itself; how to show simulated and planned capability with less repetition is an [open question](design-alignment.md#open-questions). Until it is settled, keep the existing labels and avoid adding new repeated pills.
+
 ### Forms
 
 Use React Aria fields with `isInvalid` and a `FieldError` per field, filled from command issues via `splitIssues` in `src/app/commandErrors.ts`. Editing a field clears only that field's issue. Do not use React Aria `Form` `validationErrors`: it kept corrected fields invalid and blocked resubmission. See `CreatorPage.tsx`.
 
+### Visual design
+
+The [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md) (decision 0009) are the current visual direction, and the build predates them ([design alignment](design-alignment.md)). Build new surfaces in that direction: few type sizes with hierarchy from weight, tone, and spacing; spacing and alignment instead of internal borders; quiet routine states; colors from shared palette tokens rather than literals. Leave exact values to the alignment work.
+
 ### Charts and color
+
+Where the guidelines differ from this method, follow the guidelines and update this section. They allow selective direct labels and annotation (peaks, thresholds, scenario divergence) where this method requires a legend, and they call for curated palettes with one semantic color language shared by map, charts, table, and workflow, while the slots below were validated for the single current palette.
 
 Follow the existing dataviz method (`dashboardCharts.ts`, `viz/palette.ts`): categorical colors in fixed order and following the entity rather than its rank, at most three charted series (the validated slots), one hue for magnitudes, reserved status colors always with icon and label, a legend for two or more series, and an app-rendered data table for every chart because ECharts has no keyboard navigation. The light-mode third slot (aqua) is below 3:1 contrast, so any chart using it needs labels or a table. Screenshot charts in light and dark mode before committing; the validator does not catch label collisions.
 
@@ -168,7 +176,8 @@ Conventions and pitfalls found while building:
 
 Behavior promised by the plan or decisions but not built yet:
 
-- **Reasoning panel (stage 4):** placeholder only. See [next steps](first-slice-proposal.md#next-steps).
+- **Reasoning panel (stage 4):** placeholder only; decision 0009 makes it a shared Reasoning and Inspection surface. See [next steps](first-slice-proposal.md#next-steps).
+- **Design alignment:** typography, borders, status presentation, palettes, map and legend styling, and the Run control predate decision 0009. See [design alignment](design-alignment.md).
 - **Keyboard docking:** decision 0008 and the package constraints say the command palette moves a tab to another tab group through `Actions.moveNode`; that command does not exist yet. Tabs move by mouse drag only.
 - **View state is not command-driven:** the map metric and grid overlay, the table view and quick filter, and dashboard previews and compare toggles are local React state. The scripted data-representation session of decision 0006 needs them exposed as logged view operations.
 - **Chart specs:** the package constraints call for a zod-validated JSON view schema compiled to ECharts options. Dashboard charts currently build ECharts options directly in `dashboardCharts.ts`.

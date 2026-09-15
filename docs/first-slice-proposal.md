@@ -2,7 +2,7 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is next (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
+Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is next (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The UI design guidance accepted in [0009](decisions/0009-ui-design-guidelines.md) applies to remaining work. The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
 
 ## Goal
 
@@ -220,9 +220,10 @@ Compared with the plan above and the package constraints, the build so far:
 
 ## Next steps
 
-Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decision 0006 and the Reasoning row above:
+Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decisions 0006 and 0009 and the Reasoning row above:
 
-- **Transcript** in the Reasoning panel: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
+- **Contextual right-side surface** (decision 0009): one pane with Reasoning and Inspection modes instead of a Reasoning-only panel. The items below form the Reasoning mode; how much of Inspection belongs in stage 4 is an [open design question](design-alignment.md#open-questions).
+- **Transcript** in the Reasoning mode: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
 - **Chat input and prompt presets**; a preset starts one of the scripted sessions. Free text without a matching script gets an honest "scripted sessions only" answer.
 - **Approvals:** tool calls that change the project model (`undoable` commands) wait for Approve or Reject. Approve runs the command with source `agent`; Reject records a rejected operation. Layout and view tool calls run directly and are logged.
 - **Sessions (at minimum):**
@@ -237,5 +238,6 @@ Prerequisites and open design questions to settle at the start of stage 4:
 2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
 3. Decide whether "add a dashboard chart" needs the JSON view schema now, or a narrower operation that toggles which series the existing charts compare.
 4. Decide how a replay reacts when project state differs from what its script expects (for example, no baseline yet): stop with an explanation, or offer to run the missing stages with approval.
+5. Decide whether the design-alignment foundation comes before stage 4 ([design alignment](design-alignment.md#open-questions)).
 
 Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).
