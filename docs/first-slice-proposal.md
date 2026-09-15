@@ -157,3 +157,28 @@ Code in `src/app/panels/AssetsPanel.tsx`, `src/app/panels/assetTree.ts`, `src/ap
   - Docked tabs stay mounted while hidden and measure 0x0, so the roadmap refits once React Flow reports a real size.
   - When the docked page is narrow, a container query stacks the roadmap graph above the stage details.
   - React Aria checkboxes keep the native input visually hidden, so browser tests operate them from the keyboard.
+
+### Stage 3b: map and table (2026-09-15)
+
+Code in `src/app/pages/MapPage.tsx`, `src/app/pages/mapMetrics.ts`, `src/app/pages/TablePage.tsx`, `src/app/grid/agGrid.ts`, `src/app/viz/palette.ts`, and `src/app/components/EmptyState.tsx`. Tests in `src/app/pages/mapMetrics.test.ts` and `e2e/map-table.spec.ts`.
+
+- **Real:**
+  - **Map page:** MapLibre with no basemap or token.
+    - Buildings are colored by one available metric on a single-hue sequential ramp, with a legend and a no-data color; the ramp's anchor flips in dark mode.
+    - An optional grid overlay shows feeders, transformers, the substation, and utility PV.
+    - Click selects, Shift+click adds or removes, and clicking empty map clears; every change goes through the shared selection commands.
+    - Hover shows the building and its value. Unavailable metrics are disabled and explained.
+  - **Table page:** AG Grid Community with Buildings and Grid elements tabs, quick filter, column filters, sorting, and keyboard grid navigation.
+    - Floors and archetype edits go through `edits.propose`, show validation messages, stay highlighted while pending, and are applied or discarded with `edits.apply` and `edits.discard`.
+    - Table row selection and map selection are the same shared selection.
+  - Empty states name the missing stage and offer to run it.
+- **Simulated:** all metric values, grid loading, and demand figures.
+- **Not built yet:** Dashboard (stage 3c) and Reasoning (stage 4).
+- **Verification (2026-09-15):**
+  - Typecheck, lint, and format check pass; 33 unit tests pass.
+  - `npm run test:e2e` passes 29 tests, including 3 Map and Table tests with no serious or critical axe violations.
+  - Screenshots reviewed at 1280x800: Table (light), Map (light, with a selection), and Map (dark). The review moved the legend so it no longer covered footprints or the attribution control.
+- **Accessibility and color:**
+  - The map canvas is not exposed to screen readers. The page says so and links to the Table page, which shares the selection.
+  - The sequential ramp comes from the dataviz reference palette. Categorical slots 1-3 were validated with the dataviz validator against the workbench surfaces (light `#ffffff`, dark `#1d2126`) using `--pairs all`: every check passes, but light-mode aqua is 2.82:1, so any chart using it must ship direct labels or a table view.
+- **Finding:** AG Grid selection events report a `source`. The table ignores programmatic sources so that syncing from the map does not echo back as new selection commands.

@@ -28,8 +28,10 @@ import '../global.css'
 import '../layout/flexlayout-theme.css'
 import { CreatorPage } from '../pages/CreatorPage.tsx'
 import { IssuesPage } from '../pages/IssuesPage.tsx'
+import { MapPage } from '../pages/MapPage.tsx'
 import { RoadmapPage } from '../pages/RoadmapPage.tsx'
 import { SettingsPage } from '../pages/SettingsPage.tsx'
+import { TablePage } from '../pages/TablePage.tsx'
 import { TasksPage } from '../pages/TasksPage.tsx'
 import { AssetsPanel } from '../panels/AssetsPanel.tsx'
 import { WorkflowPanel } from '../panels/WorkflowPanel.tsx'
@@ -98,21 +100,9 @@ function renderTabContent(node: TabNode) {
         />
       )
     case 'page.map':
-      return (
-        <NotBuiltYet
-          title="Map"
-          buildStage={3}
-          description="Synthetic footprints and grid elements with linked selection."
-        />
-      )
+      return <MapPage />
     case 'page.table':
-      return (
-        <NotBuiltYet
-          title="Table"
-          buildStage={3}
-          description="Buildings and grid elements with sorting, filtering, and pending edits."
-        />
-      )
+      return <TablePage />
     case 'page.dashboard':
       return (
         <NotBuiltYet
