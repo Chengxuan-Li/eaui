@@ -16,3 +16,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0012: OpenFreeMap basemap and Boston Back Bay footprints](0012-openfreemap-basemap-back-bay.md)
 - [0013: 3D building extrusion on the Map page](0013-3d-building-extrusion.md)
 - [0014: LF line endings through Git attributes](0014-lf-line-endings.md)
+- [0015: Live 3D terrain for map display](0015-terrain.md)
