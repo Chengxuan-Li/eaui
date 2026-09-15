@@ -278,7 +278,7 @@ Branch `feature/basemap`, following [decision 0013](decisions/0013-3d-building-e
 
 ### Terrain (2026-09-15)
 
-Branch `feature/agentic`, following [decision 0015](decisions/0015-terrain.md). Code in `src/app/view/viewOperations.ts` (`map.setTerrain`, `map.setTerrainExaggeration`), `src/app/pages/terrain.ts`, `src/app/pages/useTerrain.ts`, `src/app/pages/MapPage.tsx`, and `src/app/pages/silhouette.ts`. Tests in `src/app/pages/terrain.test.ts`, `src/app/pages/silhouette.test.ts`, `src/app/view/viewStore.test.ts`, and `e2e/map-table.spec.ts`.
+Branch `feature/basemap`, after `feature/agentic` was merged into it, following [decision 0015](decisions/0015-terrain.md). Code in `src/app/view/viewOperations.ts` (`map.setTerrain`, `map.setTerrainExaggeration`), `src/app/pages/terrain.ts`, `src/app/pages/useTerrain.ts`, `src/app/pages/MapPage.tsx`, and `src/app/pages/silhouette.ts`. Tests in `src/app/pages/terrain.test.ts`, `src/app/pages/silhouette.test.ts`, `src/app/view/viewStore.test.ts`, and `e2e/map-table.spec.ts`.
 
 - **Real:**
   - **Live terrain:** MapLibre fetches Mapterhorn terrarium tiles at runtime for the terrain mesh and a hillshade layer colored from the active appearance and placed beneath basemap labels. Nothing is stored: terrain is display only and never project data.
