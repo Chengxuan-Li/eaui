@@ -76,7 +76,7 @@ Commit `38e08a3`.
 
 - **Real:** the Context panel with its mode switch; Inspection of one building (properties, results, warnings, linked grid elements, provenance), one grid element (rating, connected buildings, transformer loading and rating warnings), or several objects (summary and a list of up to 10 that can each be inspected); the Inspect selection action and Map button.
 - **Simulated:** every value shown, disclosed in Provenance.
-- **Planned:** Reasoning mode remains a labeled placeholder until stage 4.
+- **Planned:** Reasoning mode remained a labeled placeholder in this pass; stage 4 built it on the `feature/agentic` branch (see [stage 4 status](first-slice-proposal.md#stage-4-scripted-agent-2026-09-15)).
 - **Tests:** `src/app/panels/inspection.test.ts` (empty, single building, skipped by the baseline, several buildings, transformer over rating); `e2e/context.spec.ts` (mode switch, selection from the Table, provenance, axe, clearing, and the palette action reopening the panel on Inspection).
 
 ### Verification (2026-09-15)
@@ -102,5 +102,5 @@ Node.js 24.21.0 and Microsoft Edge on the `E:/Coding` machine.
 - **Accessibility coverage:** axe runs in all six appearances on the default workbench only. Pages with data were axe-checked in Light and reviewed by screenshot in the other appearances. Roadmap and Creator were not re-screenshotted in this pass.
 - **Charts:** only the annual bars carry direct labels, and no map metric uses a diverging scale yet.
 - **Inspection:** it is read-only; editing stays on the Table page. The Assets panel keeps its own details region, the context mode resets on reload, and the Table page has no Inspect button (the command palette action covers keyboard use).
-- **Reasoning:** a placeholder until stage 4.
+- **Reasoning:** closed on the `feature/agentic` branch, where stage 4 fills the mode with scripted agent sessions; `master` still shows the placeholder until that branch is merged.
 - **Line endings:** `npm run format:check` fails on CRLF checkouts. A `.gitattributes` rule or `core.autocrlf=input` would fix it; not decided.

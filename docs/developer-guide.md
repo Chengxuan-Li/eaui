@@ -7,7 +7,7 @@ This guide is for a developer or agent taking over without the original conversa
 ## Reading order
 
 1. [AGENTS.md](../AGENTS.md): operating rules (reference boundary, Git safety, credentials, verification before commits).
-2. [Decisions 0003 to 0010](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), and the Geist typeface.
+2. [Decisions 0003 to 0011](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), the Geist typeface, and agent chart specifications and missing-state approvals.
 3. This guide.
 4. [First-slice proposal](first-slice-proposal.md): the plan, the working/simulated/planned boundary, stage-by-stage status, gaps, and next steps.
 5. [Design alignment](design-alignment.md): how the build follows the guidelines, verification, and remaining gaps.
@@ -50,7 +50,7 @@ main.tsx ── Geist font CSS, src/index.css (fallback tokens, fonts, type scal
 
 Data flow is one-directional:
 
-1. A control, shortcut, palette entry, simulator tick, or (later) agent calls `workbench.execute({ type, input }, source)`.
+1. A control, shortcut, palette entry, simulator tick, or agent tool call invokes `workbench.execute({ type, input }, source)`.
 2. The command's zod schema validates the input; the handler mutates an Immer draft and returns `applied` with a summary or `rejected` with per-field issues.
 3. The store publishes a new snapshot `{ state, log, canUndo, canRedo }`; components read it through `useWorkbenchSnapshot(selector)`.
 4. Derived values (stage states, dashboard data, map metrics, asset tree rows, Inspection) are computed from state in pure functions, never stored.
@@ -62,7 +62,7 @@ View state that is not project state changes through the layout controller, the 
 | File | Responsibility |
 | --- | --- |
 | `types.ts` | `WorkbenchState` and every entity type. Start here. |
-| `commands.ts` | The command registry: title, description, zod input, `undoable`, handler. `describeCommands()` exports JSON Schema for future agent tools. |
+| `commands.ts` | The command registry: title, description, zod input, `undoable`, handler. `describeCommands()` exports JSON Schema, which `describeAgentTools()` in `src/app/agent/tools.ts` includes in the agent tool catalog. |
 | `workbench.ts` | `createWorkbench()`: `execute`, `undo`, `redo`, `record` (log an external operation such as a layout change), `load` (replace state, clear history). Operation log entries carry `source` manual, agent, or system. |
 | `workflow.ts` | Default 12 stages and `STAGE_IDS`, graph helpers (`upstreamIds`, `downstreamIds`, `topologicalOrder`), `deriveStageStates`, `stageRunBlocker`. |
 | `simulation.ts` | Synthetic stage runners (`runSimulatedStage`) and `computeScenarioResult`, shared by scenario modeling and dashboard previews. |
@@ -186,7 +186,7 @@ Canvas text must use `useChartFont().family`, and chart options must depend on t
 
 ### Packages
 
-Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` are installed for the Reasoning transcript and not used yet.
+Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` render Markdown messages in the Reasoning transcript (`src/app/panels/ReasoningMode.tsx`).
 
 ## Testing
 
