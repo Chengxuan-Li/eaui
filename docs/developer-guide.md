@@ -7,7 +7,7 @@ This guide is for a developer or agent taking over without the original conversa
 ## Reading order
 
 1. [AGENTS.md](../AGENTS.md): operating rules (reference boundary, Git safety, credentials, verification before commits).
-2. [Decisions 0003 to 0013](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), the Geist typeface, agent chart specifications and missing-state approvals, the basemap and footprint source, and 3D building extrusion.
+2. [Decisions 0003 to 0015](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), the Geist typeface, agent chart specifications and missing-state approvals, the basemap and footprint source, 3D building extrusion, LF line endings, and live terrain for display.
 3. This guide.
 4. [First-slice proposal](first-slice-proposal.md): the plan, the working/simulated/planned boundary, stage-by-stage status, gaps, and next steps.
 5. [Design alignment](design-alignment.md): how the build follows the guidelines, verification, and remaining gaps.
@@ -25,7 +25,7 @@ A browser-only React application with one synthetic project that can be taken th
 
 There is no server, no model provider, and no real engineering calculation. Every number comes from deterministic synthetic code in `src/domain/simulation.ts`, and the UI discloses it as simulated through the capability registry.
 
-Building geometry is real: 464 footprints from a bundled OpenStreetMap extract of Boston Back Bay (`src/domain/fixtures/`, ODbL), with synthetic attributes ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)). The Map page loads an OpenFreeMap basemap from the public instance over the network, recolors it from the active appearance, and falls back to a plain background when it is off or cannot load.
+Building geometry is real: 464 footprints from a bundled OpenStreetMap extract of Boston Back Bay (`src/domain/fixtures/`, ODbL), with synthetic attributes ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)). The Map page loads an OpenFreeMap basemap from the public instance over the network, recolors it from the active appearance, and falls back to a plain background when it is off or cannot load. It can also show live terrain with hillshade from Mapterhorn ([decision 0015](decisions/0015-terrain.md)), for display only: terrain is never project data, and a failure falls back to a flat map.
 
 Run it with `npm ci` then `npm run dev`. To walk the workflow manually: open the Workflow panel, run stages in order (Shading can be skipped), create a measure and a scenario on the Creator page before running Scenario definitions, and expect Grid modeling to fail on its first attempt by design; run it again to recover.
 
@@ -97,7 +97,7 @@ Key domain rules:
 | Shell | `shell/WorkbenchShell.tsx`, `Ribbon.tsx` (menus, quick buttons, Run split button), `StatusBar.tsx`, `CommandPalette.tsx`, `HelpDialogs.tsx` |
 | Shared components | `components/ActionButton.tsx` (explains unavailable actions), `StateBadge.tsx` (semantic stage states), `CapabilityBadge.tsx` (`CapabilityBadge` and `StatusTag`), `CapabilityTable.tsx`, `EmptyState.tsx`, `forms.module.css` |
 | Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/ContextPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/ReasoningMode.tsx` (agent transcript, approvals, prepared sessions) |
-| Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts`; `basemapStyle.ts` (recolors the OpenFreeMap style from appearance tokens, attribution) and `useBasemap.ts` (loading, failure, retry); `silhouette.ts` (projects a building's ground, roof, and walls with a camera matrix) and `SelectionSilhouette.tsx` (the 3D selection outline: a custom layer supplies the matrix every frame, and the silhouette's boundary is drawn on an overlay canvas) |
+| Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts`; `basemapStyle.ts` (recolors the OpenFreeMap style from appearance tokens, attribution) and `useBasemap.ts` (loading, failure, retry); `silhouette.ts` (projects a building's ground, roof, and walls with a camera matrix) and `SelectionSilhouette.tsx` (the 3D selection outline: a custom layer supplies the matrix every frame, and the silhouette's boundary is drawn on an overlay canvas); `terrain.ts` (the Mapterhorn source, hillshade paint from appearance tokens, attribution, legend wording) and `useTerrain.ts` (applies terrain once its source exists, with loading, failure, and retry) |
 | Visualization | `viz/EChart.tsx` (modular ECharts wrapper and `useChartFont`), `grid/agGrid.ts` (AG Grid theme from CSS tokens) |
 | Persistence and global styles | `persistence.ts`, `storage.ts`, `basemapPreference.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
 
@@ -196,8 +196,8 @@ Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason i
 
 | Command | What it covers |
 | --- | --- |
-| `npm test` | 114 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools, basemap recoloring and preference, 3D silhouette projection |
-| `npm run test:e2e` | 45 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
+| `npm test` | 126 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools, basemap recoloring and preference, 3D silhouette projection and terrain lift, terrain display helpers |
+| `npm run test:e2e` | 47 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
 | `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing |
 
 End-to-end specs:
@@ -205,7 +205,7 @@ End-to-end specs:
 - `e2e/smoke.spec.ts`: renders with no serious or critical axe violations.
 - `e2e/workbench.spec.ts`: shell regions, no visible Working labels, the Run split button and menu, placing pages side by side and moving tabs from the palette, background task progress, explained blocked actions, palette and panel shortcuts, undo, save and layout persistence across reloads, narrow-window overlays, reset layout.
 - `e2e/pages.spec.ts`: Assets provenance, Creator validation and creation, Roadmap focus and custom stage insertion.
-- `e2e/map-table.spec.ts`: empty states, validated pending table edits, table-map shared selection, basemap credits, the fallback and retry when the basemap cannot load, the Settings toggle persisting across reloads, and the 2D/3D switch with its missing-heights note, legend rows, and keyboard hint.
+- `e2e/map-table.spec.ts`: empty states, validated pending table edits, table-map shared selection, basemap credits, the fallback and retry when the basemap cannot load, the Settings toggle persisting across reloads, the 2D/3D switch with its missing-heights note, legend rows, and keyboard hint, and the Terrain switch with its exaggeration slider, legend row, credits, and flat fallback with retry.
 - `e2e/test.ts`: not a spec. It exports `test` and `expect` with an automatic fixture that answers OpenFreeMap requests with a stand-in style and empty tiles, plus `blockBasemap` and `serveBasemapStub`.
 - `e2e/dashboard.spec.ts`: full manual path to scenario results, preview, apply, outdated notice, data table.
 - `e2e/appearance.spec.ts`: Geist loads, appearance switching persists, axe in all six appearances.
@@ -234,6 +234,8 @@ Conventions and pitfalls found while building:
 - Product specs import `test` and `expect` from `./test.ts`, never from `@playwright/test`, so the Map page never requests real tiles in tests. The spike specs keep `@playwright/test` because spike pages load no basemap. Imports under `e2e/` need the `.ts` extension (`tsconfig.node.json` uses `nodenext`).
 - Routed responses to another origin need `Access-Control-Allow-Origin`, or the browser rejects them and the page sees a network failure.
 - MapLibre reports basemap tile and TileJSON failures as `error` events with `sourceId` `openmaptiles`; the Map page falls back to the plain background on the first one until Retry basemap.
+- Terrain sources stay mounted whenever the map is up and fetch nothing until terrain or hillshade uses them. Removing a source that `setTerrain` still points at throws, and child sources unmount before a parent effect can clear terrain, so `useTerrain.ts` applies and clears terrain instead of driving react-maplibre's `terrain` prop, and re-applies it on `styledata` because style swaps drop it.
+- Product specs stub `tiles.mapterhorn.com` with a flat 8x8 terrarium PNG (elevation 0) from `e2e/test.ts`, so terrain renders offline; relief never appears in tests.
 - react-maplibre control options such as `showCompass` apply only when the control is created, so the Map page remounts `NavigationControl` with a `key` when 3D changes. `maxPitch={0}` keeps 2D flat even with right-drag or Shift+arrow tilting, and fits pass the current pitch and bearing so zooming keeps the 3D camera.
 - In MapLibre 6 custom layers, `options.modelViewProjectionMatrix` expects world pixel coordinates (Mercator times `512 * 2 ** zoom`), not Mercator 0 to 1, despite its doc example. `options.defaultProjectionData.mainMatrix` takes Mercator 0 to 1 with conformal z, which `silhouette.ts` produces. Using the wrong one projects everything off screen without an error; the e2e pixel check on the silhouette overlay caught it.
 
@@ -244,12 +246,13 @@ Behavior promised by the plan or decisions but not built yet:
 - **Agent (stage 4):** scripted sessions only. Free text starts a session only when it matches a session's keywords, and otherwise the agent says so. Transcripts, view state, and added charts are not saved with the project, and a stage failure during an approved run ends the session. See [stage 4 status](first-slice-proposal.md#stage-4-scripted-agent-2026-09-15).
 - **Design alignment:** the six-appearance reading of the palette answer is unconfirmed, axe runs in non-Light appearances on the default workbench only, the context mode resets on reload, and Inspection is read-only. See [remaining gaps](design-alignment.md#remaining-gaps).
 - **Keyboard docking:** the command palette splits the active tab and moves it to the next tab group; there is no keyboard way to pick a specific target group or side.
-- **View state:** layout, appearance, and view operations (context mode, map metric and overlay, map zoom, map 2D or 3D, table view and filter, dashboard compare toggles, added charts) are logged. Dashboard what-if previews stay unlogged drafts, and view state resets on reload.
+- **View state:** layout, appearance, and view operations (context mode, map metric and overlay, map zoom, map 2D or 3D, terrain and its exaggeration, table view and filter, dashboard compare toggles, added charts) are logged. Dashboard what-if previews stay unlogged drafts, and view state resets on reload.
 - **Chart specs:** charts the agent adds use validated specifications (decision 0011); the Dashboard's built-in charts still build ECharts options directly in `dashboardCharts.ts`.
 - **Table:** no Zones view (zone counts are a Buildings column) and no column visibility menu.
 - **Fixture variants:** the plan lists switchable empty, warning, and error fixtures. States are reached by walking the workflow: schema matching always reports a warning, skipping shading warns at scenario definitions when a PV measure is used, and grid modeling fails on its first attempt. There is no fixture picker.
 - **Layout:** at 1280 px with both side panels open, the Settings tab moves into FlexLayout's overflow menu. Layout changes are logged but not undoable.
 - **Accessibility:** the map canvas is not screen-reader accessible (the Table page is the equivalent); automated axe runs cover 1280x800 only.
 - **3D buildings** ([decision 0013](decisions/0013-3d-building-extrusion.md)): heights are synthetic (floors × 3.2 m) and appear only after Geospatial preprocessing; the 2D/3D choice resets on reload with the rest of the view state; grid lines and points stay on the ground and can be hidden behind extrusions; the silhouette outline is drawn above the map, so it shows through taller buildings in front, and adjacent selected buildings share one outline; extrusion rendering is checked by screenshot review only.
+- **Terrain** ([decision 0015](decisions/0015-terrain.md)): display only, never project data. Mapterhorn states no usage terms or service level and serves Back Bay to zoom 16. Back Bay is nearly flat, so relief needs exaggeration and a tilted camera to be visible; tests use a flat stand-in tile, so real relief is checked by screenshot review only.
 - **Basemap:** the public OpenFreeMap instance has no SLA, and one failed tile drops the whole basemap until Retry basemap. Basemap labels use OpenFreeMap's Noto Sans glyphs, not Geist. Tests exercise a stand-in style, so the recolored real style is checked by screenshot review only.
 - **Hosting:** only the Vite dev server and `npm run preview` are verified; loading the bundle inside the reference ASP.NET or Eto host is not, and that host would also need network access for the basemap.
