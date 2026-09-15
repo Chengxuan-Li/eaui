@@ -43,7 +43,7 @@ Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026
   - Side panels are left and right borders. Keyboard docking (moving a tab to another tabset) is not documented, so the command palette provides it through `Actions.moveNode`.
   - One docking model owns the whole main area including side panels. Only the ribbon, side (activity) bar, and status bar sit outside it, and they act on it through typed commands.
 - **Map:**
-  - Default to no basemap. Token-free basemaps (OpenFreeMap, self-hosted Protomaps) can be added later with their attribution terms.
+  - Default to no basemap. Token-free basemaps (OpenFreeMap, self-hosted Protomaps) can be added later with their attribution terms. Amended on 2026-09-15 by [decision 0012](decisions/0012-openfreemap-basemap-back-bay.md): the Map page shows the public OpenFreeMap basemap, recolored from appearance tokens, with a plain-background fallback and a Settings toggle. No package was added.
   - The canvas is not screen-reader accessible, so the linked table is the accessible equivalent.
 - **Workflow graph:** React Flow arrow keys move nodes. The read-only Roadmap disables node dragging and provides graph navigation ([accessibility](https://reactflow.dev/learn/advanced-use/accessibility)).
 - **Table:**

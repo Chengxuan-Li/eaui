@@ -101,6 +101,7 @@ Node.js 24.21.0 and Microsoft Edge on the `E:/Coding` machine.
 - **Palettes:** the six-appearance reading of the user's answer is unconfirmed, and each named palette exists in one scheme only.
 - **Accessibility coverage:** axe runs in all six appearances on the default workbench only. Pages with data were axe-checked in Light and reviewed by screenshot in the other appearances. Roadmap and Creator were not re-screenshotted in this pass.
 - **Charts:** only the annual bars carry direct labels, and no map metric uses a diverging scale yet.
+- **Map context layers** (section 6): not built in this pass. Built on the `feature/basemap` branch ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)): OpenFreeMap streets, water, parks, and labels recolored from each appearance, with the basemap's own buildings hidden. Basemap labels use OpenFreeMap's Noto Sans glyphs rather than Geist.
 - **Inspection:** it is read-only; editing stays on the Table page. The Assets panel keeps its own details region, the context mode resets on reload, and the Table page has no Inspect button (the command palette action covers keyboard use).
 - **Reasoning:** closed on the `feature/agentic` branch, where stage 4 fills the mode with scripted agent sessions; `master` still shows the placeholder until that branch is merged.
 - **Line endings:** `npm run format:check` fails on CRLF checkouts. A `.gitattributes` rule or `core.autocrlf=input` would fix it; not decided.

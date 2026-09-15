@@ -1,13 +1,13 @@
 # Developer guide
 
-Date: 2026-09-15, after first-slice stage 4 (scripted agent) on the `feature/agentic` branch.
+Date: 2026-09-15, after first-slice stage 4 (scripted agent) on the `feature/agentic` branch and the OpenFreeMap basemap over Back Bay footprints ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)) on the `feature/basemap` branch.
 
 This guide is for a developer or agent taking over without the original conversation. It describes the code as built, how to extend it without breaking the accepted rules, how it is tested, and what is still missing. Product intent and accepted choices live in the [decision records](decisions/README.md); evidence lives in the [first-slice implementation status](first-slice-proposal.md#implementation-status) and the [design alignment record](design-alignment.md#implementation-status).
 
 ## Reading order
 
 1. [AGENTS.md](../AGENTS.md): operating rules (reference boundary, Git safety, credentials, verification before commits).
-2. [Decisions 0003 to 0011](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), the Geist typeface, and agent chart specifications and missing-state approvals.
+2. [Decisions 0003 to 0012](decisions/README.md): what the product is (shell, layout, workflow, scripted agent), which packages are allowed, the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md), the Geist typeface, agent chart specifications and missing-state approvals, and the basemap and footprint source.
 3. This guide.
 4. [First-slice proposal](first-slice-proposal.md): the plan, the working/simulated/planned boundary, stage-by-stage status, gaps, and next steps.
 5. [Design alignment](design-alignment.md): how the build follows the guidelines, verification, and remaining gaps.
@@ -24,6 +24,8 @@ A browser-only React application with one synthetic project that can be taken th
 - **Appearance:** System or one of six curated appearances (Light, Dark, Technical monochrome, Lieflat-inspired, Clean technical light, Dark engineering), set in Geist with a three-size type scale.
 
 There is no server, no model provider, and no real engineering calculation. Every number comes from deterministic synthetic code in `src/domain/simulation.ts`, and the UI discloses it as simulated through the capability registry.
+
+Building geometry is real: 464 footprints from a bundled OpenStreetMap extract of Boston Back Bay (`src/domain/fixtures/`, ODbL), with synthetic attributes ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)). The Map page loads an OpenFreeMap basemap from the public instance over the network, recolors it from the active appearance, and falls back to a plain background when it is off or cannot load.
 
 Run it with `npm ci` then `npm run dev`. To walk the workflow manually: open the Workflow panel, run stages in order (Shading can be skipped), create a measure and a scenario on the Creator page before running Scenario definitions, and expect Grid modeling to fail on its first attempt by design; run it again to recover.
 
@@ -71,6 +73,7 @@ View state that is not project state changes through the layout controller, the 
 | `assets.ts` | Asset tree skeleton, `GROUP` ids, `upsertAsset`, `assetPath`. |
 | `capabilities.ts` | Working/simulated/planned registry that every honest label reads. |
 | `initialState.ts` | Empty project. |
+| `fixtures/` | `back-bay-buildings.geo.json`, the OpenStreetMap footprint extract (one feature per line, excluded from Prettier), and its ODbL notice. Regenerate with `node scripts/fetch-osm-buildings.mjs` only when the extract must change; building ids follow the file order. |
 
 Key domain rules:
 
@@ -94,15 +97,16 @@ Key domain rules:
 | Shell | `shell/WorkbenchShell.tsx`, `Ribbon.tsx` (menus, quick buttons, Run split button), `StatusBar.tsx`, `CommandPalette.tsx`, `HelpDialogs.tsx` |
 | Shared components | `components/ActionButton.tsx` (explains unavailable actions), `StateBadge.tsx` (semantic stage states), `CapabilityBadge.tsx` (`CapabilityBadge` and `StatusTag`), `CapabilityTable.tsx`, `EmptyState.tsx`, `forms.module.css` |
 | Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/ContextPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/ReasoningMode.tsx` (agent transcript, approvals, prepared sessions) |
-| Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts` |
+| Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts`; `basemapStyle.ts` (recolors the OpenFreeMap style from appearance tokens, attribution) and `useBasemap.ts` (loading, failure, retry) |
 | Visualization | `viz/EChart.tsx` (modular ECharts wrapper and `useChartFont`), `grid/agGrid.ts` (AG Grid theme from CSS tokens) |
-| Persistence and global styles | `persistence.ts`, `storage.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
+| Persistence and global styles | `persistence.ts`, `storage.ts`, `basemapPreference.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
 
 ### Browser storage
 
 Everything persists in `localStorage` of the current origin only:
 
-- `eaui.project.v1`: the saved project (File > Save, Ctrl+S). Tasks active at save time load as cancelled.
+- `eaui.project.v2`: the saved project (File > Save, Ctrl+S). Tasks active at save time load as cancelled. Projects saved under `eaui.project.v1` used the synthetic ocean grid; they stay in storage, are not restored, and the operation log says so.
+- `eaui.basemap`: `off` hides the OpenFreeMap basemap; anything else shows it. Changes are logged as `view.setBasemap`.
 - `eaui.layout.v1`: the FlexLayout model, saved on every layout change. An unreadable layout falls back to the default. Restored layouts take the current panel names from `PANELS`.
 - `eaui.theme`: the appearance preference, `system` or an appearance id. Values stored before curated appearances (`light`, `dark`) stay valid.
 
@@ -192,8 +196,8 @@ Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason i
 
 | Command | What it covers |
 | --- | --- |
-| `npm test` | 95 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools |
-| `npm run test:e2e` | 41 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
+| `npm test` | 108 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools, basemap recoloring and preference |
+| `npm run test:e2e` | 44 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
 | `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing; see the line-ending pitfall below |
 
 End-to-end specs:
@@ -201,7 +205,8 @@ End-to-end specs:
 - `e2e/smoke.spec.ts`: renders with no serious or critical axe violations.
 - `e2e/workbench.spec.ts`: shell regions, no visible Working labels, the Run split button and menu, placing pages side by side and moving tabs from the palette, background task progress, explained blocked actions, palette and panel shortcuts, undo, save and layout persistence across reloads, narrow-window overlays, reset layout.
 - `e2e/pages.spec.ts`: Assets provenance, Creator validation and creation, Roadmap focus and custom stage insertion.
-- `e2e/map-table.spec.ts`: empty states, validated pending table edits, table-map shared selection.
+- `e2e/map-table.spec.ts`: empty states, validated pending table edits, table-map shared selection, basemap credits, the fallback and retry when the basemap cannot load, and the Settings toggle persisting across reloads.
+- `e2e/test.ts`: not a spec. It exports `test` and `expect` with an automatic fixture that answers OpenFreeMap requests with a stand-in style and empty tiles, plus `blockBasemap` and `serveBasemapStub`.
 - `e2e/dashboard.spec.ts`: full manual path to scenario results, preview, apply, outdated notice, data table.
 - `e2e/appearance.spec.ts`: Geist loads, appearance switching persists, axe in all six appearances.
 - `e2e/context.spec.ts`: Inspection follows the shared selection, and the Inspect selection action opens it.
@@ -226,6 +231,9 @@ Conventions and pitfalls found while building:
 - Agent and planner unit tests step time with `src/testing/manualScheduler.ts`, shared by the agent and the task simulator; long flows call `runAll` with a high limit.
 - For visual review, write throwaway Playwright captures under the ignored `tmp/` folder and delete them afterwards.
 - On machines without Edge: `npx playwright install chromium` and set `PLAYWRIGHT_CHANNEL=chromium`.
+- Product specs import `test` and `expect` from `./test.ts`, never from `@playwright/test`, so the Map page never requests real tiles in tests. The spike specs keep `@playwright/test` because spike pages load no basemap. Imports under `e2e/` need the `.ts` extension (`tsconfig.node.json` uses `nodenext`).
+- Routed responses to another origin need `Access-Control-Allow-Origin`, or the browser rejects them and the page sees a network failure.
+- MapLibre reports basemap tile and TileJSON failures as `error` events with `sourceId` `openmaptiles`; the Map page falls back to the plain background on the first one until Retry basemap.
 
 ## Known gaps and deviations
 
@@ -240,4 +248,5 @@ Behavior promised by the plan or decisions but not built yet:
 - **Fixture variants:** the plan lists switchable empty, warning, and error fixtures. States are reached by walking the workflow: schema matching always reports a warning, skipping shading warns at scenario definitions when a PV measure is used, and grid modeling fails on its first attempt. There is no fixture picker.
 - **Layout:** at 1280 px with both side panels open, the Settings tab moves into FlexLayout's overflow menu. Layout changes are logged but not undoable.
 - **Accessibility:** the map canvas is not screen-reader accessible (the Table page is the equivalent); automated axe runs cover 1280x800 only.
-- **Hosting:** only the Vite dev server and `npm run preview` are verified; loading the bundle inside the reference ASP.NET or Eto host is not.
+- **Basemap:** the public OpenFreeMap instance has no SLA, and one failed tile drops the whole basemap until Retry basemap. Basemap labels use OpenFreeMap's Noto Sans glyphs, not Geist. Tests exercise a stand-in style, so the recolored real style is checked by screenshot review only.
+- **Hosting:** only the Vite dev server and `npm run preview` are verified; loading the bundle inside the reference ASP.NET or Eto host is not, and that host would also need network access for the basemap.
