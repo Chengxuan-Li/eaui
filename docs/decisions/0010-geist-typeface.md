@@ -24,7 +24,7 @@ The [UI design guidelines](../20260915_energyatlas_ui_design_guidelines.md) ([de
 ## Consequences
 
 - This adds a runtime dependency outside decisions 0007 and 0008. It is also recorded in [package selection](../package-selection.md).
-- **Geist Mono is not yet accepted.** `@fontsource-variable/geist-mono` 5.3.0 is the candidate for identifiers, code, and the operation log; it is an open question in [design alignment](../design-alignment.md#open-questions).
+- **Monospace stays Cascadia Code.** On 2026-09-15 the user chose Cascadia Code, with Consolas and system fallbacks, over Geist Mono for identifiers, code, and the operation log. `@fontsource-variable/geist-mono` is not added.
 - **Layout review:** Geist's metrics differ from Segoe UI, so chart labels, tab overflow, and table column widths need screenshot review after the switch.
 - **Tabular numerals:** Geist's support for them has not been verified yet.
 - **License:** OFL-1.1 allows bundling the fonts with the application.

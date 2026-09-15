@@ -125,7 +125,14 @@ Add an `AppAction` in `src/app/actions.ts`. The same entry then appears in the r
 
 Anything that is not real behavior needs a `capabilities.ts` entry and a `CapabilityBadge` or `StatusTag`. Planned controls are visible, focusable (`aria-disabled`, not `disabled`), and explain themselves. Empty states name the missing stage and offer to run it (`EmptyState`).
 
-Decision 0009 asks for status that describes application state, with routine states kept quiet. That does not remove the disclosure itself; how to show simulated and planned capability with less repetition is an [open question](design-alignment.md#open-questions). Until it is settled, keep the existing labels and avoid adding new repeated pills.
+Disclose capability quietly, following section 8 of the [guidelines](20260915_energyatlas_ui_design_guidelines.md) as amended on 2026-09-15:
+
+- Do not label working behavior.
+- Show Planned as the state of an unavailable control.
+- Disclose Simulated once per surface: page header, legend, or Inspection provenance.
+- Keep the full capability table in Settings.
+
+Routine workflow states use quiet text and icons; color is for states that need attention.
 
 ### Forms
 

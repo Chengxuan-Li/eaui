@@ -131,7 +131,7 @@ They should remain easy to scan while occupying little visual attention.
 
 ## 8. Status presentation
 
-Status indicators should describe meaningful application state, not development state.
+Status indicators should describe meaningful application state.
 
 Prefer semantic states such as:
 
@@ -144,6 +144,15 @@ Prefer semantic states such as:
 - Warning
 
 Avoid unnecessary repetition of colored pills or badges. Routine states can use quiet text or icon treatment; stronger color should be reserved for conditions that require attention.
+
+### Capability disclosure
+
+The prototype must still say honestly what is real, simulated, or not built yet, but quietly rather than through repeated development-state badges:
+
+- Do not label working behavior; working is the default.
+- Show **Planned** as the normal state of an unavailable control, which stays visible and explains itself.
+- Disclose **Simulated** data or computation once per surface, for example in a page header, a legend, or the provenance shown in Inspection.
+- Keep one complete capability overview in a single place, such as Settings.
 
 ## 9. Primary simulation action
 

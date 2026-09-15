@@ -222,7 +222,7 @@ Compared with the plan above and the package constraints, the build so far:
 
 Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decisions 0006 and 0009 and the Reasoning row above:
 
-- **Contextual right-side surface** (decision 0009): one pane with Reasoning and Inspection modes instead of a Reasoning-only panel. The items below form the Reasoning mode; how much of Inspection belongs in stage 4 is an [open design question](design-alignment.md#open-questions).
+- **Contextual right-side surface** (decision 0009): one pane with Reasoning and Inspection modes instead of a Reasoning-only panel. The items below form the Reasoning mode; the surface itself and a read-only Inspection mode are built in the [design alignment](design-alignment.md) pass before stage 4.
 - **Transcript** in the Reasoning mode: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
 - **Chat input and prompt presets**; a preset starts one of the scripted sessions. Free text without a matching script gets an honest "scripted sessions only" answer.
 - **Approvals:** tool calls that change the project model (`undoable` commands) wait for Approve or Reject. Approve runs the command with source `agent`; Reject records a rejected operation. Layout and view tool calls run directly and are logged.
@@ -238,6 +238,6 @@ Prerequisites and open design questions to settle at the start of stage 4:
 2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
 3. Decide whether "add a dashboard chart" needs the JSON view schema now, or a narrower operation that toggles which series the existing charts compare.
 4. Decide how a replay reacts when project state differs from what its script expects (for example, no baseline yet): stop with an explanation, or offer to run the missing stages with approval.
-5. Decide whether the design-alignment foundation, including the Geist typeface of [decision 0010](decisions/0010-geist-typeface.md), comes before stage 4 ([design alignment](design-alignment.md#open-questions)).
+5. Resolved 2026-09-15: the [design alignment](design-alignment.md) pass (decisions 0009 and [0010](decisions/0010-geist-typeface.md)), including the Reasoning | Inspection surface without the agent, comes before stage 4.
 
 Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).
