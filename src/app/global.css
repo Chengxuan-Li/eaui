@@ -1,0 +1,89 @@
+/* Workbench tokens beyond the base palette in src/index.css. Status tones pair
+   text with a tinted background at WCAG AA contrast in both themes; badges
+   always carry an icon and text so color is never the only signal. */
+:root {
+  --color-surface-raised: #eef1f4;
+  --color-selected-bg: #e3ecf8;
+  --color-on-accent: #ffffff;
+  --color-accent-text: #1d5fb8;
+
+  --tone-success-text: #1e6b37;
+  --tone-success-bg: #e6f4ea;
+  --tone-info-text: #1d5fb8;
+  --tone-info-bg: #e7f0fb;
+  --tone-warning-text: #7a4d00;
+  --tone-warning-bg: #fdf1dc;
+  --tone-danger-text: #a8231b;
+  --tone-danger-bg: #fbe9e7;
+  --tone-neutral-text: #3d4652;
+  --tone-neutral-bg: #eef1f4;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-surface-raised: #262b32;
+    --color-selected-bg: #1c3350;
+    --color-on-accent: #0b1a2e;
+    --color-accent-text: #8cbcff;
+
+    --tone-success-text: #7fd69a;
+    --tone-success-bg: #16301f;
+    --tone-info-text: #8cbcff;
+    --tone-info-bg: #152a45;
+    --tone-warning-text: #f2c46b;
+    --tone-warning-bg: #3a2a0c;
+    --tone-danger-text: #ff9a8f;
+    --tone-danger-bg: #3d1714;
+    --tone-neutral-text: #c5ccd6;
+    --tone-neutral-bg: #262b32;
+
+    --shadow-popover: 0 8px 24px rgb(0 0 0 / 55%);
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-surface-raised: #262b32;
+  --color-selected-bg: #1c3350;
+  --color-on-accent: #0b1a2e;
+  --color-accent-text: #8cbcff;
+
+  --tone-success-text: #7fd69a;
+  --tone-success-bg: #16301f;
+  --tone-info-text: #8cbcff;
+  --tone-info-bg: #152a45;
+  --tone-warning-text: #f2c46b;
+  --tone-warning-bg: #3a2a0c;
+  --tone-danger-text: #ff9a8f;
+  --tone-danger-bg: #3d1714;
+  --tone-neutral-text: #c5ccd6;
+  --tone-neutral-bg: #262b32;
+
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 55%);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

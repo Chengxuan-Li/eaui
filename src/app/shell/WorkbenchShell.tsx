@@ -1,0 +1,225 @@
+import { Layout, type ITabRenderValues, type TabNode } from 'flexlayout-react'
+import 'flexlayout-react/style/light.css'
+import {
+  Bot,
+  FolderTree,
+  LayoutDashboard,
+  ListChecks,
+  Map as MapIcon,
+  Route,
+  Settings,
+  SquarePlus,
+  Table2,
+  TriangleAlert,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createInitialState } from '../../domain/initialState.ts'
+import { useLayoutVersion, useServices } from '../WorkbenchContext.tsx'
+import {
+  useAppActions,
+  useInvokeAction,
+  type ShellDialogs,
+} from '../actions.ts'
+import componentStyles from '../components/components.module.css'
+import { NotBuiltYet } from '../components/NotBuiltYet.tsx'
+import '../global.css'
+import '../layout/flexlayout-theme.css'
+import { IssuesPage } from '../pages/IssuesPage.tsx'
+import { SettingsPage } from '../pages/SettingsPage.tsx'
+import { TasksPage } from '../pages/TasksPage.tsx'
+import { WorkflowPanel } from '../panels/WorkflowPanel.tsx'
+import { useShortcuts } from '../useShortcuts.ts'
+import { CommandPalette } from './CommandPalette.tsx'
+import {
+  CapabilitiesDialog,
+  NewProjectDialog,
+  ShortcutsDialog,
+} from './HelpDialogs.tsx'
+import { Ribbon } from './Ribbon.tsx'
+import { StatusBar } from './StatusBar.tsx'
+import styles from './shell.module.css'
+
+type OpenDialog = 'palette' | 'shortcuts' | 'capabilities' | 'newProject' | null
+
+const TAB_ICONS: Record<string, LucideIcon> = {
+  'panel.assets': FolderTree,
+  'panel.workflow': Workflow,
+  'panel.reasoning': Bot,
+  'page.map': MapIcon,
+  'page.table': Table2,
+  'page.dashboard': LayoutDashboard,
+  'page.roadmap': Route,
+  'page.creator': SquarePlus,
+  'page.settings': Settings,
+  'page.issues': TriangleAlert,
+  'page.tasks': ListChecks,
+}
+
+const KEY_MAP = { focusNextTabset: 'F6', focusPreviousTabset: 'Shift+F6' }
+
+// Below this width side panels open as overlays (decision 0004).
+const COMPACT_QUERY = '(max-width: 1099px)'
+
+// Border tabs form the icon side bar of decision 0004; the tab name stays the
+// accessible label, so only the visible content changes.
+function renderTab(node: TabNode, values: ITabRenderValues) {
+  const Icon = TAB_ICONS[node.getComponent() ?? '']
+  if (!Icon) return
+  if (node.isInsideBorder()) {
+    values.content = <Icon size={18} aria-hidden="true" />
+  } else {
+    values.leading = <Icon size={14} aria-hidden="true" />
+  }
+}
+
+function renderTabContent(node: TabNode) {
+  switch (node.getComponent()) {
+    case 'panel.workflow':
+      return <WorkflowPanel />
+    case 'page.tasks':
+      return <TasksPage />
+    case 'page.issues':
+      return <IssuesPage />
+    case 'page.settings':
+      return <SettingsPage />
+    case 'panel.assets':
+      return (
+        <NotBuiltYet
+          title="Assets"
+          buildStage={3}
+          description="Asset tree over the energy model, grid model, data, and views, with provenance and status badges."
+        />
+      )
+    case 'panel.reasoning':
+      return (
+        <NotBuiltYet
+          title="Reasoning"
+          buildStage={4}
+          description="Scripted agent sessions showing tool calls, reasoning, actions, referenced links, chat, and approvals."
+        />
+      )
+    case 'page.map':
+      return (
+        <NotBuiltYet
+          title="Map"
+          buildStage={3}
+          description="Synthetic footprints and grid elements with linked selection."
+        />
+      )
+    case 'page.table':
+      return (
+        <NotBuiltYet
+          title="Table"
+          buildStage={3}
+          description="Buildings and grid elements with sorting, filtering, and pending edits."
+        />
+      )
+    case 'page.dashboard':
+      return (
+        <NotBuiltYet
+          title="Dashboard"
+          buildStage={3}
+          description="Baseline and scenario comparison with scenario controls."
+        />
+      )
+    case 'page.roadmap':
+      return (
+        <NotBuiltYet
+          title="Roadmap"
+          buildStage={3}
+          description="The full project-setup workflow graph, sharing state with the Workflow panel."
+        />
+      )
+    case 'page.creator':
+      return (
+        <NotBuiltYet
+          title="Creator"
+          buildStage={3}
+          description="Measure and scenario creators backed by the shared commands."
+        />
+      )
+    default:
+      return (
+        <p className={componentStyles.page}>
+          Unknown tab &ldquo;{node.getName()}&rdquo;. Reset the layout from the
+          View menu.
+        </p>
+      )
+  }
+}
+
+export function WorkbenchShell() {
+  const { workbench, layout } = useServices()
+  const [openDialog, setOpenDialog] = useState<OpenDialog>(null)
+  const dialogs = useMemo<ShellDialogs>(
+    () => ({
+      openPalette: () => setOpenDialog('palette'),
+      openShortcuts: () => setOpenDialog('shortcuts'),
+      openCapabilities: () => setOpenDialog('capabilities'),
+      openNewProject: () => setOpenDialog('newProject'),
+    }),
+    [],
+  )
+  const actions = useAppActions(dialogs)
+  const invoke = useInvokeAction()
+  useShortcuts(actions, invoke)
+  useLayoutVersion()
+
+  // Decision 0004 narrow-width behavior: side panels become overlays.
+  useEffect(() => {
+    const query = window.matchMedia(COMPACT_QUERY)
+    const apply = () => layout.setCompact(query.matches)
+    apply()
+    query.addEventListener('change', apply)
+    return () => query.removeEventListener('change', apply)
+  }, [layout])
+
+  const handleDialogChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) setOpenDialog(null)
+  }, [])
+
+  return (
+    <div className={styles.shell}>
+      <Ribbon actions={actions} invoke={invoke} />
+      <main className={styles.main} aria-label="Workspace">
+        <Layout
+          model={layout.getModel()}
+          factory={renderTabContent}
+          onAction={layout.handleUserAction}
+          onRenderTab={renderTab}
+          keyMap={KEY_MAP}
+        />
+      </main>
+      <StatusBar onOpenPage={(page) => layout.openPage(page)} />
+      <CommandPalette
+        isOpen={openDialog === 'palette'}
+        onOpenChange={handleDialogChange}
+        actions={actions}
+        invoke={invoke}
+      />
+      <ShortcutsDialog
+        isOpen={openDialog === 'shortcuts'}
+        onOpenChange={handleDialogChange}
+        actions={actions}
+      />
+      <CapabilitiesDialog
+        isOpen={openDialog === 'capabilities'}
+        onOpenChange={handleDialogChange}
+      />
+      <NewProjectDialog
+        isOpen={openDialog === 'newProject'}
+        onOpenChange={handleDialogChange}
+        onConfirm={() =>
+          workbench.load(createInitialState(), {
+            type: 'project.new',
+            title: 'New project',
+            summary:
+              'Started a new empty synthetic project. The copy saved in this browser is unchanged until you save.',
+          })
+        }
+      />
+    </div>
+  )
+}

@@ -12,7 +12,6 @@ import {
   type Command,
   type CommandContext,
   type CommandOutcome,
-  type CommandType,
   type ValidationIssue,
 } from './commands.ts'
 import { createInitialState } from './initialState.ts'
@@ -23,7 +22,8 @@ enablePatches()
 export type OperationEntry = {
   id: string
   sequence: number
-  type: CommandType | 'history.undo' | 'history.redo'
+  /** A command type, a history replay, or an external operation such as a layout change. */
+  type: string
   title: string
   input: unknown
   source: CommandSource
@@ -43,12 +43,27 @@ export type WorkbenchSnapshot = {
 
 export type ExecuteResult = { operationId: string; outcome: CommandOutcome }
 
+/** An operation outside the command registry, such as a layout change, save, or blocked action. */
+export type ExternalOperation = {
+  type: string
+  title: string
+  input?: unknown
+  source?: CommandSource
+  status?: 'applied' | 'rejected'
+  summary: string
+  issues?: ValidationIssue[]
+}
+
 export type Workbench = {
   store: StoreApi<WorkbenchSnapshot>
   getState: () => WorkbenchState
   execute: (command: Command, source?: CommandSource) => ExecuteResult
   undo: (source?: CommandSource) => ExecuteResult
   redo: (source?: CommandSource) => ExecuteResult
+  /** Appends an external operation to the log without changing project state. */
+  record: (operation: ExternalOperation) => string
+  /** Replaces project state (new project, restore) and clears undo history. */
+  load: (state: WorkbenchState, operation: ExternalOperation) => string
 }
 
 type HistoryEntry = {
@@ -245,9 +260,37 @@ export function createWorkbench(
     return { operationId, outcome: { status: 'applied', summary } }
   }
 
+  function appendExternal(
+    state: WorkbenchState,
+    operation: ExternalOperation,
+  ): string {
+    const { operationId, sequence, at } = nextOperation()
+    const status = operation.status ?? 'applied'
+    commit(state, {
+      id: operationId,
+      sequence,
+      type: operation.type,
+      title: operation.title,
+      input: operation.input ?? {},
+      source: operation.source ?? 'manual',
+      at,
+      undoable: false,
+      status,
+      summary: status === 'applied' ? operation.summary : null,
+      issues: operation.issues ?? [],
+    })
+    return operationId
+  }
+
   return {
     store,
     getState: () => store.getState().state,
+    record: (operation) => appendExternal(store.getState().state, operation),
+    load: (state, operation) => {
+      undoStack.length = 0
+      redoStack.length = 0
+      return appendExternal(state, operation)
+    },
     execute,
     undo: (source = 'manual') => replay('history.undo', source),
     redo: (source = 'manual') => replay('history.redo', source),

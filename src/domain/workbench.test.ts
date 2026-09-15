@@ -482,3 +482,54 @@ describe('workbench commands', () => {
     expect(catalog.length).toBeGreaterThanOrEqual(15)
   })
 })
+
+describe('external operations', () => {
+  test('records layout and blocked actions in the same operation log', () => {
+    const workbench = setup()
+    const operationId = workbench.record({
+      type: 'layout.openPage',
+      title: 'Open page',
+      input: { page: 'table' },
+      summary: 'Opened the Table page.',
+    })
+    expect(workbench.store.getState().log.at(-1)).toMatchObject({
+      id: operationId,
+      type: 'layout.openPage',
+      status: 'applied',
+      source: 'manual',
+      undoable: false,
+    })
+
+    workbench.record({
+      type: 'action.help.comments',
+      title: 'Comments',
+      summary: '',
+      status: 'rejected',
+      issues: [{ path: '', message: 'Planned: comments.' }],
+    })
+    expect(workbench.store.getState().log.at(-1)).toMatchObject({
+      status: 'rejected',
+      summary: null,
+      issues: [{ message: 'Planned: comments.' }],
+    })
+  })
+
+  test('loads replacement state and clears undo history', () => {
+    const workbench = setup()
+    workbench.execute({
+      type: 'workflow.insertStage',
+      input: { afterStageId: S.schema, name: 'Review' },
+    })
+    expect(workbench.store.getState().canUndo).toBe(true)
+
+    const replacement = createWorkbench().getState()
+    workbench.load(replacement, {
+      type: 'project.reset',
+      title: 'New project',
+      summary: 'Started a new empty project.',
+    })
+    expect(workbench.getState()).toBe(replacement)
+    expect(workbench.store.getState().canUndo).toBe(false)
+    expect(workbench.undo().outcome.status).toBe('rejected')
+  })
+})

@@ -1,0 +1,75 @@
+.panel {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.stageList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.stage {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.current {
+  border-color: var(--color-accent);
+  background: var(--color-selected-bg);
+}
+
+.stageRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stageName {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stageNumber {
+  min-width: 1.25rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stageActions {
+  display: flex;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0 1.75rem;
+}
+
+.runMessage {
+  margin: var(--space-1) 0 0 1.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}

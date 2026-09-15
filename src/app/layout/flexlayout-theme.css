@@ -1,0 +1,42 @@
+/* Maps FlexLayout's named theme variables to workbench tokens (decision 0008),
+   so both light and dark themes follow the same palette and contrast. */
+:root {
+  --flexlayout-font-family: var(--font-sans);
+  --flexlayout-font-size: var(--font-size-base);
+
+  --flexlayout-color-background: var(--color-bg);
+  --flexlayout-color-base: var(--color-surface);
+  --flexlayout-color-text: var(--color-text);
+  --flexlayout-color-border: var(--color-border);
+  --flexlayout-color-focus: var(--color-focus);
+  --flexlayout-color-icon: var(--color-text-muted);
+
+  --flexlayout-color-tab-content: var(--color-surface);
+  --flexlayout-color-tab-selected: var(--color-text);
+  --flexlayout-color-tab-selected-background: var(--color-surface);
+  --flexlayout-color-tab-unselected: var(--color-text-muted);
+  --flexlayout-color-tab-unselected-background: transparent;
+  --flexlayout-color-tabset-background: var(--color-surface-raised);
+  --flexlayout-color-tabset-background-selected: var(--color-surface-raised);
+  --flexlayout-color-tabset-background-maximized: var(--color-surface-raised);
+  --flexlayout-color-tabset-divider-line: var(--color-border);
+
+  --flexlayout-color-border-background: var(--color-surface-raised);
+  --flexlayout-color-border-divider-line: var(--color-border);
+  --flexlayout-color-border-tab-content: var(--color-surface);
+  --flexlayout-color-border-tab-selected: var(--color-accent-text);
+  --flexlayout-color-border-tab-selected-background: var(--color-selected-bg);
+  --flexlayout-color-border-tab-unselected: var(--color-text-muted);
+  --flexlayout-color-border-tab-unselected-background: transparent;
+
+  --flexlayout-color-splitter: var(--color-border);
+  --flexlayout-color-splitter-hover: var(--color-accent);
+  --flexlayout-color-splitter-drag: var(--color-accent);
+
+  --flexlayout-color-popup-border: var(--color-border);
+  --flexlayout-color-popup-selected: var(--color-on-accent);
+  --flexlayout-color-popup-selected-background: var(--color-accent);
+  --flexlayout-color-popup-unselected: var(--color-text);
+  --flexlayout-color-popup-unselected-background: var(--color-surface);
+  --flexlayout-color-toolbar-button-hover: var(--color-surface-raised);
+}

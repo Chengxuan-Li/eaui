@@ -113,3 +113,27 @@ Code in `src/domain/`; 21 unit tests in `src/domain/*.test.ts`.
 - **Design notes:**
   - Undo covers model changes only: skip or restore, insert stage, apply edits, create measure or scenario. Runs, tasks, selection, and pending edits are not undoable. The id and revision counter never rewinds, so undone changes cannot collide with later ones.
   - Stage state is derived, never stored. An executed stage becomes stale when an upstream revision or its own edit revision differs from what its last run consumed, or when an upstream stage is no longer executed or skipped.
+
+### Stage 2: workbench shell (2026-09-14)
+
+Code in `src/app/` and `src/App.tsx`. Tests in `src/app/shortcuts.test.ts`, `src/domain/workbench.test.ts`, `e2e/workbench.spec.ts`, and `e2e/smoke.spec.ts`.
+
+- **Real:**
+  - The three-row window of decision 0004: ribbon, FlexLayout main area, and status bar.
+  - Default layout: a left border (Assets, Workflow) whose tab strip is the icon side bar; a center tab group (Map, Table, Dashboard, Roadmap, Creator, Settings); and a right border (Reasoning). Issues and Tasks open from the status bar.
+  - A layout controller (`src/app/layout/layoutController.ts`) with typed layout operations: open page, toggle panel, maximize, reset, and compact mode. They are recorded in the operation log alongside manual tab selections, moves, and closes. The layout is kept in this browser.
+  - One action registry (`src/app/actions.ts`) drives the ribbon menus, quick buttons, command palette (Ctrl+K), and keyboard shortcuts. Blocked or planned actions record their reason in the status bar instead of doing nothing.
+  - The Workflow panel (run, rerun, skip, restore, focus, state badges) and the Tasks, Issues, and Settings pages (theme, layout reset, capability table).
+  - Save and restore in this browser's storage, a confirmed new empty project, keyboard undo and redo, and system, light, and dark themes with FlexLayout colors mapped to workbench tokens.
+  - Below 1100 px wide, side panels close and open as overlays so pages keep their width.
+- **Simulated:** stage runs, and computing resources in the status bar.
+- **Not built yet, labeled in the UI:** Assets, Map, Table, Dashboard, Roadmap, and Creator (stage 3); Reasoning (stage 4).
+- **Verification (2026-09-14):**
+  - `npm run typecheck`, `npm run lint`, and `npm run format:check` pass; 28 unit tests pass.
+  - `npm run test:e2e` passes 23 tests, including 8 workbench tests and a smoke test with no axe violations at 1280x800. An axe scan in dark mode also reported no violations.
+  - Screenshots reviewed at 1280x800, 1920x1080, and 900x700, and in dark mode with a running stage, the command palette, and the View menu open.
+- **Notes and known gaps:**
+  - React Aria has no menubar, so the ribbon uses menu buttons inside an ARIA toolbar.
+  - Unavailable buttons use `aria-disabled` so they stay focusable and explain themselves. Playwright treats them as disabled, so tests activate them from the keyboard.
+  - At 1280 px with both side panels open, the Settings tab moves into FlexLayout's tab overflow menu.
+  - Undo covers model commands only; layout changes are logged but not undoable.

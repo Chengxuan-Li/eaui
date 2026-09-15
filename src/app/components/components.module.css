@@ -1,0 +1,132 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.375rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.success {
+  color: var(--tone-success-text);
+  background: var(--tone-success-bg);
+}
+
+.info {
+  color: var(--tone-info-text);
+  background: var(--tone-info-bg);
+}
+
+.warning {
+  color: var(--tone-warning-text);
+  background: var(--tone-warning-bg);
+}
+
+.danger {
+  color: var(--tone-danger-text);
+  background: var(--tone-danger-bg);
+}
+
+.neutral {
+  color: var(--tone-neutral-text);
+  background: var(--tone-neutral-bg);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.625rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--color-accent);
+}
+
+.button[aria-disabled='true'] {
+  color: var(--color-text-muted);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.primary[aria-disabled='true'] {
+  background: var(--color-surface);
+}
+
+.page {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4);
+}
+
+.page h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+
+.page h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 0.875rem;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: var(--space-1);
+}
+
+.table th,
+.table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}

@@ -1,0 +1,398 @@
+import {
+  Ban,
+  Bot,
+  Command,
+  FilePlus,
+  FolderTree,
+  Info,
+  ListChecks,
+  Maximize,
+  MessageSquare,
+  Monitor,
+  Moon,
+  Play,
+  Redo2,
+  RotateCcw,
+  Save,
+  Sun,
+  Undo2,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react'
+import { useCallback, useMemo } from 'react'
+import { capabilities } from '../domain/capabilities.ts'
+import { stageRunBlocker } from '../domain/workflow.ts'
+import {
+  useLayoutVersion,
+  useServices,
+  useStageStates,
+  useWorkbenchSnapshot,
+} from './WorkbenchContext.tsx'
+import { DEFAULT_PAGES, PAGES, type PageId } from './layout/layoutController.ts'
+import { saveProject } from './persistence.ts'
+
+// One registry of app actions drives the ribbon menus, quick buttons, command
+// palette, and keyboard shortcuts, so they cannot drift apart. A disabled or
+// planned action is never a silent no-op: invoking it records the reason.
+
+export type ActionGroup = 'File' | 'Edit' | 'View' | 'Run' | 'Help'
+
+export const ACTION_GROUPS: ActionGroup[] = [
+  'File',
+  'Edit',
+  'View',
+  'Run',
+  'Help',
+]
+
+export type AppAction = {
+  id: string
+  label: string
+  group: ActionGroup
+  icon?: LucideIcon
+  shortcut?: string
+  alternateShortcuts?: string[]
+  /** Whether the shortcut also works while typing in a field. */
+  allowInEditable?: boolean
+  /** Explains why the action cannot run now; null when it can. */
+  disabledReason: string | null
+  /** Current on/off state for toggles. */
+  pressed?: boolean
+  perform: () => void
+}
+
+export type ShellDialogs = {
+  openPalette: () => void
+  openShortcuts: () => void
+  openCapabilities: () => void
+  openNewProject: () => void
+}
+
+const PAGE_SHORTCUTS: Partial<Record<PageId, string>> = Object.fromEntries(
+  DEFAULT_PAGES.map((page, index) => [page, `Alt+${index + 1}`]),
+)
+
+export function useAppActions(dialogs: ShellDialogs): AppAction[] {
+  const { workbench, layout, storage, theme, setTheme } = useServices()
+  const snapshot = useWorkbenchSnapshot((current) => current)
+  const stageStates = useStageStates()
+  const layoutVersion = useLayoutVersion()
+
+  return useMemo(() => {
+    void layoutVersion
+    const { state, canUndo, canRedo } = snapshot
+    const pendingCount = Object.keys(state.pendingEdits).length
+    const currentStageId = state.workflow.currentStageId
+    const currentBlocker = currentStageId
+      ? stageRunBlocker(state.workflow, state.tasks, currentStageId)
+      : 'No stage is focused.'
+    const nextReady = state.workflow.stageIds.find(
+      (id) => stageStates[id] === 'ready',
+    )
+    const activeTaskIds = state.taskIds.filter((id) => {
+      const status = state.tasks[id]?.status
+      return status === 'queued' || status === 'running'
+    })
+    const fullScreenAvailable =
+      typeof document !== 'undefined' && document.fullscreenEnabled
+
+    const actions: AppAction[] = [
+      {
+        id: 'file.save',
+        label: 'Save project in this browser',
+        group: 'File',
+        icon: Save,
+        shortcut: 'Ctrl+S',
+        allowInEditable: true,
+        disabledReason: storage
+          ? null
+          : 'Browser storage is unavailable, so the project cannot be saved here.',
+        perform: () => {
+          const result = saveProject(storage, workbench.getState(), new Date())
+          if (result.ok) {
+            workbench.record({
+              type: 'project.save',
+              title: 'Save project',
+              summary: `Saved the project in this browser at ${new Date(result.savedAt).toLocaleTimeString()}.`,
+            })
+          } else {
+            workbench.record({
+              type: 'project.save',
+              title: 'Save project',
+              status: 'rejected',
+              summary: '',
+              issues: [{ path: '', message: result.message }],
+            })
+          }
+        },
+      },
+      {
+        id: 'file.new',
+        label: 'New empty project…',
+        group: 'File',
+        icon: FilePlus,
+        disabledReason: null,
+        perform: dialogs.openNewProject,
+      },
+      {
+        id: 'edit.undo',
+        label: 'Undo',
+        group: 'Edit',
+        icon: Undo2,
+        shortcut: 'Ctrl+Z',
+        disabledReason: canUndo ? null : 'Nothing to undo.',
+        perform: () => {
+          workbench.undo()
+        },
+      },
+      {
+        id: 'edit.redo',
+        label: 'Redo',
+        group: 'Edit',
+        icon: Redo2,
+        shortcut: 'Ctrl+Shift+Z',
+        alternateShortcuts: ['Ctrl+Y'],
+        disabledReason: canRedo ? null : 'Nothing to redo.',
+        perform: () => {
+          workbench.redo()
+        },
+      },
+      {
+        id: 'edit.applyEdits',
+        label: `Apply pending edits (${pendingCount})`,
+        group: 'Edit',
+        disabledReason: pendingCount > 0 ? null : 'There are no pending edits.',
+        perform: () => {
+          workbench.execute({ type: 'edits.apply', input: {} })
+        },
+      },
+      {
+        id: 'edit.discardEdits',
+        label: 'Discard pending edits',
+        group: 'Edit',
+        disabledReason: pendingCount > 0 ? null : 'There are no pending edits.',
+        perform: () => {
+          workbench.execute({ type: 'edits.discard', input: {} })
+        },
+      },
+      ...(Object.keys(PAGES) as PageId[]).map((page): AppAction => ({
+        id: `view.open.${page}`,
+        label: `Open ${PAGES[page].name}`,
+        group: 'View',
+        shortcut: PAGE_SHORTCUTS[page],
+        disabledReason: null,
+        perform: () => layout.openPage(page),
+      })),
+      {
+        id: 'view.toggleAssets',
+        label: 'Show or hide Assets',
+        group: 'View',
+        icon: FolderTree,
+        shortcut: 'Ctrl+B',
+        pressed: layout.isPanelOpen('assets'),
+        disabledReason: null,
+        perform: () => layout.togglePanel('assets'),
+      },
+      {
+        id: 'view.toggleWorkflow',
+        label: 'Show or hide Workflow',
+        group: 'View',
+        icon: Workflow,
+        shortcut: 'Ctrl+Shift+E',
+        pressed: layout.isPanelOpen('workflow'),
+        disabledReason: null,
+        perform: () => layout.togglePanel('workflow'),
+      },
+      {
+        id: 'view.toggleReasoning',
+        label: 'Show or hide Reasoning',
+        group: 'View',
+        icon: Bot,
+        shortcut: 'Ctrl+Alt+B',
+        pressed: layout.isPanelOpen('reasoning'),
+        disabledReason: null,
+        perform: () => layout.togglePanel('reasoning'),
+      },
+      {
+        id: 'view.toggleMaximize',
+        label: 'Maximize or restore tab group',
+        group: 'View',
+        icon: Maximize,
+        shortcut: 'Ctrl+Shift+M',
+        disabledReason: null,
+        perform: () => layout.toggleMaximize(),
+      },
+      {
+        id: 'view.resetLayout',
+        label: 'Reset layout',
+        group: 'View',
+        icon: RotateCcw,
+        disabledReason: null,
+        perform: () => layout.reset(),
+      },
+      {
+        id: 'view.fullScreen',
+        label: 'Toggle full screen',
+        group: 'View',
+        icon: Monitor,
+        disabledReason: fullScreenAvailable
+          ? null
+          : 'Full screen is not available in this browser.',
+        perform: () => {
+          const request = document.fullscreenElement
+            ? document.exitFullscreen()
+            : document.documentElement.requestFullscreen()
+          request.catch((error: unknown) => {
+            workbench.record({
+              type: 'view.fullScreen',
+              title: 'Toggle full screen',
+              status: 'rejected',
+              summary: '',
+              issues: [
+                {
+                  path: '',
+                  message: `Full screen was refused: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+            })
+          })
+        },
+      },
+      {
+        id: 'view.theme.system',
+        label: 'Use system theme',
+        group: 'View',
+        icon: Monitor,
+        pressed: theme === 'system',
+        disabledReason: null,
+        perform: () => setTheme('system'),
+      },
+      {
+        id: 'view.theme.light',
+        label: 'Use light theme',
+        group: 'View',
+        icon: Sun,
+        pressed: theme === 'light',
+        disabledReason: null,
+        perform: () => setTheme('light'),
+      },
+      {
+        id: 'view.theme.dark',
+        label: 'Use dark theme',
+        group: 'View',
+        icon: Moon,
+        pressed: theme === 'dark',
+        disabledReason: null,
+        perform: () => setTheme('dark'),
+      },
+      {
+        id: 'run.current',
+        label: 'Run current stage',
+        group: 'Run',
+        icon: Play,
+        shortcut: 'Ctrl+Enter',
+        disabledReason: currentBlocker,
+        perform: () => {
+          if (currentStageId) {
+            workbench.execute({
+              type: 'workflow.runStage',
+              input: { stageId: currentStageId },
+            })
+          }
+        },
+      },
+      {
+        id: 'run.nextReady',
+        label: 'Run next ready stage',
+        group: 'Run',
+        icon: ListChecks,
+        disabledReason: nextReady ? null : 'No stage is ready to run.',
+        perform: () => {
+          if (nextReady) {
+            workbench.execute({
+              type: 'workflow.runStage',
+              input: { stageId: nextReady },
+            })
+          }
+        },
+      },
+      {
+        id: 'run.cancelTasks',
+        label: 'Cancel running tasks',
+        group: 'Run',
+        icon: Ban,
+        disabledReason:
+          activeTaskIds.length > 0 ? null : 'No task is queued or running.',
+        perform: () => {
+          for (const taskId of activeTaskIds) {
+            workbench.execute({ type: 'task.cancel', input: { taskId } })
+          }
+        },
+      },
+      {
+        id: 'help.palette',
+        label: 'Search commands…',
+        group: 'Help',
+        icon: Command,
+        shortcut: 'Ctrl+K',
+        allowInEditable: true,
+        disabledReason: null,
+        perform: dialogs.openPalette,
+      },
+      {
+        id: 'help.shortcuts',
+        label: 'Keyboard shortcuts',
+        group: 'Help',
+        disabledReason: null,
+        perform: dialogs.openShortcuts,
+      },
+      {
+        id: 'help.capabilities',
+        label: 'What is working, simulated, or planned',
+        group: 'Help',
+        icon: Info,
+        disabledReason: null,
+        perform: dialogs.openCapabilities,
+      },
+      {
+        id: 'help.comments',
+        label: 'Comments (planned)',
+        group: 'Help',
+        icon: MessageSquare,
+        disabledReason: `Planned: ${capabilities['ribbon.comments'].explanation}`,
+        perform: () => undefined,
+      },
+    ]
+    return actions
+  }, [
+    snapshot,
+    stageStates,
+    layoutVersion,
+    workbench,
+    layout,
+    storage,
+    theme,
+    setTheme,
+    dialogs,
+  ])
+}
+
+export function useInvokeAction(): (action: AppAction) => void {
+  const { workbench } = useServices()
+  return useCallback(
+    (action: AppAction) => {
+      if (action.disabledReason) {
+        workbench.record({
+          type: `action.${action.id}`,
+          title: action.label,
+          status: 'rejected',
+          summary: '',
+          issues: [{ path: '', message: action.disabledReason }],
+        })
+        return
+      }
+      action.perform()
+    },
+    [workbench],
+  )
+}
