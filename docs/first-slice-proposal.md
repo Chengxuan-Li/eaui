@@ -137,3 +137,23 @@ Code in `src/app/` and `src/App.tsx`. Tests in `src/app/shortcuts.test.ts`, `src
   - Unavailable buttons use `aria-disabled` so they stay focusable and explain themselves. Playwright treats them as disabled, so tests activate them from the keyboard.
   - At 1280 px with both side panels open, the Settings tab moves into FlexLayout's tab overflow menu.
   - Undo covers model commands only; layout changes are logged but not undoable.
+
+### Stage 3a: assets, creator, and roadmap (2026-09-14)
+
+Code in `src/app/panels/AssetsPanel.tsx`, `src/app/panels/assetTree.ts`, `src/app/pages/CreatorPage.tsx`, and `src/app/pages/RoadmapPage.tsx`. Tests in `src/app/panels/assetTree.test.ts` and `e2e/pages.spec.ts`.
+
+- **Real:**
+  - **Assets panel:** a keyboard-navigable React Aria tree over the full asset skeleton, with kind icons, child counts, and planned badges. A details region shows kind, summary, provenance (stage run or operation), capability status, and related pages; Enter opens the first related page.
+  - **Creator page:** measure and scenario creators backed by the `measure.create` and `scenario.create` commands. Command validation issues appear on the matching fields, and the remaining creators are listed as planned.
+  - **Roadmap page:** the workflow graph laid out by dagre and rendered by React Flow, sharing state with the Workflow panel. Each stage is a focusable button and the view follows the focused stage. A stage-details panel offers run, rerun, skip, restore, previous and next, and inserting a custom stage.
+- **Simulated:** stage outputs shown in the tree and details remain synthetic.
+- **Not built yet, labeled in the UI:** Map and Table (stage 3b), Dashboard (stage 3c), and Reasoning (stage 4).
+- **Verification (2026-09-14):**
+  - Typecheck, lint, and format check pass; 31 unit tests pass.
+  - `npm run test:e2e` passes 26 tests, including 3 page tests with no serious or critical axe violations.
+  - Screenshots of the Assets panel, Creator page, and Roadmap page reviewed at 1280x800.
+- **Findings:**
+  - React Aria Form's form-level `validationErrors` kept a corrected field natively invalid, so the next click on submit silently did nothing. Forms now mark each field invalid from command issues and clear only that field's issue when it is edited.
+  - Docked tabs stay mounted while hidden and measure 0x0, so the roadmap refits once React Flow reports a real size.
+  - When the docked page is narrow, a container query stacks the roadmap graph above the stage details.
+  - React Aria checkboxes keep the native input visually hidden, so browser tests operate them from the keyboard.

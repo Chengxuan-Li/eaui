@@ -26,9 +26,12 @@ import componentStyles from '../components/components.module.css'
 import { NotBuiltYet } from '../components/NotBuiltYet.tsx'
 import '../global.css'
 import '../layout/flexlayout-theme.css'
+import { CreatorPage } from '../pages/CreatorPage.tsx'
 import { IssuesPage } from '../pages/IssuesPage.tsx'
+import { RoadmapPage } from '../pages/RoadmapPage.tsx'
 import { SettingsPage } from '../pages/SettingsPage.tsx'
 import { TasksPage } from '../pages/TasksPage.tsx'
+import { AssetsPanel } from '../panels/AssetsPanel.tsx'
 import { WorkflowPanel } from '../panels/WorkflowPanel.tsx'
 import { useShortcuts } from '../useShortcuts.ts'
 import { CommandPalette } from './CommandPalette.tsx'
@@ -85,13 +88,7 @@ function renderTabContent(node: TabNode) {
     case 'page.settings':
       return <SettingsPage />
     case 'panel.assets':
-      return (
-        <NotBuiltYet
-          title="Assets"
-          buildStage={3}
-          description="Asset tree over the energy model, grid model, data, and views, with provenance and status badges."
-        />
-      )
+      return <AssetsPanel />
     case 'panel.reasoning':
       return (
         <NotBuiltYet
@@ -125,21 +122,9 @@ function renderTabContent(node: TabNode) {
         />
       )
     case 'page.roadmap':
-      return (
-        <NotBuiltYet
-          title="Roadmap"
-          buildStage={3}
-          description="The full project-setup workflow graph, sharing state with the Workflow panel."
-        />
-      )
+      return <RoadmapPage />
     case 'page.creator':
-      return (
-        <NotBuiltYet
-          title="Creator"
-          buildStage={3}
-          description="Measure and scenario creators backed by the shared commands."
-        />
-      )
+      return <CreatorPage />
     default:
       return (
         <p className={componentStyles.page}>
