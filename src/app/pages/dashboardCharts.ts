@@ -1,19 +1,18 @@
+import type { DataPalette } from '../appearance/appearances.ts'
 import type { EChartOption } from '../viz/EChart.tsx'
-import {
-  CATEGORICAL,
-  CHART_INK,
-  DEEMPHASIS,
-  type ResolvedTheme,
-} from '../viz/palette.ts'
 import {
   MONTHS,
   type ChartedScenario,
   type DashboardData,
 } from './dashboardData.ts'
 
-// Chart specs follow the dataviz method: 2px lines, 8px markers with a 2px
-// surface ring, bars capped at 24px with a 4px rounded data end, solid hairline
-// grids, recessive axes, a legend for two or more series, and text in ink tokens.
+// Routine analytical charts stay restrained (guidelines section 3): 2px lines,
+// 8px markers with a 2px surface ring, bars capped at 24px with a 4px rounded
+// data end, hairline grids quieter than the data, recessive axes, a legend for
+// two or more series, and a single annotation on the baseline peak. Colors come
+// from the active appearance and text uses the workbench font.
+
+const TEXT_SIZE = 12
 
 export function toMwh(kwh: number): number {
   return Math.round(kwh / 1000)
@@ -31,17 +30,26 @@ export function scenarioLabel(item: ChartedScenario): string {
 
 export function scenarioColor(
   item: ChartedScenario,
-  theme: ResolvedTheme,
+  palette: DataPalette,
 ): string {
-  return CATEGORICAL[theme][item.slot] ?? CATEGORICAL[theme][0] ?? '#2a78d6'
+  return palette.categorical[item.slot] ?? palette.categorical[0]
 }
 
-function tooltipStyle(theme: ResolvedTheme) {
-  const ink = CHART_INK[theme]
+/** Index of the largest monthly value; the chart annotates only this point. */
+export function peakMonthIndex(monthly: number[]): number {
+  let peak = 0
+  monthly.forEach((value, index) => {
+    if (value > (monthly[peak] ?? Number.NEGATIVE_INFINITY)) peak = index
+  })
+  return peak
+}
+
+function tooltipStyle(palette: DataPalette) {
+  const ink = palette.ink
   return {
     backgroundColor: ink.surface,
     borderColor: ink.axis,
-    textStyle: { color: ink.primary, fontSize: 12 },
+    textStyle: { color: ink.primary, fontSize: TEXT_SIZE },
     extraCssText: 'box-shadow: none;',
   }
 }
@@ -62,11 +70,12 @@ function axisNumber(value: unknown): string {
 export function monthlyDemandOption(
   data: DashboardData,
   visible: ChartedScenario[],
-  theme: ResolvedTheme,
+  palette: DataPalette,
+  fontFamily: string,
 ): EChartOption {
   const baseline = data.baseline
   if (!baseline) return {}
-  const ink = CHART_INK[theme]
+  const ink = palette.ink
   const lineSeries = (name: string, color: string, monthlyKwh: number[]) => ({
     name,
     type: 'line',
@@ -78,24 +87,28 @@ export function monthlyDemandOption(
     itemStyle: { color, borderColor: ink.surface, borderWidth: 2 },
     emphasis: { focus: 'series' },
   })
+  const peakIndex = peakMonthIndex(baseline.monthlyKwh)
+  const peakMonth = MONTHS[peakIndex] ?? ''
+  const peakMwh = toMwh(baseline.monthlyKwh[peakIndex] ?? 0)
+  const lastIndex = MONTHS.length - 1
 
   return {
     animation: false,
-    textStyle: { fontFamily: 'system-ui, "Segoe UI", sans-serif' },
-    grid: { left: 56, right: 24, top: 40, bottom: 28 },
+    textStyle: { fontFamily, fontSize: TEXT_SIZE },
+    grid: { left: 56, right: 24, top: 48, bottom: 28 },
     legend: {
       top: 0,
       left: 0,
       icon: 'roundRect',
       itemWidth: 16,
       itemHeight: 3,
-      textStyle: { color: ink.secondary },
+      textStyle: { color: ink.secondary, fontFamily, fontSize: TEXT_SIZE },
     },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', lineStyle: { color: ink.axis, width: 1 } },
       valueFormatter: (value: unknown) => `${axisNumber(value)} MWh`,
-      ...tooltipStyle(theme),
+      ...tooltipStyle(palette),
     },
     xAxis: {
       type: 'category',
@@ -111,13 +124,37 @@ export function monthlyDemandOption(
       splitLine: { lineStyle: { color: ink.grid, width: 1, type: 'solid' } },
     },
     series: [
-      lineSeries('Baseline', DEEMPHASIS[theme], baseline.monthlyKwh),
+      {
+        ...lineSeries('Baseline', palette.deemphasis, baseline.monthlyKwh),
+        markPoint: {
+          silent: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          itemStyle: { color: ink.primary },
+          label: {
+            show: true,
+            position: 'top',
+            distance: 8,
+            align:
+              peakIndex === 0
+                ? 'left'
+                : peakIndex === lastIndex
+                  ? 'right'
+                  : 'center',
+            color: ink.primary,
+            fontFamily,
+            fontSize: TEXT_SIZE,
+            formatter: `Baseline peak ${peakMonth}: ${peakMwh.toLocaleString('en-US')} MWh`,
+          },
+          data: [{ coord: [peakMonth, peakMwh] }],
+        },
+      },
       ...visible.flatMap((item) =>
         item.shown
           ? [
               lineSeries(
                 scenarioLabel(item),
-                scenarioColor(item, theme),
+                scenarioColor(item, palette),
                 item.shown.monthlyKwh,
               ),
             ]
@@ -130,16 +167,17 @@ export function monthlyDemandOption(
 export function annualDemandOption(
   data: DashboardData,
   visible: ChartedScenario[],
-  theme: ResolvedTheme,
+  palette: DataPalette,
+  fontFamily: string,
 ): EChartOption {
   const baseline = data.baseline
   if (!baseline) return {}
-  const ink = CHART_INK[theme]
+  const ink = palette.ink
   const bars = [
     {
       name: 'Baseline',
       kwh: baseline.totalKwh,
-      color: DEEMPHASIS[theme],
+      color: palette.deemphasis,
       reduction: null,
     },
     ...visible.flatMap((item) =>
@@ -148,7 +186,7 @@ export function annualDemandOption(
             {
               name: scenarioLabel(item),
               kwh: item.shown.totalKwh,
-              color: scenarioColor(item, theme),
+              color: scenarioColor(item, palette),
               reduction: item.reductionPercent,
             },
           ]
@@ -158,12 +196,12 @@ export function annualDemandOption(
 
   return {
     animation: false,
-    textStyle: { fontFamily: 'system-ui, "Segoe UI", sans-serif' },
+    textStyle: { fontFamily, fontSize: TEXT_SIZE },
     grid: { left: 8, right: 150, top: 8, bottom: 24, containLabel: true },
     tooltip: {
       trigger: 'item',
       valueFormatter: (value: unknown) => `${axisNumber(value)} MWh/yr`,
-      ...tooltipStyle(theme),
+      ...tooltipStyle(palette),
     },
     xAxis: {
       type: 'value',

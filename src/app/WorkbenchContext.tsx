@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -16,16 +17,21 @@ import {
 } from '../domain/workbench.ts'
 import { deriveStageStates } from '../domain/workflow.ts'
 import {
+  APPEARANCES,
+  resolveAppearance,
+  type Appearance,
+  type AppearancePreference,
+} from './appearance/appearances.ts'
+import {
   createLayoutController,
   type LayoutController,
 } from './layout/layoutController.ts'
 import { loadProject } from './persistence.ts'
 import { getBrowserStorage } from './storage.ts'
 import {
-  applyThemePreference,
-  readThemePreference,
-  storeThemePreference,
-  type ThemePreference,
+  applyAppearance,
+  readAppearancePreference,
+  storeAppearancePreference,
 } from './theme.ts'
 
 type CoreServices = {
@@ -35,11 +41,23 @@ type CoreServices = {
 }
 
 export type Services = CoreServices & {
-  theme: ThemePreference
-  setTheme: (theme: ThemePreference) => void
+  /** The stored choice, which may be "system". */
+  appearancePreference: AppearancePreference
+  /** The appearance actually shown. */
+  appearance: Appearance
+  setAppearance: (preference: AppearancePreference) => void
 }
 
 const ServicesContext = createContext<Services | null>(null)
+
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+
+function systemPrefersDark(): boolean {
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(DARK_QUERY).matches
+  )
+}
 
 function createCoreServices(): CoreServices {
   const storage = getBrowserStorage()
@@ -62,13 +80,24 @@ function createCoreServices(): CoreServices {
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [core] = useState(createCoreServices)
-  const [theme, setThemeState] = useState(() =>
-    readThemePreference(core.storage),
+  const [appearancePreference, setAppearancePreference] = useState(() =>
+    readAppearancePreference(core.storage),
   )
+  const [systemDark, setSystemDark] = useState(systemPrefersDark)
+  const appearance = resolveAppearance(appearancePreference, systemDark)
 
   useEffect(() => {
-    applyThemePreference(theme)
-  }, [theme])
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(DARK_QUERY)
+    const update = () => setSystemDark(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  // Apply before paint so the first frame already shows the chosen appearance.
+  useLayoutEffect(() => {
+    applyAppearance(appearance)
+  }, [appearance])
 
   useEffect(
     () => startTaskSimulator(core.workbench, { scheduler: browserScheduler }),
@@ -78,19 +107,23 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const services = useMemo<Services>(
     () => ({
       ...core,
-      theme,
-      setTheme: (next) => {
-        setThemeState(next)
-        storeThemePreference(core.storage, next)
+      appearancePreference,
+      appearance,
+      setAppearance: (next) => {
+        setAppearancePreference(next)
+        storeAppearancePreference(core.storage, next)
         core.workbench.record({
-          type: 'view.setTheme',
-          title: 'Set theme',
-          input: { theme: next },
-          summary: `Theme set to ${next}.`,
+          type: 'view.setAppearance',
+          title: 'Set appearance',
+          input: { appearance: next },
+          summary:
+            next === 'system'
+              ? 'Appearance follows the system light or dark setting.'
+              : `Appearance set to ${APPEARANCES[next].label}.`,
         })
       },
     }),
-    [core, theme],
+    [core, appearancePreference, appearance],
   )
 
   return (
@@ -106,6 +139,11 @@ export function useServices(): Services {
     throw new Error('useServices must be used inside WorkbenchProvider')
   }
   return services
+}
+
+/** The appearance actually shown, including its data palette for canvas renderers. */
+export function useAppearance(): Appearance {
+  return useServices().appearance
 }
 
 export function useWorkbenchSnapshot<T>(

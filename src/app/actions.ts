@@ -22,6 +22,7 @@ import {
 import { useCallback, useMemo } from 'react'
 import { capabilities } from '../domain/capabilities.ts'
 import { stageRunBlocker } from '../domain/workflow.ts'
+import { APPEARANCE_LIST } from './appearance/appearances.ts'
 import {
   useLayoutVersion,
   useServices,
@@ -73,7 +74,8 @@ const PAGE_SHORTCUTS: Partial<Record<PageId, string>> = Object.fromEntries(
 )
 
 export function useAppActions(dialogs: ShellDialogs): AppAction[] {
-  const { workbench, layout, storage, theme, setTheme } = useServices()
+  const { workbench, layout, storage, appearancePreference, setAppearance } =
+    useServices()
   const snapshot = useWorkbenchSnapshot((current) => current)
   const stageStates = useStageStates()
   const layoutVersion = useLayoutVersion()
@@ -259,32 +261,23 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         },
       },
       {
-        id: 'view.theme.system',
-        label: 'Use system theme',
+        id: 'view.appearance.system',
+        label: 'Follow system appearance',
         group: 'View',
         icon: Monitor,
-        pressed: theme === 'system',
+        pressed: appearancePreference === 'system',
         disabledReason: null,
-        perform: () => setTheme('system'),
+        perform: () => setAppearance('system'),
       },
-      {
-        id: 'view.theme.light',
-        label: 'Use light theme',
+      ...APPEARANCE_LIST.map((appearance): AppAction => ({
+        id: `view.appearance.${appearance.id}`,
+        label: `Use ${appearance.label} appearance`,
         group: 'View',
-        icon: Sun,
-        pressed: theme === 'light',
+        icon: appearance.scheme === 'dark' ? Moon : Sun,
+        pressed: appearancePreference === appearance.id,
         disabledReason: null,
-        perform: () => setTheme('light'),
-      },
-      {
-        id: 'view.theme.dark',
-        label: 'Use dark theme',
-        group: 'View',
-        icon: Moon,
-        pressed: theme === 'dark',
-        disabledReason: null,
-        perform: () => setTheme('dark'),
-      },
+        perform: () => setAppearance(appearance.id),
+      })),
       {
         id: 'run.current',
         label: 'Run current stage',
@@ -371,8 +364,8 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
     workbench,
     layout,
     storage,
-    theme,
-    setTheme,
+    appearancePreference,
+    setAppearance,
     dialogs,
   ])
 }

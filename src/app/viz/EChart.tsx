@@ -2,22 +2,63 @@ import { BarChart, LineChart } from 'echarts/charts'
 import {
   GridComponent,
   LegendComponent,
+  MarkPointComponent,
   TooltipComponent,
 } from 'echarts/components'
 import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 echarts.use([
   LineChart,
   BarChart,
   GridComponent,
   LegendComponent,
+  MarkPointComponent,
   TooltipComponent,
   CanvasRenderer,
 ])
 
 export type EChartOption = echarts.EChartsCoreOption
+
+export type ChartFont = { family: string; loaded: boolean }
+
+function readFontFamily(): string {
+  const family = getComputedStyle(document.documentElement)
+    .getPropertyValue('--font-sans')
+    .trim()
+  return family || 'sans-serif'
+}
+
+function fontSet(): FontFaceSet | undefined {
+  return (document as { fonts?: FontFaceSet }).fonts
+}
+
+/**
+ * The workbench font for canvas text. Canvas text does not reflow when a web
+ * font arrives, so callers include the result in their option dependencies and
+ * charts rebuild once fonts are ready.
+ */
+export function useChartFont(): ChartFont {
+  const [family, setFamily] = useState(readFontFamily)
+  const [loaded, setLoaded] = useState(() => fontSet() === undefined)
+
+  useEffect(() => {
+    const fonts = fontSet()
+    if (!fonts) return
+    let active = true
+    void fonts.ready.then(() => {
+      if (!active) return
+      setFamily(readFontFamily())
+      setLoaded(true)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return useMemo(() => ({ family, loaded }), [family, loaded])
+}
 
 type EChartProps = {
   option: EChartOption

@@ -157,7 +157,7 @@ function FollowCurrentStage({ stageId }: { stageId: string | null }) {
 /** Full project-setup roadmap (decision 0005): same workflow state as the Workflow panel. */
 export function RoadmapPage() {
   const headingId = useId()
-  const { workbench, theme } = useServices()
+  const { workbench, appearance } = useServices()
   const workflow = useWorkbenchSnapshot((snapshot) => snapshot.state.workflow)
   const states = useStageStates()
 
@@ -193,7 +193,7 @@ export function RoadmapPage() {
             nodesFocusable={false}
             edgesFocusable={false}
             elementsSelectable={false}
-            colorMode={theme}
+            colorMode={appearance.scheme}
             minZoom={0.25}
             fitView
           >

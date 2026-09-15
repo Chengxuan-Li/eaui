@@ -17,19 +17,19 @@ import {
 import { capabilities } from '../../domain/capabilities.ts'
 import { STAGE_IDS, stageRunBlocker } from '../../domain/workflow.ts'
 import {
+  useAppearance,
   useServices,
   useStageStates,
   useWorkbenchSnapshot,
 } from '../WorkbenchContext.tsx'
+import type { DataPalette } from '../appearance/appearances.ts'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge, StatusTag } from '../components/CapabilityBadge.tsx'
 import componentStyles from '../components/components.module.css'
 import { EmptyState } from '../components/EmptyState.tsx'
 import formStyles from '../components/forms.module.css'
 import { cx } from '../cx.ts'
-import { useResolvedTheme } from '../useResolvedTheme.ts'
-import { EChart } from '../viz/EChart.tsx'
-import { STATUS } from '../viz/palette.ts'
+import { EChart, useChartFont } from '../viz/EChart.tsx'
 import {
   annualDemandOption,
   formatMwh,
@@ -51,12 +51,15 @@ type LoadingStatus = {
   className: string | undefined
 }
 
-function loadingStatus(percent: number): LoadingStatus {
+function loadingStatus(
+  percent: number,
+  colors: DataPalette['status'],
+): LoadingStatus {
   if (percent > 100) {
     return {
       label: 'Over rating',
       icon: CircleX,
-      color: STATUS.critical,
+      color: colors.critical,
       className: styles.critical,
     }
   }
@@ -64,14 +67,14 @@ function loadingStatus(percent: number): LoadingStatus {
     return {
       label: 'Near rating',
       icon: TriangleAlert,
-      color: STATUS.warning,
+      color: colors.warning,
       className: styles.warning,
     }
   }
   return {
     label: 'Within rating',
     icon: CircleCheck,
-    color: STATUS.good,
+    color: colors.good,
     className: styles.good,
   }
 }
@@ -110,7 +113,8 @@ export function DashboardPage() {
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const workflow = state.workflow
   const stageStates = useStageStates()
-  const theme = useResolvedTheme()
+  const palette = useAppearance().data
+  const font = useChartFont()
   const [previews, setPreviews] = useState<Record<string, number>>({})
   const [hiddenIds, setHiddenIds] = useState<string[]>([])
 
@@ -126,12 +130,12 @@ export function DashboardPage() {
     [data, hiddenIds],
   )
   const monthlyOption = useMemo(
-    () => monthlyDemandOption(data, visible, theme),
-    [data, visible, theme],
+    () => monthlyDemandOption(data, visible, palette, font.family),
+    [data, visible, palette, font],
   )
   const annualOption = useMemo(
-    () => annualDemandOption(data, visible, theme),
-    [data, visible, theme],
+    () => annualDemandOption(data, visible, palette, font.family),
+    [data, visible, palette, font],
   )
 
   const header = (
@@ -224,7 +228,7 @@ export function DashboardPage() {
               <div key={scenario.id} className={styles.controlRow}>
                 <span
                   className={styles.swatch}
-                  style={{ background: scenarioColor(item, theme) }}
+                  style={{ background: scenarioColor(item, palette) }}
                   aria-hidden="true"
                 />
                 <Checkbox
@@ -459,7 +463,7 @@ export function DashboardPage() {
               {transformers.map((transformer) => {
                 const percent =
                   gridResult.transformerLoadingPercent[transformer.id] ?? 0
-                const status = loadingStatus(percent)
+                const status = loadingStatus(percent, palette.status)
                 const Icon = status.icon
                 return (
                   <li key={transformer.id} className={styles.meterRow}>

@@ -103,7 +103,6 @@
   gap: var(--space-3);
   min-width: 14rem;
   padding: 0.125rem 0.5rem;
-  border-color: var(--color-border);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
 }
@@ -113,12 +112,12 @@
   width: 1px;
   margin: 0.25rem;
   border: 0;
-  background: var(--color-border);
+  background: var(--color-border-subtle);
 }
 
 .kbd {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--color-text-muted);
 }
 
@@ -175,7 +174,7 @@
 
 .menuDescription {
   grid-area: description;
-  font-size: 0.75rem;
+  font-size: var(--font-size-small);
   color: var(--color-text-muted);
 }
 
@@ -201,7 +200,6 @@
   padding: 0 var(--space-3);
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-raised);
-  font-size: 0.8125rem;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -290,7 +288,7 @@
 .paletteSearch {
   display: block;
   padding: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .paletteInput {
@@ -326,12 +324,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .dialogTitle {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--font-size-title);
 }
 
 .dialogBody {

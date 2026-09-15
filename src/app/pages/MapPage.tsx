@@ -11,19 +11,16 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Checkbox, Label, Radio, RadioGroup } from 'react-aria-components'
 import type { LngLat } from '../../domain/types.ts'
 import { STAGE_IDS } from '../../domain/workflow.ts'
-import { useServices, useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
+import {
+  useAppearance,
+  useServices,
+  useWorkbenchSnapshot,
+} from '../WorkbenchContext.tsx'
+import type { DataPalette } from '../appearance/appearances.ts'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge, StatusTag } from '../components/CapabilityBadge.tsx'
 import { EmptyState } from '../components/EmptyState.tsx'
 import formStyles from '../components/forms.module.css'
-import { useResolvedTheme } from '../useResolvedTheme.ts'
-import {
-  CATEGORICAL,
-  CHART_INK,
-  NO_DATA,
-  SEQUENTIAL_BLUE,
-  type ResolvedTheme,
-} from '../viz/palette.ts'
 import { computeMetric, METRICS, type MetricId } from './mapMetrics.ts'
 import styles from './map.module.css'
 
@@ -31,8 +28,9 @@ const POINT_KINDS = new Set(['transformer', 'utilityPv', 'bus'])
 
 type Hover = { id: string; label: string; x: number; y: number }
 
-function baseStyle(theme: ResolvedTheme): StyleSpecification {
-  // No basemap: synthetic data only, no tiles, no token (decision 0007).
+function baseStyle(background: string): StyleSpecification {
+  // No basemap: synthetic data only, no tiles, no token (decision 0007). The
+  // background is the workbench ground of the active appearance.
   return {
     version: 8,
     sources: {},
@@ -40,9 +38,7 @@ function baseStyle(theme: ResolvedTheme): StyleSpecification {
       {
         id: 'background',
         type: 'background',
-        paint: {
-          'background-color': theme === 'dark' ? '#15181c' : '#f5f6f8',
-        },
+        paint: { 'background-color': background },
       },
     ],
   }
@@ -51,9 +47,9 @@ function baseStyle(theme: ResolvedTheme): StyleSpecification {
 function fillExpression(
   min: number,
   max: number,
-  theme: ResolvedTheme,
+  palette: DataPalette,
 ): ExpressionSpecification {
-  const ramp = SEQUENTIAL_BLUE[theme]
+  const ramp = palette.sequential
   const span = max - min || 1
   const stops = ramp.flatMap((color, index) => [
     min + (span * index) / (ramp.length - 1),
@@ -62,7 +58,7 @@ function fillExpression(
   return [
     'case',
     ['<', ['get', 'value'], 0],
-    NO_DATA[theme],
+    palette.noData,
     ['interpolate', ['linear'], ['get', 'value'], ...stops],
   ] as unknown as ExpressionSpecification
 }
@@ -89,7 +85,8 @@ export function MapPage() {
   const headingId = useId()
   const { workbench, layout } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
-  const theme = useResolvedTheme()
+  const appearance = useAppearance()
+  const palette = appearance.data
   const mapRef = useRef<MapRef>(null)
   const [loaded, setLoaded] = useState(false)
   const [preferredMetric, setPreferredMetric] = useState<MetricId>('floors')
@@ -196,7 +193,7 @@ export function MapPage() {
     if (!map || !loaded || !bounds) return
     // Keep footprints clear of the legend in the top-right corner.
     map.fitBounds(bounds, {
-      padding: { top: 24, bottom: 40, left: 64, right: 272 },
+      padding: { top: 24, bottom: 40, left: 64, right: 232 },
       duration: 0,
     })
   }, [loaded, bounds])
@@ -241,12 +238,12 @@ export function MapPage() {
     )
   }
 
-  const ink = CHART_INK[theme]
+  const ink = palette.ink
   const selectedIds = selection.entityType ? selection.ids : []
   const unavailable = METRICS.filter(
     (candidate) => !metrics[candidate.id].available,
   )
-  const ramp = SEQUENTIAL_BLUE[theme]
+  const ramp = palette.sequential
 
   return (
     <section className={styles.page} aria-labelledby={headingId}>
@@ -299,7 +296,7 @@ export function MapPage() {
       <div className={styles.mapArea}>
         <MapView
           ref={mapRef}
-          mapStyle={baseStyle(theme)}
+          mapStyle={baseStyle(appearance.chrome.bg)}
           initialViewState={{ longitude: 0.003, latitude: 0.003, zoom: 15 }}
           style={{ width: '100%', height: '100%' }}
           interactiveLayerIds={
@@ -360,7 +357,7 @@ export function MapPage() {
               id="buildings-fill"
               type="fill"
               paint={{
-                'fill-color': fillExpression(values.min, values.max, theme),
+                'fill-color': fillExpression(values.min, values.max, palette),
                 'fill-outline-color': ink.surface,
               }}
             />
@@ -368,7 +365,7 @@ export function MapPage() {
               id="buildings-selected"
               type="line"
               paint={{
-                'line-color': ink.primary,
+                'line-color': palette.selection,
                 'line-width': [
                   'case',
                   ['boolean', ['feature-state', 'selected'], false],
@@ -390,7 +387,7 @@ export function MapPage() {
                   id="grid-lines-layer"
                   type="line"
                   paint={{
-                    'line-color': ink.secondary,
+                    'line-color': palette.networkLine,
                     'line-width': [
                       'case',
                       ['boolean', ['feature-state', 'selected'], false],
@@ -411,7 +408,7 @@ export function MapPage() {
                   id="grid-points-layer"
                   type="circle"
                   paint={{
-                    'circle-color': CATEGORICAL[theme][1] ?? '#eb6834',
+                    'circle-color': palette.networkPoint,
                     'circle-radius': [
                       'case',
                       ['boolean', ['feature-state', 'selected'], false],
@@ -422,7 +419,7 @@ export function MapPage() {
                     'circle-stroke-color': [
                       'case',
                       ['boolean', ['feature-state', 'selected'], false],
-                      ink.primary,
+                      palette.selection,
                       ink.surface,
                     ],
                   }}
@@ -444,8 +441,11 @@ export function MapPage() {
 
         <div className={styles.legend} aria-label="Map legend" role="group">
           <p className={styles.legendTitle}>
-            {metric?.label}
-            {values.scenarioName ? ` (${values.scenarioName})` : ''}{' '}
+            <span>
+              {metric?.label}
+              {metric?.unit ? ` (${metric.unit})` : ''}
+              {values.scenarioName ? `, ${values.scenarioName}` : ''}
+            </span>
             <StatusTag status="simulated" />
           </p>
           <div
@@ -455,13 +455,13 @@ export function MapPage() {
             }}
           />
           <div className={styles.rampLabels}>
-            <span>{formatValue(values.min, metric?.unit ?? '')}</span>
-            <span>{formatValue(values.max, metric?.unit ?? '')}</span>
+            <span>{formatValue(values.min, '')}</span>
+            <span>{formatValue(values.max, '')}</span>
           </div>
           <p className={styles.legendRow}>
             <span
               className={styles.swatch}
-              style={{ background: NO_DATA[theme] }}
+              style={{ background: palette.noData }}
             />{' '}
             No data
           </p>
@@ -470,14 +470,14 @@ export function MapPage() {
               <p className={styles.legendRow}>
                 <span
                   className={styles.lineKey}
-                  style={{ background: ink.secondary }}
+                  style={{ background: palette.networkLine }}
                 />{' '}
                 Feeder line
               </p>
               <p className={styles.legendRow}>
                 <span
                   className={styles.dotKey}
-                  style={{ background: CATEGORICAL[theme][1] }}
+                  style={{ background: palette.networkPoint }}
                 />{' '}
                 Transformer, substation, or utility PV
               </p>
