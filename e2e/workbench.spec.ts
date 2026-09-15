@@ -199,6 +199,31 @@ test.describe('workbench shell', () => {
     )
   })
 
+  test('places pages side by side and moves tabs from the command palette', async ({
+    page,
+  }) => {
+    await page.keyboard.press('Control+k')
+    await page.keyboard.type('place map beside table')
+    await page.keyboard.press('Enter')
+    const mapTab = page.getByRole('tab', { name: 'Map', exact: true })
+    const tableTab = page.getByRole('tab', { name: 'Table', exact: true })
+    await expect(mapTab).toHaveAttribute('aria-selected', 'true')
+    await expect(tableTab).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('status-notice')).toContainText(
+      'Placed the Map page to the right of the Table page.',
+    )
+
+    await mapTab.click()
+    await page.keyboard.press('Control+k')
+    await page.keyboard.type('move active tab')
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('status-notice')).toContainText(
+      'Moved "Map" to the next tab group.',
+    )
+    await expect(mapTab).toHaveAttribute('aria-selected', 'true')
+    await expect(tableTab).toHaveAttribute('aria-selected', 'false')
+  })
+
   test('restores a closed page with Reset layout', async ({ page }) => {
     const tableTab = page.getByRole('tab', { name: 'Table', exact: true })
     await tableTab.focus()

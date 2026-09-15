@@ -1,5 +1,7 @@
 import {
+  ArrowRightLeft,
   Ban,
+  Columns2,
   Command,
   FilePlus,
   FolderTree,
@@ -249,6 +251,29 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         icon: RotateCcw,
         disabledReason: null,
         perform: () => layout.reset(),
+      },
+      {
+        id: 'view.placeMapBesideTable',
+        label: 'Place Map beside Table',
+        group: 'View',
+        icon: Columns2,
+        disabledReason: null,
+        perform: () => layout.placePage('map', 'table', 'right'),
+      },
+      {
+        id: 'view.splitActiveTab',
+        label: 'Split active tab to the right',
+        group: 'View',
+        disabledReason: layout.splitActiveTabBlocker(),
+        perform: () => layout.splitActiveTab('right'),
+      },
+      {
+        id: 'view.moveActiveTab',
+        label: 'Move active tab to the next tab group',
+        group: 'View',
+        icon: ArrowRightLeft,
+        disabledReason: layout.moveActiveTabBlocker(),
+        perform: () => layout.moveActiveTabToNextGroup(),
       },
       {
         id: 'view.fullScreen',

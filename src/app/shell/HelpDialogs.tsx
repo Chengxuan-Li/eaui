@@ -64,6 +64,10 @@ const LAYOUT_KEYS: [string, string][] = [
   ['F6 / Shift+F6', 'Move focus to the next or previous tab group'],
   ['Arrow keys (on a splitter)', 'Resize panels'],
   ['Ctrl+Delete (on a tab)', 'Close the tab when it can be closed'],
+  [
+    'Command palette (Ctrl+K)',
+    'Split the active tab or move it to the next tab group',
+  ],
 ]
 
 export function ShortcutsDialog({

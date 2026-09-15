@@ -37,6 +37,22 @@ export const PANELS = {
 export type PageId = keyof typeof PAGES
 export type PanelId = keyof typeof PANELS
 
+export type DockSide = 'left' | 'right' | 'top' | 'bottom'
+
+const DOCK_LOCATIONS: Record<DockSide, DockLocation> = {
+  left: DockLocation.LEFT,
+  right: DockLocation.RIGHT,
+  top: DockLocation.TOP,
+  bottom: DockLocation.BOTTOM,
+}
+
+const SIDE_PHRASES: Record<DockSide, string> = {
+  left: 'to the left of',
+  right: 'to the right of',
+  top: 'above',
+  bottom: 'below',
+}
+
 export const DEFAULT_PAGES: PageId[] = [
   'map',
   'table',
@@ -131,6 +147,19 @@ export type LayoutController = {
   /** Narrow windows open side panels as overlays so pages keep their width. */
   setCompact: (compact: boolean, source?: CommandSource) => void
   reset: (source?: CommandSource) => void
+  /** Places a page in a new tab group beside another page, opening either if needed. */
+  placePage: (
+    page: PageId,
+    beside: PageId,
+    side?: DockSide,
+    source?: CommandSource,
+  ) => void
+  /** Keyboard docking: why the active tab cannot be split off, or null. */
+  splitActiveTabBlocker: () => string | null
+  /** Keyboard docking: why the active tab cannot move to another group, or null. */
+  moveActiveTabBlocker: () => string | null
+  splitActiveTab: (side?: DockSide, source?: CommandSource) => void
+  moveActiveTabToNextGroup: (source?: CommandSource) => void
   /** FlexLayout onAction hook: logs meaningful manual layout changes. */
   handleUserAction: (action: Action) => Action
 }
@@ -223,6 +252,61 @@ export function createLayoutController(
       }
     }
     return [...borders.values()]
+  }
+
+  const ensurePageTab = (page: PageId): TabNode | null => {
+    const existing = model.getNodeById(pageTabId(page))
+    if (existing instanceof TabNode) return existing
+    const target =
+      model.getNodeById(MAIN_TABSET_ID) ??
+      model.getActiveTabset() ??
+      model.getFirstTabSet()
+    if (!(target instanceof TabSetNode)) return null
+    model.doAction(
+      Actions.addNode(
+        pageTab(page),
+        target.getId(),
+        DockLocation.CENTER,
+        -1,
+        false,
+      ),
+    )
+    const added = model.getNodeById(pageTabId(page))
+    return added instanceof TabNode ? added : null
+  }
+
+  const activeTab = (): { tabset: TabSetNode; tab: TabNode } | null => {
+    const tabset = model.getActiveTabset() ?? model.getNodeById(MAIN_TABSET_ID)
+    if (!(tabset instanceof TabSetNode)) return null
+    const tab = tabset.getSelectedNode()
+    return tab instanceof TabNode ? { tabset, tab } : null
+  }
+
+  const tabsets = (): TabSetNode[] => {
+    const found: TabSetNode[] = []
+    model.visitNodes((node) => {
+      if (node instanceof TabSetNode) found.push(node)
+    })
+    return found
+  }
+
+  const NO_ACTIVE_TAB = 'No tab is active. Select a tab in a tab group first.'
+
+  const splitActiveTabBlocker = (): string | null => {
+    const active = activeTab()
+    if (!active) return NO_ACTIVE_TAB
+    if (active.tabset.getChildren().length < 2) {
+      return `"${active.tab.getName()}" is the only tab in its group, so there is nothing to split it from.`
+    }
+    return null
+  }
+
+  const moveActiveTabBlocker = (): string | null => {
+    if (!activeTab()) return NO_ACTIVE_TAB
+    if (tabsets().length < 2) {
+      return 'There is only one tab group. Split a tab into a new group first.'
+    }
+    return null
   }
 
   const tabName = (id: unknown): string => {
@@ -369,6 +453,125 @@ export function createLayoutController(
         'Reset layout',
         {},
         'Restored the default workbench layout.',
+        source,
+      )
+    },
+
+    placePage: (page, beside, side = 'right', source = 'manual') => {
+      const input = { page, beside, side }
+      const title = 'Place page beside another'
+      if (page === beside) {
+        reject(
+          'layout.placePage',
+          title,
+          input,
+          'Choose two different pages.',
+          source,
+        )
+        return
+      }
+      const besideTab = ensurePageTab(beside)
+      const pageNode = ensurePageTab(page)
+      const besideTabset = besideTab?.getParent()
+      if (!pageNode || !(besideTabset instanceof TabSetNode)) {
+        reject(
+          'layout.placePage',
+          title,
+          input,
+          `The ${PAGES[beside].name} page is not in a tab group. Reset the layout.`,
+          source,
+        )
+        return
+      }
+      model.doAction(
+        Actions.moveNode(
+          pageTabId(page),
+          besideTabset.getId(),
+          DOCK_LOCATIONS[side],
+          -1,
+          true,
+        ),
+      )
+      // Keep the page it was placed beside visible as well.
+      const besideAfter = model.getNodeById(pageTabId(beside))
+      if (besideAfter instanceof TabNode && !besideAfter.isSelected()) {
+        model.doAction(Actions.selectTab(besideAfter.getId()))
+      }
+      log(
+        'layout.placePage',
+        title,
+        input,
+        `Placed the ${PAGES[page].name} page ${SIDE_PHRASES[side]} the ${PAGES[beside].name} page.`,
+        source,
+      )
+    },
+
+    splitActiveTabBlocker,
+    moveActiveTabBlocker,
+
+    splitActiveTab: (side = 'right', source = 'manual') => {
+      const title = 'Split tab into a new group'
+      const blocker = splitActiveTabBlocker()
+      const active = activeTab()
+      if (blocker || !active) {
+        reject(
+          'layout.splitTab',
+          title,
+          { side },
+          blocker ?? NO_ACTIVE_TAB,
+          source,
+        )
+        return
+      }
+      model.doAction(
+        Actions.moveNode(
+          active.tab.getId(),
+          active.tabset.getId(),
+          DOCK_LOCATIONS[side],
+          -1,
+          true,
+        ),
+      )
+      log(
+        'layout.splitTab',
+        title,
+        { tabId: active.tab.getId(), side },
+        `Moved "${active.tab.getName()}" into a new tab group ${SIDE_PHRASES[side]} its previous group.`,
+        source,
+      )
+    },
+
+    moveActiveTabToNextGroup: (source = 'manual') => {
+      const title = 'Move tab to next group'
+      const blocker = moveActiveTabBlocker()
+      const active = activeTab()
+      if (blocker || !active) {
+        reject('layout.moveTab', title, {}, blocker ?? NO_ACTIVE_TAB, source)
+        return
+      }
+      const groups = tabsets()
+      const index = groups.findIndex(
+        (group) => group.getId() === active.tabset.getId(),
+      )
+      const target = groups[(index + 1) % groups.length]
+      if (!target) {
+        reject('layout.moveTab', title, {}, NO_ACTIVE_TAB, source)
+        return
+      }
+      model.doAction(
+        Actions.moveNode(
+          active.tab.getId(),
+          target.getId(),
+          DockLocation.CENTER,
+          -1,
+          true,
+        ),
+      )
+      log(
+        'layout.moveTab',
+        title,
+        { tabId: active.tab.getId(), to: target.getId() },
+        `Moved "${active.tab.getName()}" to the next tab group.`,
         source,
       )
     },
