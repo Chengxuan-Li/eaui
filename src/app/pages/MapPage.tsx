@@ -8,7 +8,16 @@ import {
 import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Checkbox, Label, Radio, RadioGroup } from 'react-aria-components'
+import {
+  Checkbox,
+  Label,
+  Radio,
+  RadioGroup,
+  Slider,
+  SliderOutput,
+  SliderThumb,
+  SliderTrack,
+} from 'react-aria-components'
 import { DISTRICT_CENTER } from '../../domain/simulation.ts'
 import type { LngLat } from '../../domain/types.ts'
 import { STAGE_IDS } from '../../domain/workflow.ts'
@@ -34,7 +43,21 @@ import {
   SelectionSilhouette,
   type SilhouettePrism,
 } from './SelectionSilhouette.tsx'
+import {
+  exaggerationLabel,
+  firstSymbolLayerId,
+  HILLSHADE_SOURCE_ID,
+  hillshadePaint,
+  MAX_EXAGGERATION,
+  MIN_EXAGGERATION,
+  TERRAIN_ATTRIBUTION,
+  TERRAIN_MAX_ZOOM,
+  TERRAIN_SOURCE_ID,
+  TERRAIN_TILE_SIZE,
+  TERRAIN_TILES_URL,
+} from './terrain.ts'
 import { useBasemap } from './useBasemap.ts'
+import { useTerrain } from './useTerrain.ts'
 
 const POINT_KINDS = new Set(['transformer', 'utilityPv', 'bus'])
 
@@ -121,6 +144,15 @@ export function MapPage() {
   )
   // In 3D the extrusions take picking; the flat fill is hidden.
   const buildingLayer = view3d ? 'buildings-extrusion' : 'buildings-fill'
+  // Live terrain, for display only (decision 0015).
+  const terrainEnabled = mapView.terrain
+  const exaggeration = mapView.terrainExaggeration
+  // Slider drafts stay local; the view operation is logged on release.
+  const [exaggerationDraft, setExaggerationDraft] = useState<number | null>(
+    null,
+  )
+  const terrain = useTerrain(mapRef, loaded, terrainEnabled, exaggeration)
+  const labelLayerId = useMemo(() => firstSymbolLayerId(mapStyle), [mapStyle])
   const handledFocusRequest = useRef(0)
   const [hover, setHover] = useState<Hover | null>(null)
 
@@ -409,6 +441,52 @@ export function MapPage() {
         >
           3D buildings
         </Checkbox>
+        <Checkbox
+          className={formStyles.checkbox}
+          isSelected={terrainEnabled}
+          onChange={(enabled) =>
+            view.execute({ type: 'map.setTerrain', input: { enabled } })
+          }
+        >
+          Terrain
+        </Checkbox>
+        {terrainEnabled ? (
+          <Slider
+            className={`${formStyles.slider} ${styles.terrainSlider}`}
+            value={exaggerationDraft ?? exaggeration}
+            minValue={MIN_EXAGGERATION}
+            maxValue={MAX_EXAGGERATION}
+            step={1}
+            onChange={(value) => setExaggerationDraft(value)}
+            onChangeEnd={(value) => {
+              setExaggerationDraft(null)
+              if (value !== exaggeration) {
+                view.execute({
+                  type: 'map.setTerrainExaggeration',
+                  input: { exaggeration: value },
+                })
+              }
+            }}
+          >
+            <Label className={formStyles.label}>Terrain exaggeration</Label>
+            <SliderOutput className={formStyles.description}>
+              {({ state: slider }) =>
+                exaggerationLabel(slider.getThumbValue(0))
+              }
+            </SliderOutput>
+            <SliderTrack className={formStyles.sliderTrack}>
+              {({ state: slider }) => (
+                <>
+                  <div
+                    className={formStyles.sliderFill}
+                    style={{ width: `${slider.getThumbPercent(0) * 100}%` }}
+                  />
+                  <SliderThumb className={formStyles.sliderThumb} />
+                </>
+              )}
+            </SliderTrack>
+          </Slider>
+        ) : null}
       </header>
 
       {unavailable.length > 0 ? (
@@ -425,6 +503,13 @@ export function MapPage() {
         <p className={styles.note} data-testid="map-3d-note">
           Heights appear after &ldquo;Geospatial preprocessing&rdquo; runs;
           until then buildings stay flat in 3D.
+        </p>
+      ) : null}
+
+      {terrainEnabled && !view3d ? (
+        <p className={styles.note} data-testid="map-terrain-note">
+          Terrain relief shows when the map is tilted; turn on &ldquo;3D
+          buildings&rdquo; to tilt it.
         </p>
       ) : null}
 
@@ -451,6 +536,12 @@ export function MapPage() {
             // plain background rather than show an empty basemap.
             const { sourceId } = event as unknown as { sourceId?: string }
             if (sourceId === BASEMAP_SOURCE_ID) basemap.reportTileFailure()
+            if (
+              sourceId === TERRAIN_SOURCE_ID ||
+              sourceId === HILLSHADE_SOURCE_ID
+            ) {
+              terrain.reportFailure()
+            }
           }}
           onMouseMove={(event) => {
             const feature = event.features?.[0]
@@ -498,6 +589,35 @@ export function MapPage() {
             showCompass={view3d}
             visualizePitch={view3d}
           />
+          {/* Terrain sources stay mounted and fetch nothing until terrain or
+              hillshade uses them; retry recreates them. */}
+          <Source
+            key={`terrain-${terrain.attempt}`}
+            id={TERRAIN_SOURCE_ID}
+            type="raster-dem"
+            tiles={[TERRAIN_TILES_URL]}
+            tileSize={TERRAIN_TILE_SIZE}
+            maxzoom={TERRAIN_MAX_ZOOM}
+            encoding="terrarium"
+            attribution={TERRAIN_ATTRIBUTION}
+          />
+          <Source
+            key={`hillshade-${terrain.attempt}`}
+            id={HILLSHADE_SOURCE_ID}
+            type="raster-dem"
+            tiles={[TERRAIN_TILES_URL]}
+            tileSize={TERRAIN_TILE_SIZE}
+            maxzoom={TERRAIN_MAX_ZOOM}
+            encoding="terrarium"
+          >
+            <Layer
+              id="terrain-hillshade"
+              type="hillshade"
+              beforeId={labelLayerId}
+              layout={{ visibility: terrain.active ? 'visible' : 'none' }}
+              paint={hillshadePaint(appearance)}
+            />
+          </Source>
           <Source
             id="buildings"
             type="geojson"
@@ -670,6 +790,11 @@ export function MapPage() {
               </p>
             </>
           ) : null}
+          {terrainEnabled ? (
+            <p className={styles.legendRow}>
+              Terrain: {exaggerationLabel(exaggeration)} (Mapterhorn, USGS 3DEP)
+            </p>
+          ) : null}
           {showGrid && hasGrid ? (
             <>
               <p className={styles.legendRow}>
@@ -735,6 +860,26 @@ export function MapPage() {
             onPress={basemap.retry}
           >
             Retry basemap
+          </ActionButton>
+        ) : null}
+        <span
+          role="status"
+          data-testid="terrain-status"
+          className={styles.basemapStatus}
+        >
+          {terrain.status === 'loading'
+            ? 'Loading terrain…'
+            : terrain.status === 'failed'
+              ? 'Terrain unavailable: the map is shown flat.'
+              : ''}
+        </span>
+        {terrain.status === 'failed' ? (
+          <ActionButton
+            label="Try loading terrain again"
+            disabledReason={null}
+            onPress={terrain.retry}
+          >
+            Retry terrain
           </ActionButton>
         ) : null}
         <span className={styles.a11yNote}>

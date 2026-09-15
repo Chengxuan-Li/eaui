@@ -52,6 +52,12 @@ export const capabilities = {
     explanation:
       'Extrudes footprints to their synthetic heights (floors × 3.2 m) with tilt and rotation; selected buildings are outlined along their visible 3D silhouette.',
   },
+  'map.terrain': {
+    label: 'Terrain',
+    status: 'working',
+    explanation:
+      'Relief and hillshade from live Mapterhorn elevation tiles (USGS 3DEP here), for display only; falls back to a flat map when unavailable.',
+  },
   'map.basemap': {
     label: 'Basemap',
     status: 'working',

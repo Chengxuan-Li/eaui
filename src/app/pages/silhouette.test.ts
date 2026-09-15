@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { LngLat } from '../../domain/types.ts'
 import {
+  footprintCentroid,
+  liftFaces,
   prismFaces,
   projectFaces,
   projectPoint,
@@ -51,6 +53,27 @@ describe('silhouette geometry', () => {
     expect(projectPoint(IDENTITY, [0.5, 0.5, 0], 100, 200)).toEqual([75, 50])
     expect(projectPoint(IDENTITY, [-1, 1, 0], 100, 200)).toEqual([0, 0])
     expect(projectPoint(W_FROM_Z, [0.5, 0.5, 0], 100, 100)).toBeNull()
+  })
+
+  it('finds the vertex centroid of a closed footprint', () => {
+    const [lng, lat] = footprintCentroid(SQUARE)!
+    expect(lng).toBeCloseTo(-71.07495, 9)
+    expect(lat).toBeCloseTo(42.35205, 9)
+    expect(footprintCentroid([])).toBeNull()
+  })
+
+  it('lifts every face by a terrain elevation in Mercator altitude units', () => {
+    const faces = prismFaces(SQUARE, 12)
+    expect(liftFaces(faces, 0, 42.352)).toBe(faces)
+    const lifted = liftFaces(faces, 30, 42.352)
+    const [, , dz] = toMercator([0, 42.352], 30)
+    lifted.forEach((face, faceIndex) =>
+      face.forEach(([x, y, z], pointIndex) => {
+        const [ox, oy, oz] = faces[faceIndex]![pointIndex]!
+        expect([x, y]).toEqual([ox, oy])
+        expect(z - oz).toBeCloseTo(dz, 15)
+      }),
+    )
   })
 
   it('drops faces with any point behind the camera', () => {

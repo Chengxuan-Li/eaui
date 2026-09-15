@@ -177,6 +177,47 @@ describe('view store', () => {
       }).outcome.status,
     ).toBe('rejected')
   })
+
+  it('shows terrain at true scale by default and validates exaggeration', () => {
+    const { view } = setup(modeled)
+    expect(view.getState().map).toMatchObject({
+      terrain: false,
+      terrainExaggeration: 1,
+    })
+    const on = view.execute({
+      type: 'map.setTerrain',
+      input: { enabled: true },
+    })
+    expect(on.outcome).toMatchObject({ status: 'applied' })
+    expect(view.getState().map.terrain).toBe(true)
+    expect(
+      view.execute({
+        type: 'map.setTerrainExaggeration',
+        input: { exaggeration: 4 },
+      }).outcome,
+    ).toEqual({
+      status: 'applied',
+      summary: 'Terrain is shown at 4× exaggerated.',
+    })
+    for (const exaggeration of [0, 11, 2.5]) {
+      expect(
+        view.execute({
+          type: 'map.setTerrainExaggeration',
+          input: { exaggeration },
+        }).outcome,
+      ).toMatchObject({
+        status: 'rejected',
+        issues: [
+          { path: 'exaggeration', message: 'Use a whole number from 1 to 10.' },
+        ],
+      })
+    }
+    expect(view.getState().map.terrainExaggeration).toBe(4)
+    expect(
+      view.execute({ type: 'map.setTerrain', input: { enabled: false } })
+        .outcome,
+    ).toEqual({ status: 'applied', summary: 'The map hides terrain.' })
+  })
 })
 
 describe('chart specifications', () => {

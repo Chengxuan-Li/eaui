@@ -9,7 +9,13 @@ import {
 } from 'react'
 import type { LngLat } from '../../domain/types.ts'
 import styles from './map.module.css'
-import { prismFaces, projectFaces, type WorldPoint } from './silhouette.ts'
+import {
+  footprintCentroid,
+  liftFaces,
+  prismFaces,
+  projectFaces,
+  type WorldPoint,
+} from './silhouette.ts'
 
 // The 3D selection outline (decision 0013). A custom layer receives MapLibre's
 // Mercator projection matrix every frame; the selected buildings' faces are
@@ -24,8 +30,10 @@ const DIRECTIONS = 16
 
 export type SilhouettePrism = { footprint: LngLat[]; heightM: number }
 
+type Solid = { faces: WorldPoint[][]; centroid: LngLat | null }
+
 type Input = {
-  faces: WorldPoint[][]
+  solids: Solid[]
   selectionColor: string
   haloColor: string
 }
@@ -60,9 +68,20 @@ function drawSilhouette(
     canvas.height = pixelHeight
   }
   context.clearRect(0, 0, canvas.width, canvas.height)
-  if (width === 0 || height === 0 || input.faces.length === 0) return
+  if (width === 0 || height === 0 || input.solids.length === 0) return
 
-  const shapes = projectFaces(input.faces, matrix, width, height)
+  // With terrain on, MapLibre stands each extrusion on the elevation at its
+  // centroid; lift the outline by the same sample (null without terrain).
+  const faces = input.solids.flatMap(({ faces: solidFaces, centroid }) =>
+    centroid
+      ? liftFaces(
+          solidFaces,
+          map.queryTerrainElevation(centroid) ?? 0,
+          centroid[1],
+        )
+      : solidFaces,
+  )
+  const shapes = projectFaces(faces, matrix, width, height)
   if (shapes.length === 0) return
   let minX = Infinity
   let minY = Infinity
@@ -139,17 +158,21 @@ export function SelectionSilhouette({
   haloColor,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const faces = useMemo(
-    () => prisms.flatMap((prism) => prismFaces(prism.footprint, prism.heightM)),
+  const solids = useMemo<Solid[]>(
+    () =>
+      prisms.map((prism) => ({
+        faces: prismFaces(prism.footprint, prism.heightM),
+        centroid: footprintCentroid(prism.footprint),
+      })),
     [prisms],
   )
   // Read by the render callback, which MapLibre calls outside React.
-  const latest = useRef<Input>({ faces, selectionColor, haloColor })
+  const latest = useRef<Input>({ solids, selectionColor, haloColor })
 
   useLayoutEffect(() => {
-    latest.current = { faces, selectionColor, haloColor }
+    latest.current = { solids, selectionColor, haloColor }
     mapRef.current?.getMap().triggerRepaint()
-  }, [faces, selectionColor, haloColor, mapRef])
+  }, [solids, selectionColor, haloColor, mapRef])
 
   useEffect(() => {
     const map = mapRef.current?.getMap()

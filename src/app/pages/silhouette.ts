@@ -71,6 +71,43 @@ export function projectPoint(
   return [((clipX / clipW + 1) / 2) * width, ((1 - clipY / clipW) / 2) * height]
 }
 
+/** Vertex mean of a footprint ring, ignoring a repeated closing vertex. */
+export function footprintCentroid(footprint: LngLat[]): LngLat | null {
+  const first = footprint[0]
+  const last = footprint.at(-1)
+  const ring =
+    footprint.length > 1 &&
+    first &&
+    last &&
+    first[0] === last[0] &&
+    first[1] === last[1]
+      ? footprint.slice(0, -1)
+      : footprint
+  if (ring.length === 0) return null
+  let lng = 0
+  let lat = 0
+  for (const [x, y] of ring) {
+    lng += x
+    lat += y
+  }
+  return [lng / ring.length, lat / ring.length]
+}
+
+/**
+ * Raises faces by a terrain elevation in meters, as MapLibre lifts an extrusion
+ * by the elevation at its centroid (decision 0015).
+ */
+export function liftFaces(
+  faces: WorldPoint[][],
+  elevationM: number,
+  latitude: number,
+): WorldPoint[][] {
+  if (elevationM === 0) return faces
+  const dz =
+    elevationM / (EARTH_CIRCUMFERENCE_M * Math.cos((latitude * Math.PI) / 180))
+  return faces.map((face) => face.map(([x, y, z]) => [x, y, z + dz]))
+}
+
 /** Projects faces to the screen, dropping any face with a point behind the camera. */
 export function projectFaces(
   faces: WorldPoint[][],

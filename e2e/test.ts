@@ -56,6 +56,31 @@ export async function serveBasemapStub(page: Page): Promise<void> {
   })
 }
 
+// Terrain (decision 0015): an 8x8 terrarium PNG at elevation 0, so terrain
+// renders flat without the network.
+const MAPTERHORN = 'https://tiles.mapterhorn.com/**'
+const FLAT_TERRAIN_TILE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGNoYGDAirCLDloJAKF8IAFkxpMYAAAAAElFTkSuQmCC',
+  'base64',
+)
+
+export async function serveTerrainStub(page: Page): Promise<void> {
+  await page.unroute(MAPTERHORN)
+  await page.route(MAPTERHORN, (route) =>
+    route.fulfill({
+      status: 200,
+      body: FLAT_TERRAIN_TILE,
+      contentType: 'image/png',
+      headers: CORS,
+    }),
+  )
+}
+
+export async function blockTerrain(page: Page): Promise<void> {
+  await page.unroute(MAPTERHORN)
+  await page.route(MAPTERHORN, (route) => route.abort('internetdisconnected'))
+}
+
 export async function blockBasemap(page: Page): Promise<void> {
   await page.unroute(OPENFREEMAP)
   await page.route(OPENFREEMAP, (route) => route.abort('internetdisconnected'))
@@ -65,6 +90,7 @@ export const test = base.extend<{ basemapStub: undefined }>({
   basemapStub: [
     async ({ page }, use) => {
       await serveBasemapStub(page)
+      await serveTerrainStub(page)
       await use(undefined)
     },
     { auto: true },

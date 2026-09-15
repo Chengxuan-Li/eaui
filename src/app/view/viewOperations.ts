@@ -3,6 +3,11 @@ import type { ValidationIssue } from '../../domain/commands.ts'
 import type { WorkbenchState } from '../../domain/types.ts'
 import { computeMetric, METRICS, type MetricId } from '../pages/mapMetrics.ts'
 import {
+  exaggerationLabel,
+  MAX_EXAGGERATION,
+  MIN_EXAGGERATION,
+} from '../pages/terrain.ts'
+import {
   chartSpecInputSchema,
   validateChartSpec,
   type ChartSpec,
@@ -27,6 +32,10 @@ export type ViewState = {
     focusRequest: number
     /** Whether buildings are extruded to their heights (decision 0013). */
     view3d: boolean
+    /** Whether live terrain is shown, for display only (decision 0015). */
+    terrain: boolean
+    /** Vertical exaggeration of the terrain; 1 is true scale. */
+    terrainExaggeration: number
   }
   table: { view: TableView; quickFilter: string }
   dashboard: { hiddenScenarioIds: string[]; charts: ChartSpec[] }
@@ -41,6 +50,8 @@ export function createInitialViewState(): ViewState {
       gridOverlay: true,
       focusRequest: 0,
       view3d: false,
+      terrain: false,
+      terrainExaggeration: MIN_EXAGGERATION,
     },
     table: { view: 'buildings', quickFilter: '' },
     dashboard: { hiddenScenarioIds: [], charts: [] },
@@ -77,6 +88,8 @@ function applied(summary: string): ViewOutcome {
 function rejected(message: string, path = ''): ViewOutcome {
   return { status: 'rejected', issues: [{ path, message }] }
 }
+
+const EXAGGERATION_MESSAGE = `Use a whole number from ${MIN_EXAGGERATION} to ${MAX_EXAGGERATION}.`
 
 export const viewOperationDefinitions = {
   'context.setMode': defineViewOperation({
@@ -174,6 +187,39 @@ export const viewOperationDefinitions = {
           ? 'The map shows buildings in 3D.'
           : 'The map is in 3D, but buildings stay flat until "Geospatial preprocessing" computes heights.',
       )
+    },
+  }),
+
+  'map.setTerrain': defineViewOperation({
+    title: 'Show or hide terrain',
+    description:
+      'Show live 3D terrain with hillshade under the Map, for display only; it never changes project data. Relief is visible when the map is tilted in 3D.',
+    input: z.object({ enabled: z.boolean() }),
+    run(view, { enabled }) {
+      view.map.terrain = enabled
+      if (!enabled) return applied('The map hides terrain.')
+      const scale = exaggerationLabel(view.map.terrainExaggeration)
+      return applied(
+        view.map.view3d
+          ? `The map shows terrain at ${scale}.`
+          : `The map shows terrain at ${scale}; turn on 3D buildings to tilt the map and see the relief.`,
+      )
+    },
+  }),
+
+  'map.setTerrainExaggeration': defineViewOperation({
+    title: 'Set terrain exaggeration',
+    description: `Set the vertical exaggeration of Map terrain as a whole number from ${MIN_EXAGGERATION} (true scale) to ${MAX_EXAGGERATION}.`,
+    input: z.object({
+      exaggeration: z
+        .number()
+        .int(EXAGGERATION_MESSAGE)
+        .min(MIN_EXAGGERATION, EXAGGERATION_MESSAGE)
+        .max(MAX_EXAGGERATION, EXAGGERATION_MESSAGE),
+    }),
+    run(view, { exaggeration }) {
+      view.map.terrainExaggeration = exaggeration
+      return applied(`Terrain is shown at ${exaggerationLabel(exaggeration)}.`)
     },
   }),
 

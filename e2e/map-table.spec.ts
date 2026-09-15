@@ -1,8 +1,10 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import {
   blockBasemap,
+  blockTerrain,
   expect,
   serveBasemapStub,
+  serveTerrainStub,
   test,
   type Locator,
   type Page,
@@ -217,6 +219,67 @@ test('map switches buildings between 2D and 3D and explains missing heights', as
   )
   await expect(legend).not.toContainText('Height: floors')
   await expect.poll(() => paintedPixels(silhouette)).toBe(0)
+})
+
+// Decision 0015: live terrain for display only; e2e/test.ts serves flat tiles.
+test('map shows terrain at true scale and sets exaggeration from the keyboard', async ({
+  page,
+}) => {
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+
+  const toggle = page.getByRole('checkbox', { name: 'Terrain', exact: true })
+  await expect(toggle).not.toBeChecked()
+  await toggle.focus()
+  await page.keyboard.press('Space')
+  await expect(toggle).toBeChecked()
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'turn on 3D buildings to tilt the map and see the relief',
+  )
+  await expect(page.getByTestId('map-terrain-note')).toBeVisible()
+  const legend = page.getByRole('group', { name: 'Map legend' })
+  await expect(legend).toContainText(
+    'Terrain: true scale (Mapterhorn, USGS 3DEP)',
+  )
+  await expect(page.getByTestId('terrain-status')).toHaveText('')
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText(
+    'Mapterhorn',
+  )
+
+  const slider = page.getByRole('slider', { name: 'Terrain exaggeration' })
+  await slider.focus()
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'Terrain is shown at 3× exaggerated.',
+  )
+  await expect(legend).toContainText('Terrain: 3× exaggerated')
+  expect(await seriousViolations(page)).toEqual([])
+
+  await toggle.focus()
+  await page.keyboard.press('Space')
+  await expect(toggle).not.toBeChecked()
+  await expect(legend).not.toContainText('Terrain:')
+})
+
+test('map falls back to a flat map when terrain cannot load, then retries', async ({
+  page,
+}) => {
+  await blockTerrain(page)
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Map', exact: true }).click()
+  const toggle = page.getByRole('checkbox', { name: 'Terrain', exact: true })
+  await toggle.focus()
+  await page.keyboard.press('Space')
+
+  const status = page.getByTestId('terrain-status')
+  await expect(status).toHaveText('Terrain unavailable: the map is shown flat.')
+  expect(await seriousViolations(page)).toEqual([])
+
+  await serveTerrainStub(page)
+  await page.getByRole('button', { name: 'Try loading terrain again' }).click()
+  await expect(status).toHaveText('')
+  await expect(toggle).toBeChecked()
 })
 
 test('settings turns the basemap off and keeps the choice across reloads', async ({
