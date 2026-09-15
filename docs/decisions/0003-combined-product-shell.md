@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 
-Status: accepted by the user in discussion. Slice details remain proposals in the [first-slice proposal](../first-slice-proposal.md).
+Status: accepted by the user in discussion; layout refined by [0004](0004-workbench-layout-and-docking.md), workflow and panel scope by [0005](0005-first-slice-workflow-and-panel-scope.md). Slice details remain proposals in the [first-slice proposal](../first-slice-proposal.md).
 
 ## Context
 

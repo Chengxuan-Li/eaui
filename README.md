@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell with asset, workflow, reasoning, map, and scenario-control panels ([decision 0003](docs/decisions/0003-combined-product-shell.md)). The [first-slice proposal](docs/first-slice-proposal.md), packages, and scaffold are pending. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)). The [first-slice proposal](docs/first-slice-proposal.md), packages, and scaffold are pending. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
