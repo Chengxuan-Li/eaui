@@ -42,7 +42,7 @@ test.describe('workbench shell', () => {
       'Settings',
       'Assets',
       'Workflow',
-      'Reasoning',
+      'Context',
     ]) {
       await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
     }

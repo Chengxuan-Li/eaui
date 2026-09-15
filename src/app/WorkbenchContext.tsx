@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 import { browserScheduler, startTaskSimulator } from '../domain/simulator.ts'
+import type { CommandSource } from '../domain/types.ts'
 import {
   createWorkbench,
   type Workbench,
@@ -40,12 +41,19 @@ type CoreServices = {
   layout: LayoutController
 }
 
+/** The modes of the right-side context panel (guidelines section 10). */
+export type ContextMode = 'reasoning' | 'inspection'
+
 export type Services = CoreServices & {
   /** The stored choice, which may be "system". */
   appearancePreference: AppearancePreference
   /** The appearance actually shown. */
   appearance: Appearance
   setAppearance: (preference: AppearancePreference) => void
+  contextMode: ContextMode
+  setContextMode: (mode: ContextMode, source?: CommandSource) => void
+  /** Opens the context panel on Inspection, which follows the shared selection. */
+  showInspection: (source?: CommandSource) => void
 }
 
 const ServicesContext = createContext<Services | null>(null)
@@ -85,6 +93,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
   const [systemDark, setSystemDark] = useState(systemPrefersDark)
   const appearance = resolveAppearance(appearancePreference, systemDark)
+  const [contextMode, setContextModeState] = useState<ContextMode>('reasoning')
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -104,8 +113,26 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     [core.workbench],
   )
 
-  const services = useMemo<Services>(
-    () => ({
+  const services = useMemo<Services>(() => {
+    // Context mode is view state: logged like layout operations so manual
+    // controls and a future agent share one path.
+    const setContextMode = (
+      mode: ContextMode,
+      source: CommandSource = 'manual',
+    ) => {
+      setContextModeState(mode)
+      core.workbench.record({
+        type: 'view.setContextMode',
+        title: 'Set context mode',
+        input: { mode },
+        summary:
+          mode === 'inspection'
+            ? 'The context panel shows Inspection.'
+            : 'The context panel shows Reasoning.',
+        source,
+      })
+    }
+    return {
       ...core,
       appearancePreference,
       appearance,
@@ -122,9 +149,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
               : `Appearance set to ${APPEARANCES[next].label}.`,
         })
       },
-    }),
-    [core, appearancePreference, appearance],
-  )
+      contextMode,
+      setContextMode,
+      showInspection: (source = 'manual') => {
+        if (!core.layout.isPanelOpen('reasoning')) {
+          core.layout.togglePanel('reasoning', source)
+        }
+        setContextMode('inspection', source)
+      },
+    }
+  }, [core, appearancePreference, appearance, contextMode])
 
   return (
     <ServicesContext.Provider value={services}>

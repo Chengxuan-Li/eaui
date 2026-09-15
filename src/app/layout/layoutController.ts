@@ -29,7 +29,9 @@ export const PAGES = {
 export const PANELS = {
   assets: { name: 'Assets', component: 'panel.assets' },
   workflow: { name: 'Workflow', component: 'panel.workflow' },
-  reasoning: { name: 'Reasoning', component: 'panel.reasoning' },
+  // The context panel (Reasoning | Inspection) keeps the panel.reasoning
+  // component id so layouts saved before the rename still restore.
+  reasoning: { name: 'Context', component: 'panel.reasoning' },
 } as const
 
 export type PageId = keyof typeof PAGES
@@ -140,10 +142,25 @@ type BorderLike = {
   getSelectedNode: () => TabNode | undefined
 }
 
+/** Saved layouts store tab names; renamed panels take their current name. */
+function withCurrentPanelNames(model: Model): Model {
+  for (const panel of Object.keys(PANELS) as PanelId[]) {
+    const node = model.getNodeById(panelTabId(panel))
+    if (node instanceof TabNode && node.getName() !== PANELS[panel].name) {
+      model.doAction(Actions.renameTab(node.getId(), PANELS[panel].name))
+    }
+  }
+  return model
+}
+
 function restoreModel(storage: Storage | null): Model {
   try {
     const raw = storage?.getItem(LAYOUT_KEY)
-    if (raw) return Model.fromJson(JSON.parse(raw) as IJsonModel)
+    if (raw) {
+      return withCurrentPanelNames(
+        Model.fromJson(JSON.parse(raw) as IJsonModel),
+      )
+    }
   } catch {
     // Unreadable or incompatible saved layout: fall back to the default.
   }

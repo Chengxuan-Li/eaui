@@ -1,6 +1,5 @@
 import {
   Ban,
-  Bot,
   Command,
   FilePlus,
   FolderTree,
@@ -10,10 +9,12 @@ import {
   MessageSquare,
   Monitor,
   Moon,
+  PanelRight,
   Play,
   Redo2,
   RotateCcw,
   Save,
+  ScanSearch,
   Sun,
   Undo2,
   Workflow,
@@ -74,8 +75,14 @@ const PAGE_SHORTCUTS: Partial<Record<PageId, string>> = Object.fromEntries(
 )
 
 export function useAppActions(dialogs: ShellDialogs): AppAction[] {
-  const { workbench, layout, storage, appearancePreference, setAppearance } =
-    useServices()
+  const {
+    workbench,
+    layout,
+    storage,
+    appearancePreference,
+    setAppearance,
+    showInspection,
+  } = useServices()
   const snapshot = useWorkbenchSnapshot((current) => current)
   const stageStates = useStageStates()
   const layoutVersion = useLayoutVersion()
@@ -207,13 +214,24 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       {
         id: 'view.toggleReasoning',
-        label: 'Show or hide Reasoning',
+        label: 'Show or hide Context',
         group: 'View',
-        icon: Bot,
+        icon: PanelRight,
         shortcut: 'Ctrl+Alt+B',
         pressed: layout.isPanelOpen('reasoning'),
         disabledReason: null,
         perform: () => layout.togglePanel('reasoning'),
+      },
+      {
+        id: 'view.inspectSelection',
+        label: 'Inspect selection',
+        group: 'View',
+        icon: ScanSearch,
+        disabledReason:
+          state.selection.ids.length > 0
+            ? null
+            : 'Nothing is selected. Select buildings or grid elements on the Map or Table page first.',
+        perform: () => showInspection(),
       },
       {
         id: 'view.toggleMaximize',
@@ -366,6 +384,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
     storage,
     appearancePreference,
     setAppearance,
+    showInspection,
     dialogs,
   ])
 }

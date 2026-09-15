@@ -83,7 +83,7 @@ function formatValue(value: number | null, unit: string): string {
 
 export function MapPage() {
   const headingId = useId()
-  const { workbench, layout } = useServices()
+  const { workbench, layout, showInspection } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const appearance = useAppearance()
   const palette = appearance.data
@@ -502,6 +502,15 @@ export function MapPage() {
           }
         >
           Clear selection
+        </ActionButton>
+        <ActionButton
+          label="Inspect the selection in the context panel"
+          disabledReason={
+            selectedIds.length > 0 ? null : 'Nothing is selected.'
+          }
+          onPress={() => showInspection()}
+        >
+          Inspect
         </ActionButton>
         <span className={styles.a11yNote}>
           The map canvas is not available to screen readers; the Table page

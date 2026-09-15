@@ -1,11 +1,11 @@
 import { Layout, type ITabRenderValues, type TabNode } from 'flexlayout-react'
 import 'flexlayout-react/style/light.css'
 import {
-  Bot,
   FolderTree,
   LayoutDashboard,
   ListChecks,
   Map as MapIcon,
+  PanelRight,
   Route,
   Settings,
   SquarePlus,
@@ -23,7 +23,6 @@ import {
   type ShellDialogs,
 } from '../actions.ts'
 import componentStyles from '../components/components.module.css'
-import { NotBuiltYet } from '../components/NotBuiltYet.tsx'
 import '../global.css'
 import '../layout/flexlayout-theme.css'
 import { CreatorPage } from '../pages/CreatorPage.tsx'
@@ -35,6 +34,7 @@ import { SettingsPage } from '../pages/SettingsPage.tsx'
 import { TablePage } from '../pages/TablePage.tsx'
 import { TasksPage } from '../pages/TasksPage.tsx'
 import { AssetsPanel } from '../panels/AssetsPanel.tsx'
+import { ContextPanel } from '../panels/ContextPanel.tsx'
 import { WorkflowPanel } from '../panels/WorkflowPanel.tsx'
 import { useShortcuts } from '../useShortcuts.ts'
 import { CommandPalette } from './CommandPalette.tsx'
@@ -52,7 +52,7 @@ type OpenDialog = 'palette' | 'shortcuts' | 'capabilities' | 'newProject' | null
 const TAB_ICONS: Record<string, LucideIcon> = {
   'panel.assets': FolderTree,
   'panel.workflow': Workflow,
-  'panel.reasoning': Bot,
+  'panel.reasoning': PanelRight,
   'page.map': MapIcon,
   'page.table': Table2,
   'page.dashboard': LayoutDashboard,
@@ -93,13 +93,7 @@ function renderTabContent(node: TabNode) {
     case 'panel.assets':
       return <AssetsPanel />
     case 'panel.reasoning':
-      return (
-        <NotBuiltYet
-          title="Reasoning"
-          buildStage={4}
-          description="Scripted agent sessions showing tool calls, reasoning, actions, referenced links, chat, and approvals."
-        />
-      )
+      return <ContextPanel />
     case 'page.map':
       return <MapPage />
     case 'page.table':
