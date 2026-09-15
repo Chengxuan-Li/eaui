@@ -17,6 +17,8 @@ import {
   type WorkbenchSnapshot,
 } from '../domain/workbench.ts'
 import { deriveStageStates } from '../domain/workflow.ts'
+import { createScriptedAgent } from './agent/scriptedAgent.ts'
+import type { AgentAdapter, AgentSnapshot } from './agent/types.ts'
 import {
   APPEARANCES,
   resolveAppearance,
@@ -45,6 +47,8 @@ type CoreServices = {
   layout: LayoutController
   /** Logged view state shared by manual controls and the agent. */
   view: ViewStore
+  /** The scripted agent behind the adapter a model provider can replace. */
+  agent: AgentAdapter
 }
 
 export type Services = CoreServices & {
@@ -82,11 +86,19 @@ function createCoreServices(): CoreServices {
       source: 'system',
     })
   }
+  const layout = createLayoutController(workbench, storage)
+  const view = createViewStore(workbench)
   return {
     storage,
     workbench,
-    layout: createLayoutController(workbench, storage),
-    view: createViewStore(workbench),
+    layout,
+    view,
+    agent: createScriptedAgent({
+      workbench,
+      layout,
+      view,
+      scheduler: browserScheduler,
+    }),
   }
 }
 
@@ -181,6 +193,13 @@ export function useWorkbenchSnapshot<T>(
 /** Reads logged view state (map, table, dashboard, context panel). */
 export function useViewState<T>(selector: (view: ViewState) => T): T {
   return useStore(useServices().view.store, selector)
+}
+
+/** Reads the agent's status, transcript, and prepared sessions. */
+export function useAgentSnapshot<T>(
+  selector: (snapshot: AgentSnapshot) => T,
+): T {
+  return useStore(useServices().agent.store, selector)
 }
 
 export function useStageStates() {

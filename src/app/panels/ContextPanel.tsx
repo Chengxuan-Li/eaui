@@ -1,10 +1,10 @@
-import { Clock, Info, TriangleAlert } from 'lucide-react'
+import { Info, TriangleAlert } from 'lucide-react'
 import { useId, useMemo, type ReactNode } from 'react'
 import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components'
 import { useServices, useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
-import componentStyles from '../components/components.module.css'
+import { ReasoningMode } from './ReasoningMode.tsx'
 import styles from './context.module.css'
 import {
   buildInspection,
@@ -46,21 +46,6 @@ export function ContextPanel() {
         </TabPanel>
       </Tabs>
     </section>
-  )
-}
-
-function ReasoningMode() {
-  return (
-    <div className={styles.empty}>
-      <p className={componentStyles.notice}>
-        <Clock size={16} aria-hidden="true" />
-        Not built yet: agent sessions arrive in first-slice build stage 4.
-      </p>
-      <p className={styles.muted}>
-        Scripted agent sessions will show findings, tool calls, referenced
-        objects, command provenance, and approvals here.
-      </p>
-    </div>
   )
 }
 

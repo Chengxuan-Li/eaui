@@ -440,6 +440,20 @@ export function DashboardPage() {
         )}
       </div>
 
+      {addedCharts.length > 0 ? (
+        <section
+          className={styles.addedCharts}
+          aria-labelledby={addedChartsHeadingId}
+        >
+          <h3 id={addedChartsHeadingId}>Added charts</h3>
+          <div className={styles.charts}>
+            {addedCharts.map((spec) => (
+              <AddedChart key={spec.id} spec={spec} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className={styles.charts}>
         <article className={styles.card} aria-label="Monthly demand">
           <h3>Monthly demand (MWh, synthetic)</h3>
@@ -577,20 +591,6 @@ export function DashboardPage() {
           )}
         </article>
       </div>
-
-      {addedCharts.length > 0 ? (
-        <section
-          className={styles.addedCharts}
-          aria-labelledby={addedChartsHeadingId}
-        >
-          <h3 id={addedChartsHeadingId}>Added charts</h3>
-          <div className={styles.charts}>
-            {addedCharts.map((spec) => (
-              <AddedChart key={spec.id} spec={spec} />
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <div className={styles.planned}>
         <ActionButton

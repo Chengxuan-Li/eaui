@@ -88,6 +88,12 @@ export function MapPage() {
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const appearance = useAppearance()
   const palette = appearance.data
+  // A new style object on every render makes react-maplibre call setStyle,
+  // whose diff drops the sources added at runtime and their feature state.
+  const mapStyle = useMemo(
+    () => baseStyle(appearance.chrome.bg),
+    [appearance.chrome.bg],
+  )
   const mapRef = useRef<MapRef>(null)
   const [loaded, setLoaded] = useState(false)
   const { view } = useServices()
@@ -202,24 +208,32 @@ export function MapPage() {
     })
   }, [loaded, bounds])
 
-  // Zoom to the shared selection when a map.focusSelection operation asks for it.
+  // Zoom to the shared selection when a map.focusSelection operation asks for
+  // it. The request often arrives with a layout change, so wait two frames for
+  // the docked container to settle and resize the canvas before fitting.
   const focusRequest = mapView.focusRequest
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!map || !loaded || focusRequest === handledFocusRequest.current) return
-    handledFocusRequest.current = focusRequest
     const { entityType, ids } = workbench.getState().selection
     const points =
       entityType === 'building'
         ? ids.flatMap((id) => state.buildings[id]?.footprint ?? [])
         : ids.flatMap((id) => state.gridElements[id]?.coordinates ?? [])
     const target = boundsOf(points)
-    if (!target) return
-    map.fitBounds(target, {
-      padding: { top: 48, bottom: 48, left: 64, right: 232 },
-      maxZoom: 18,
-      duration: 0,
+    let frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => {
+        handledFocusRequest.current = focusRequest
+        if (!target) return
+        map.resize()
+        map.fitBounds(target, {
+          padding: { top: 48, bottom: 48, left: 64, right: 232 },
+          maxZoom: 18,
+          duration: 0,
+        })
+      })
     })
+    return () => window.cancelAnimationFrame(frame)
   }, [focusRequest, loaded, workbench, state.buildings, state.gridElements])
 
   // Mirror the shared selection into feature state.
@@ -227,24 +241,41 @@ export function MapPage() {
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!map || !loaded) return
-    for (const source of ['buildings', 'grid-lines', 'grid-points']) {
-      if (map.getSource(source)) map.removeFeatureState({ source })
-    }
-    if (selection.entityType === 'building' && map.getSource('buildings')) {
-      for (const id of selection.ids) {
-        map.setFeatureState({ source: 'buildings', id }, { selected: true })
+    const apply = () => {
+      for (const source of ['buildings', 'grid-lines', 'grid-points']) {
+        if (map.getSource(source)) map.removeFeatureState({ source })
       }
-    }
-    if (selection.entityType === 'gridElement') {
-      for (const id of selection.ids) {
-        for (const source of ['grid-lines', 'grid-points']) {
-          if (map.getSource(source)) {
-            map.setFeatureState({ source, id }, { selected: true })
+      if (selection.entityType === 'building' && map.getSource('buildings')) {
+        for (const id of selection.ids) {
+          map.setFeatureState({ source: 'buildings', id }, { selected: true })
+        }
+      }
+      if (selection.entityType === 'gridElement') {
+        for (const id of selection.ids) {
+          for (const source of ['grid-lines', 'grid-points']) {
+            if (map.getSource(source)) {
+              map.setFeatureState({ source, id }, { selected: true })
+            }
           }
         }
       }
     }
-  }, [loaded, selection, buildingsGeoJson, gridLines, gridPoints, showGrid])
+    apply()
+    // Sources can be re-added after data or style updates; apply again once
+    // the map has settled so the selection is not lost.
+    map.once('idle', apply)
+    return () => {
+      map.off('idle', apply)
+    }
+  }, [
+    loaded,
+    selection,
+    buildingsGeoJson,
+    gridLines,
+    gridPoints,
+    showGrid,
+    mapStyle,
+  ])
 
   if (state.buildingIds.length === 0) {
     return (
@@ -327,7 +358,7 @@ export function MapPage() {
       <div className={styles.mapArea}>
         <MapView
           ref={mapRef}
-          mapStyle={baseStyle(appearance.chrome.bg)}
+          mapStyle={mapStyle}
           initialViewState={{ longitude: 0.003, latitude: 0.003, zoom: 15 }}
           style={{ width: '100%', height: '100%' }}
           interactiveLayerIds={
@@ -392,15 +423,32 @@ export function MapPage() {
                 'fill-outline-color': ink.surface,
               }}
             />
+            {/* A surface-colored halo keeps the selection outline visible on
+                any fill. Feature state drives opacity, not width. */}
+            <Layer
+              id="buildings-selected-halo"
+              type="line"
+              paint={{
+                'line-color': ink.surface,
+                'line-width': 6,
+                'line-opacity': [
+                  'case',
+                  ['boolean', ['feature-state', 'selected'], false],
+                  1,
+                  0,
+                ],
+              }}
+            />
             <Layer
               id="buildings-selected"
               type="line"
               paint={{
                 'line-color': palette.selection,
-                'line-width': [
+                'line-width': 2.5,
+                'line-opacity': [
                   'case',
                   ['boolean', ['feature-state', 'selected'], false],
-                  2.5,
+                  1,
                   0,
                 ],
               }}
@@ -418,13 +466,13 @@ export function MapPage() {
                   id="grid-lines-layer"
                   type="line"
                   paint={{
-                    'line-color': palette.networkLine,
-                    'line-width': [
+                    'line-color': [
                       'case',
                       ['boolean', ['feature-state', 'selected'], false],
-                      4,
-                      2,
+                      palette.selection,
+                      palette.networkLine,
                     ],
+                    'line-width': 2.5,
                   }}
                   layout={{ 'line-cap': 'round', 'line-join': 'round' }}
                 />

@@ -50,7 +50,9 @@ test.describe('workbench shell', () => {
     await expect(
       page.getByRole('contentinfo', { name: 'Status bar' }),
     ).toBeVisible()
-    await expect(page.getByText('Not built yet').first()).toBeVisible()
+    await expect(
+      page.getByRole('log', { name: 'Agent transcript' }),
+    ).toBeVisible()
     // Working behavior carries no label (guidelines section 8).
     await expect(
       page.getByText('Working', { exact: true }).filter({ visible: true }),
