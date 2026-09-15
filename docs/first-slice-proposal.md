@@ -298,6 +298,25 @@ Branch `feature/basemap`, after `feature/agentic` was merged into it, following 
   - Back Bay's true-scale relief is barely visible, which is why review used the maximum exaggeration.
   - Only the silhouette overlay needed lifting: MapLibre's circle and symbol shaders already add the terrain elevation at their anchors.
 
+### Shell styling, docking, and menus (2026-09-15)
+
+A pass over reported UI problems, on `feature/basemap`. Code in `src/app/global.css`, `src/app/layout/flexlayout-theme.css`, `src/app/layout/layoutController.ts`, `src/app/shell/WorkbenchShell.tsx`, `src/app/shell/Ribbon.tsx`, `src/app/shell/shell.module.css`, `src/app/shell/CommandPalette.tsx`, and `src/app/actions.ts`. Test in `e2e/workbench.spec.ts`.
+
+- **Real:**
+  - **Scrollbars:** no reserved gutter anywhere (`offsetWidth - clientWidth` is 0); the thumb is a dim rounded rectangle over the content that brightens when pointed at. Firefox keeps a thin dim scrollbar through its own properties.
+  - **Splitters:** a one-pixel line with a seven-pixel hit area, so resizing stays easy while the seam is quiet.
+  - **Side containers:** both borders stay in place when empty and say "Drop a tab here to dock it". Panel tabs can be closed; showing a closed panel again docks it back on its own side and says so.
+  - **Ribbons:** left and right strips read the same way (top to bottom) with icon, name, and close, matching center tabs.
+  - **Menus:** panel visibility is one "Panels" submenu and themes are one "Appearance" submenu, opening to the side with their check marks and shortcuts. The command palette stays flat so search still finds every action.
+  - **Command palette:** Backspace edits the query again.
+- **Verification (2026-09-15):**
+  - Typecheck, lint, and `npm run format:check` pass; `npm test`: 126 tests in 17 files; `npm run test:e2e`: 48 tests, including a regression test that types in the palette and deletes with Backspace.
+  - Screenshots at 1600x900 in Light and Dark engineering: default layout, both submenus open, the empty left container with its hint, and the panel docked back.
+- **Findings from review:**
+  - React Aria's `Autocomplete` replays the field's keys on the focused menu item and cancels the real key when the item cancels the replay. A menu item claims Backspace, so the palette field never deleted while Delete worked. The palette now stops the replayed, untrusted Backspace at the menu.
+  - Chromium draws overlay scrollbars here: they reserve no width and never appear in screenshots, even for a control element with a red thumb on a yellow track. Scrollbar styling is verified through computed styles instead. Setting `scrollbar-width` makes Chromium ignore `::-webkit-scrollbar` rules, so it is scoped to Firefox.
+  - FlexLayout's own hovering scrollbars wrap the border tab strip, not panel content, so they do not govern the panels; panel scrolling stays with the panel elements.
+
 ## Deviations and gaps (2026-09-15)
 
 Compared with the plan above and the package constraints, the build so far:
