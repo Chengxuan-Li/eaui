@@ -2,7 +2,7 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status (updated 2026-09-15): being implemented; stages 1 to 3c are built on `master`, and stage 4 is built on the `feature/agentic` branch (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The OpenFreeMap basemap and Back Bay footprints of [decision 0012](decisions/0012-openfreemap-basemap-back-bay.md) are built on `feature/basemap` (see [basemap status](#basemap-and-back-bay-footprints-2026-09-15)). The design alignment pass for decisions [0009](decisions/0009-ui-design-guidelines.md) and [0010](decisions/0010-geist-typeface.md) is built; see [design alignment](design-alignment.md#implementation-status). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
+Status (updated 2026-09-15): being implemented; stages 1 to 3c are built on `master`, and stage 4 is built on the `feature/agentic` branch (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The OpenFreeMap basemap and Back Bay footprints of [decision 0012](decisions/0012-openfreemap-basemap-back-bay.md) are built on `feature/basemap` (see [basemap status](#basemap-and-back-bay-footprints-2026-09-15)), together with 3D buildings from [decision 0013](decisions/0013-3d-building-extrusion.md) (see [3D status](#3d-buildings-2026-09-15)). The design alignment pass for decisions [0009](decisions/0009-ui-design-guidelines.md) and [0010](decisions/0010-geist-typeface.md) is built; see [design alignment](design-alignment.md#implementation-status). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
 
 ## Goal
 
@@ -255,6 +255,26 @@ Branch `feature/basemap`, from `feature/agentic`, following [decision 0012](deci
   - Alley names ("Public Alley 421") crowded the building rows and competed with the modeled objects, against guidelines section 6; service, path, and track names are filtered out.
   - Cross-origin routed responses in Playwright need `Access-Control-Allow-Origin`, or the browser treats them as network failures.
   - Switching style while the previous one is still loading logs "Unable to perform style diff" and MapLibre rebuilds the style; the map recovers, so this is left as a warning.
+
+### 3D buildings (2026-09-15)
+
+Branch `feature/basemap`, following [decision 0013](decisions/0013-3d-building-extrusion.md). Code in `src/app/view/viewOperations.ts` (`map.set3d`), `src/app/pages/MapPage.tsx`, `src/app/pages/silhouette.ts`, and `src/app/pages/SelectionSilhouette.tsx`. Tests in `src/app/view/viewStore.test.ts`, `src/app/pages/silhouette.test.ts`, and `e2e/map-table.spec.ts`.
+
+- **Real:**
+  - **2D/3D switch:** a "3D buildings" checkbox on the Map page runs the logged `map.set3d` view operation, which the agent can also call. 3D tilts the camera to 50° and rotates it -20°, shows the compass, and allows tilting with right-drag or Shift+⇡/⇣ and rotating with Shift+⇠/⇢; 2D keeps the map flat and north-up (`maxPitch` 0). Fits and zoom to selection keep the current pitch and bearing.
+  - **Extrusion:** a `fill-extrusion` layer raises footprints to `heightM` in the metric colors. Before "Geospatial preprocessing" the page notes that buildings stay flat, and the status notice says so when 3D is turned on. The legend adds the height rule.
+  - **Selection:** building colors never change. 2D keeps the ground outline with its halo. In 3D, a MapLibre custom layer supplies the Mercator projection matrix every frame; each selected building's ground, roof, and walls are projected, filled into a mask, and dilated and cut out on an overlay canvas, so the selection-colored line and surface halo follow the visible silhouette as the camera moves.
+- **Simulated:** heights (floors × 3.2 m) and every attribute.
+- **Verification (2026-09-15):**
+  - Typecheck, lint, and `npx prettier --check . --end-of-line auto` pass.
+  - `npm test`: 114 tests in 16 files pass, including `map.set3d` and silhouette projection (Mercator altitude, faces, clip-to-pixel projection, faces behind the camera).
+  - `npm run test:e2e`: 45 tests pass. The 2D/3D test covers the missing-heights note, the legend and keyboard hint, axe, selecting a building from the Table and finding painted pixels on the silhouette overlay, and an empty overlay after returning to 2D.
+  - Screenshots with the real OpenFreeMap instance reviewed at 1920x1080 in Light and Dark engineering, before and after clicking building B0425 in 3D: the outline follows its roof edge, near wall, and base, and its fill keeps the floors color.
+- **Findings from review:**
+  - The first selection design recolored selected extrusions; the user replaced it with outlines, then replaced a roof-edge rim with a view-dependent silhouette outline. MapLibre 6.9.1 has no line elevation property, so ground lines cannot outline extrusions.
+  - The silhouette first drew nothing. A probe of the custom layer's inputs showed that `modelViewProjectionMatrix` expects world pixel coordinates, while `defaultProjectionData.mainMatrix` takes Mercator 0 to 1; with the former, a selected corner projected to (43, -641) on a 1243x845 canvas, and with the latter to (361, 560). The e2e pixel check on the overlay caught the empty outline, which a visibility assertion would not have.
+  - The outline is drawn above the map, so it shows through taller buildings in front, and adjacent selected buildings share one outline.
+  - Throwaway capture scripts could not click Table cells at 1920x1080 and timed out; the captures click buildings on the map instead.
 
 ## Deviations and gaps (2026-09-15)
 
