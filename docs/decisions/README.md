@@ -15,3 +15,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0011: Agent chart specs and missing project state](0011-agent-view-specs-and-missing-state.md)
 - [0012: OpenFreeMap basemap and Boston Back Bay footprints](0012-openfreemap-basemap-back-bay.md)
 - [0013: 3D building extrusion on the Map page](0013-3d-building-extrusion.md)
+- [0014: LF line endings through Git attributes](0014-lf-line-endings.md)

@@ -198,7 +198,7 @@ Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason i
 | --- | --- |
 | `npm test` | 114 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools, basemap recoloring and preference, 3D silhouette projection |
 | `npm run test:e2e` | 45 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
-| `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing; see the line-ending pitfall below |
+| `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing |
 
 End-to-end specs:
 
@@ -226,7 +226,7 @@ Conventions and pitfalls found while building:
 - Pass react-maplibre a stable, memoized `mapStyle`. A new style object on every render makes it call `setStyle`, whose diff removes sources added at runtime and loses feature state such as the selection outline.
 - flexlayout-react 0.11.0 stylesheets reference `.map` files the package does not ship, which made the dev server log "Failed to load source map". A small plugin in `vite.config.ts` loads those stylesheets without the comment; remove it once the package ships its maps or drops the comment.
 - Local Playwright runs use 4 workers (`playwright.config.ts`). The default count starved the dev server and timed out tests on a 32-core machine.
-- On a Windows checkout with `core.autocrlf=true`, `npm run format:check` reports files because of CRLF line endings; `npx prettier --check . --end-of-line auto` checks formatting without them.
+- Line endings are LF everywhere through `.gitattributes` ([decision 0014](decisions/0014-lf-line-endings.md)), overriding `core.autocrlf=true` from Git for Windows. A checkout made before that file existed can still hold CRLF working copies; convert them once (they are unchanged in the index), after which `npm run format:check` passes.
 - `toBeVisible` does not detect overlap: sticky session controls once covered the newest transcript entries while the tests passed. Review screenshots of new layouts.
 - Agent and planner unit tests step time with `src/testing/manualScheduler.ts`, shared by the agent and the task simulator; long flows call `runAll` with a high limit.
 - For visual review, write throwaway Playwright captures under the ignored `tmp/` folder and delete them afterwards.

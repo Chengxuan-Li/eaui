@@ -1,0 +1,18 @@
+# Line endings (decision 0014): text files are stored and checked out with LF on
+# every platform, overriding core.autocrlf, so Prettier's default "lf" end of
+# line holds on Windows checkouts too.
+* text=auto eol=lf
+
+# Binary assets: never convert line endings or diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.pbf binary
+*.pmtiles binary
