@@ -29,7 +29,7 @@ Read the [complete handoff](docs/20260913_product-ui-experiment-agent-handoff.md
 
 ## Commands and current phase
 
-Scaffold phase. Decisions 0002-0007 fix the stack, shell, layout, first-slice workflow, scripted agent, and packages. The Vite React TypeScript app was scaffolded on 2026-09-14; run the package spikes in `docs/package-selection.md` before building panels.
+Scaffold phase. Decisions 0002-0007 fix the stack, shell, layout, first-slice workflow, scripted agent, and packages. The Vite React TypeScript app was scaffolded on 2026-09-14; package spikes ran on 2026-09-14 (results in `docs/package-selection.md`); confirm the docking library with the user before building panels. Spike pages: `npm run dev`, then `/?spike=` with `map`, `chart`, `grid`, `flow`, `docking`, or `flexlayout`. Two dockview keyboard tests are intentionally marked `test.fail` as recorded findings.
 
 - Install with `npm ci` (Node.js 24 LTS, exact pinned versions). Do not add packages outside decision 0007 without recording the reason in `docs/package-selection.md` or a new decision.
 - Develop with `npm run dev`; check a production bundle with `npm run build` and `npm run preview`.

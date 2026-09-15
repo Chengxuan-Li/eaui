@@ -11,6 +11,7 @@ export default defineConfig([
     'coverage',
     'playwright-report',
     'test-results',
+    'tmp',
     'eslint.config.js',
   ]),
   {

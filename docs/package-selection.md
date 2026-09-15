@@ -2,7 +2,7 @@
 
 Date: 2026-09-14
 
-Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026-09-14. The spikes below are pending. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
+Status: accepted in [decision 0007](decisions/0007-package-selection.md) on 2026-09-14. Spikes ran on 2026-09-14; see [spike results](#spike-results-2026-09-14). The docking library choice awaits user confirmation. Scope inputs: decisions [0002](decisions/0002-web-react-typescript-vite.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0006](decisions/0006-scripted-agent-and-layout-details.md), plus the [first-slice proposal](first-slice-proposal.md).
 
 ## Method and evidence limits
 
@@ -97,3 +97,59 @@ Installed on 2026-09-14 alongside the accepted tools because those tools require
 - `@testing-library/dom`: peer dependency of `@testing-library/react`.
 - `@eslint/js`, `globals`, `eslint-config-prettier`: ESLint flat configuration and Prettier compatibility.
 - `@types/node`, `@types/react`, `@types/react-dom`: type definitions.
+- `flexlayout-react` 0.11.0: installed as a development dependency to run the docking fallback spike required by decision 0007.
+
+## Spike results (2026-09-14)
+
+Environment: Windows 11, Node.js 24.14.1, Microsoft Edge through the Playwright `msedge` channel at 1280x800, Vite dev server, synthetic data only.
+
+- Spike pages: `src/spikes/`. Run `npm run dev` and open `/?spike=` with `map`, `chart`, `grid`, `flow`, `docking`, or `flexlayout`.
+- Tests: `e2e/spikes.spec.ts` and `e2e/spikes-flexlayout.spec.ts`, run by `npm run test:e2e`. Final run: 20 passed; the 2 dockview keyboard findings are marked as expected failures.
+
+| Spike | Requirement | Result |
+| --- | --- | --- |
+| MapLibre | Style with only GeoJSON sources, no basemap or token | Pass: 930 rendered building features for 900 footprints, no request outside 127.0.0.1 |
+| MapLibre | Canvas follows container resize | Pass |
+| MapLibre | Runs under the Vite dev server | Fixed: dependency pre-bundling moved `maplibre-gl` without its worker module (404 for `maplibre-gl-worker.mjs`). `optimizeDeps.exclude: ['maplibre-gl']` in `vite.config.ts` resolves it. |
+| AG Grid Community | ARIA grid with arrow-key cell focus | Pass: `role="grid"`; ArrowDown moves the focused cell |
+| AG Grid Community | Pending edits outside the grid, cancel, validation | Pass with `readOnlyEdit` and `onCellEditRequest`: edits live in app state, cancel restores values, an invalid value shows an alert and adds no pending edit |
+| React Flow | Read-only roadmap keyboard behavior | Pass: nodes are focusable labeled `group` elements, Tab moves to the next node, arrow keys do not move nodes with `nodesDraggable={false}` |
+| dockview 8.3.1 (free core) | Map and chart survive hide, move, and maximize | Pass with `defaultRenderer="always"`: no remounts, WebGL context intact, canvas resized |
+| dockview | JSON round trip including edge groups | Pass (7 panels) |
+| dockview | Table-to-map linked selection | Pass |
+| dockview | ARIA tabs | Pass: 4 tablists, 7 tabs |
+| dockview | Keyboard focus between groups (F6) | **Fail**: the `keyboardNavigation` option logs that it requires the KeyboardNavigation module from dockview-enterprise |
+| dockview | Keyboard resizing | **Fail**: 6 sash elements, none with the `separator` role or keyboard resizing |
+| dockview | axe | Serious `nested-interactive` (4 nodes, controls inside tabs), serious `color-contrast` (1), moderate `landmark-unique` (1) |
+| flexlayout-react 0.11.0 | Map and chart survive hide, move, and maximize | Pass with `tabEnableRenderOnDemand: false`: mount counts unchanged, WebGL context intact, canvas resized |
+| FlexLayout | JSON round trip including borders | Pass (7 tabs; left and right borders) |
+| FlexLayout | Table-to-map linked selection | Pass |
+| FlexLayout | ARIA tabs and splitters | Pass: 4 tablists, 7 tabs, 3 `separator` elements |
+| FlexLayout | Keyboard resizing | Pass: all 3 separators resize with arrow keys and update `aria-valuenow` |
+| FlexLayout | Arrow keys between tabs; F6 to the next tabset | Pass: F6 bound through `keyMap` moves focus from the Map tabset to the Dashboard chart tabset |
+| FlexLayout | axe | Serious `color-contrast` (3 nodes) only |
+
+The color-contrast findings come from library default themes and spike styling; the product theme tokens must resolve them.
+
+### Corrections to the research record
+
+- **dockview keyboard navigation is not in the free core in 8.3.1.** The research pass reported it as core. Observed instead:
+  - `dockview-core` lists these enterprise modules in `ENTERPRISE_MODULE_NAMES` (`node_modules/dockview-core/dist/dockview-core.js`): AdvancedOverflow, AutoEdgeGroup, AutoHideEdgeGroup, DndCompass, KeyboardDocking, KeyboardNavigation, LayoutHistory, License, MultiRowTabs, PinnedTabs, SmartGuides.
+  - The registry lists `dockview-enterprise` 8.3.1 with license "SEE LICENSE IN LICENCE.md". Its commercial terms were not reviewed.
+- **FlexLayout keeps hidden tab content mounted** when `tabEnableRenderOnDemand` is false. This resolves the open question in the fallback row.
+
+### Docking recommendation (pending user confirmation)
+
+Replace dockview with **flexlayout-react 0.11.0** (MIT, no runtime dependencies) as the docking library. In these spikes it met every docking requirement, including keyboard resizing and tabset focus navigation that dockview's free core lacks, and it produced fewer axe findings.
+
+Risks carried:
+
+- **Pre-1.0 versioning with breaking changes.** Pin the exact version and keep layout changes behind our own typed layout commands.
+- **No documented keyboard docking.** Moving a tab to another tabset from the keyboard would be provided by our command palette through `Actions.moveNode`.
+
+Alternatives:
+
+- **Keep dockview's free core** and build keyboard navigation and keyboard resizing ourselves on its API (more custom accessibility code).
+- **License dockview-enterprise** (commercial terms not reviewed).
+
+If the recommendation is accepted: record decision 0008, move `flexlayout-react` to runtime dependencies, remove `dockview-react` and the dockview spike, and keep the FlexLayout spike tests as the docking regression baseline.

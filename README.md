@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Packages accepted ([0007](docs/decisions/0007-package-selection.md)); the Vite app is scaffolded and the package spikes are next. The primary prototype starts only after discussion resolves or explicitly delegates those choices.
+2026-09-14: repository initialized and the read-only reference audit documented. UI stack accepted: web-only React + TypeScript + Vite ([decision 0002](docs/decisions/0002-web-react-typescript-vite.md)). Product direction accepted: a combined shell ([decision 0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Packages accepted ([0007](docs/decisions/0007-package-selection.md)); the Vite app is scaffolded and the package spikes have run; the docking library choice awaits confirmation ([results](docs/package-selection.md#spike-results-2026-09-14)). The primary prototype starts only after discussion resolves or explicitly delegates those choices.
 
 Core workflows must remain useful without an LLM. Favor explicit state, revisitable workflows, progressive disclosure, desktop information density, keyboard access, and traceable changes/results. Identify mocks clearly.
 
@@ -23,6 +23,8 @@ npm run format:check   # npm run format rewrites files
 npm test               # Vitest unit and component tests
 npm run test:e2e       # Playwright + axe; starts the dev server on 127.0.0.1:5173
 ```
+
+Package spikes: run `npm run dev` and open `/?spike=` with `map`, `chart`, `grid`, `flow`, `docking`, or `flexlayout`.
 
 Before committing, also run `git status --short --branch`, `git diff --check`, and `git diff --cached`.
 
