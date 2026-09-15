@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 
-Aligns the build with the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md) ([decision 0009](decisions/0009-ui-design-guidelines.md)) and the Geist typeface ([decision 0010](decisions/0010-geist-typeface.md)). The user accepted the plan below through their answers on 2026-09-15, and implementation is in progress. The observed gaps describe the build before alignment.
+Aligns the build with the [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md) ([decision 0009](decisions/0009-ui-design-guidelines.md)) and the Geist typeface ([decision 0010](decisions/0010-geist-typeface.md)). The user accepted the plan through their answers on 2026-09-15. The pass is built in commits `9127604`, `3d66ea5`, `5b408b6`, and `38e08a3`; see [implementation status](#implementation-status). The observed gaps describe the build before alignment.
 
 ## Observed gaps
 
@@ -29,32 +29,78 @@ Facts from the source at `88b08c9` (end of first-slice stage 3c). Counts come fr
    - Light and Dark: the existing palettes, restyled to the guidelines;
    - technical monochrome, Lieflat-inspired, clean technical light, and dark engineering.
 
-   System follows the operating system between Light and Dark. If the user meant each named palette in both modes, the token structure keeps that addition possible.
+   System follows the operating system between Light and Dark. If the user meant each named palette in both modes, the token structure keeps that addition possible. The interpretation has not been confirmed yet.
 4. **Monospace.** Cascadia Code stays, with Consolas and system fallbacks; no Geist Mono.
-5. **Run ▾ variants.** Only the two variants that exist: run current stage and run next ready stage.
+5. **Run ▾ variants.** Only the Run actions that exist: run current stage, run next ready stage, and cancel running tasks.
 
-## Plan
+## Plan as implemented
 
-- **Semantic color layer.** One token set for surfaces, text, accent, value ramps, categories, state, selection, hover, warning, and missing data. Each appearance fills it. Map, charts, grid, workflow graphics, and status read only these tokens, never literals. Each appearance's categorical slots are validated with the dataviz validator.
-- **Typeface.**
-  - Install `@fontsource-variable/geist` 5.3.0 pinned exactly and import it once in `src/main.tsx`.
-  - Set `--font-sans` to `'Geist Variable'`, then explicit CJK fallbacks (`'Microsoft YaHei'`, `'PingFang SC'`, `'Noto Sans CJK SC'`), then the system stack. `--font-mono` stays Cascadia Code.
-  - ECharts reads the resolved `--font-sans` value and redraws once `document.fonts.ready` resolves, because canvas text does not reflow when a web font arrives.
-  - Use tabular numerals in the table, stat tiles, meters, and legends if Geist provides them.
-  - An e2e check confirms `document.fonts.check('1em "Geist Variable"')` after load.
-- **Type scale.** Three sizes: metadata, content and controls, and pane or page titles. Hierarchy otherwise comes from weight, tone, and spacing.
-- **Borders.** Keep borders on docked pane edges, tab strips, inputs, and the table grid. Internal cards, metric tiles, legends, and control groups use spacing and a quiet surface tone instead.
-- **Status vocabulary.** Done becomes Complete, Stale becomes Outdated, and Unavailable becomes Planned. Not started, Ready, Skipped, Blocked, Running, and Failed stay. Not started, Ready, Complete, and Skipped use quiet text and an icon; color emphasis goes to Running, Failed, Outdated, Blocked, and warnings.
-- **Capability disclosure.** Remove Working badges. Planned stays as a state on unavailable controls. Each page that shows simulated values carries one quiet Simulated note. The capability table stays in Settings.
-- **Appearances.** A Settings choice with System, Light, Dark, and the four named palettes, persisted like the current theme preference. Each appearance declares whether it is light or dark, so `color-scheme`, the AG Grid theme, and map and chart colors follow it.
-- **Map and legend.** Background, footprints, no-data color, grid overlay, selection, and hover come from the active appearance. The legend becomes a compact, borderless instrument with units and an explicit no-data entry.
-- **Charts.** Quiet gridlines and axes from tokens. Keep a legend by default; annotate at most one or two notable points (peak month, largest scenario difference) and use direct labels only where they do not collide.
-- **Run ▾.** A split button in the ribbon: the primary part runs the current stage, and the menu lists the two existing variants. It stays keyboard reachable and explains when it cannot run.
-- **Contextual surface.** One right-side panel with a keyboard-accessible Reasoning | Inspection mode switch.
-  - Reasoning keeps the stage 4 placeholder.
-  - Inspection shows the shared selection read-only: properties, results, warnings, linked objects, relevant actions, and provenance.
-  - The mode is logged view state, so the agent can switch it later.
+- **Semantic color layer.** `src/app/appearance/appearances.ts` defines each appearance's chrome tokens (surfaces, text, borders, accent, focus, selection, status tones) and data palette (categorical slots, de-emphasis, sequential ramp, no data, selection, network, chart ink, status). `applyAppearance` in `src/app/theme.ts` writes the chrome tokens onto the root element; map, charts, and dashboard meters read the data palette through `useAppearance()`. No component writes a color literal.
+- **Typeface.** `@fontsource-variable/geist` 5.3.0 is imported in `src/main.tsx`. `--font-sans` is `'Geist Variable'`, then Microsoft YaHei, PingFang SC, and Noto Sans CJK SC, then the system stack; `--font-mono` stays Cascadia Code. Charts read the resolved family through `useChartFont` and rebuild once fonts are ready. Aligned numbers use `tabular-nums`, which Geist supports.
+- **Type scale.** `--font-size-small` (0.75rem), `--font-size-base` (0.8125rem), and `--font-size-title` (0.9375rem). Headings default to the base size; page, panel, dialog, and Inspection titles opt into the title size.
+- **Borders.** Kept on pane edges, the ribbon and status bar, tab strips, inputs, buttons, popovers, dialogs, the map tooltip, and roadmap nodes. Removed from page headers, dashboard cards, stat tiles, scenario controls, creator forms, empty states, notices, and the map legend, which now use spacing and `--color-surface-raised`. Internal dividers use `--color-border-subtle`.
+- **Status vocabulary.** Complete replaces Done, Outdated replaces Stale, and Planned replaces Unavailable. Not started, Ready, Complete, Skipped, Blocked, and Planned are muted text with an icon; Running uses the info tone; Failed and Outdated add tone and a tint. User-facing text says outdated.
+- **Capability disclosure.** `CapabilityBadge` renders nothing for working capabilities. Simulated appears once per surface: the Workflow panel, the Dashboard header, the map legend, the status bar, and Inspection provenance. Planned stays on planned controls. `StatusTag` names every status in the Settings and Help capability table.
+- **Appearances.** Settings offers System and the six appearances with descriptions and swatches; the View menu and command palette offer the same choices. Changes are logged as `view.setAppearance` and stored under `eaui.theme`.
+- **Map and legend.** Background, ramp, no-data color, selection outline, feeder lines, and grid points come from the appearance. The legend is a compact, borderless instrument with the unit in its title, outlined swatches, and one quiet Simulated note.
+- **Charts.** Scaffolding from the appearance ink, a legend by default, and one annotation on the baseline peak month. The annual bars keep their direct labels with reductions.
+- **Run ▾.** A split button in the ribbon: the primary part runs the current stage, and the menu lists the Run group with unavailable actions explained. When the current stage cannot run, the control recedes to neutral colors and still explains why.
+- **Context panel.** The right border tab is named Context and holds a keyboard-accessible Reasoning | Inspection switch, logged as `view.setContextMode`. Inspection follows the shared selection read-only through `src/app/panels/inspection.ts`. "Inspect selection" in the command palette and an Inspect button on the Map page open it.
+
+Deviations from the plan above as proposed:
+
+- **Blocked** stays quiet rather than taking warning color, because it follows from an upstream failure that already draws attention.
+- **Annotations:** only the baseline peak is annotated. The largest scenario difference is already a direct label on the annual bars.
+- **Panel name:** the right panel is named Context; its component id remains `panel.reasoning` so saved layouts restore, and restored layouts take the new name.
+- **Light appearance:** its third categorical color moved from `#1baf7a` (2.82:1 on white) to `#15986a` (3.66:1) so every slot in every appearance passes 3:1.
 
 ## Implementation status
 
-In progress. Stages and verification evidence are added here as they are committed.
+### Part 1: appearances, typeface, type scale, borders, map, and charts
+
+Commits `9127604` (Playwright worker cap) and `3d66ea5`.
+
+- **Real:** six appearances and System; the Settings picker and View menu commands; logged and persisted preference; Geist with fallbacks; the three-size type scale; border reduction; appearance-driven map, legend, charts, and meters; the baseline peak annotation.
+- **Tests:** `src/app/appearance/appearances.test.ts` checks every appearance: text and muted text at least 4.5:1 on the ground, surface, raised surface, and selection tint; accent text, text on accent, and focus; status tone text at least 4.5:1 on its tint, the surface, and the raised surface; categorical, de-emphasis, and selection colors at least 3:1 on the chart surface; and that the declared scheme matches the surfaces. It also covers reading stored preferences. `e2e/appearance.spec.ts` checks that Geist loads, that an appearance chosen in Settings persists across reloads, and that the workbench has no serious or critical axe violations in all six appearances.
+
+### Part 2: status, capability disclosure, and Run
+
+Commit `5b408b6`.
+
+- **Real:** semantic stage states with quiet routine treatment; quiet capability disclosure; the Run split button; outdated wording.
+- **Tests:** the browser specs assert Complete and Outdated; `e2e/workbench.spec.ts` checks that no Working label is visible and runs a stage from the Run menu, where an unavailable action is marked disabled.
+
+### Part 3: context panel
+
+Commit `38e08a3`.
+
+- **Real:** the Context panel with its mode switch; Inspection of one building (properties, results, warnings, linked grid elements, provenance), one grid element (rating, connected buildings, transformer loading and rating warnings), or several objects (summary and a list of up to 10 that can each be inspected); the Inspect selection action and Map button.
+- **Simulated:** every value shown, disclosed in Provenance.
+- **Planned:** Reasoning mode remains a labeled placeholder until stage 4.
+- **Tests:** `src/app/panels/inspection.test.ts` (empty, single building, skipped by the baseline, several buildings, transformer over rating); `e2e/context.spec.ts` (mode switch, selection from the Table, provenance, axe, clearing, and the palette action reopening the panel on Inspection).
+
+### Verification (2026-09-15)
+
+Node.js 24.21.0 and Microsoft Edge on the `E:/Coding` machine.
+
+- `npm run typecheck` and `npm run lint` pass.
+- `npx prettier --check . --end-of-line auto` passes. Plain `npm run format:check` reports files on this checkout only because `core.autocrlf=true` checks them out with CRLF line endings.
+- `npm test`: 69 tests in 9 files pass.
+- `npm run test:e2e`: 36 tests pass with 4 workers in about 53 seconds.
+- Screenshots reviewed: the Dashboard, the monthly chart, and the Map with data in all six appearances at 1920x1080; the Table with Inspection in Light and Dark engineering at 1920x1080; Settings at 1280x800. The review added outlines to legend swatches, which were nearly invisible for no data in Dark engineering, and corrected the Inspection results hint for buildings the baseline model skipped.
+
+### Findings
+
+- **Playwright parallelism:** on unchanged code, the default worker count (16 workers on 32 cores) timed out 5 of 30 tests while the dev server was cold. Four workers pass consistently, so local runs are capped at 4.
+- **Tabular numerals:** Geist supports them. At 40px, "1111" and "0000" both measure 96px with `tabular-nums`, and 56.6px and 107.3px without.
+- **Menu names:** React Aria's `MenuTrigger` names the menu after its trigger button, overriding the menu's own `aria-label`.
+- **Skipped buildings:** the baseline model skips buildings without an archetype or a floor area (`src/domain/simulation.ts`). In the synthetic project, 16 of 400 buildings have no archetype, so Inspection explains the missing result instead of asking to run the stage again.
+
+### Remaining gaps
+
+- **Palettes:** the six-appearance reading of the user's answer is unconfirmed, and each named palette exists in one scheme only.
+- **Accessibility coverage:** axe runs in all six appearances on the default workbench only. Pages with data were axe-checked in Light and reviewed by screenshot in the other appearances. Roadmap and Creator were not re-screenshotted in this pass.
+- **Charts:** only the annual bars carry direct labels, and no map metric uses a diverging scale yet.
+- **Inspection:** it is read-only; editing stays on the Table page. The Assets panel keeps its own details region, the context mode resets on reload, and the Table page has no Inspect button (the command palette action covers keyboard use).
+- **Reasoning:** a placeholder until stage 4.
+- **Line endings:** `npm run format:check` fails on CRLF checkouts. A `.gitattributes` rule or `core.autocrlf=input` would fix it; not decided.

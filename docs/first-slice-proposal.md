@@ -2,7 +2,7 @@
 
 Date: 2026-09-14 (revised the same day after discussion)
 
-Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is next (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The UI design guidance accepted in [0009](decisions/0009-ui-design-guidelines.md) applies to remaining work. The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
+Status (updated 2026-09-15): being implemented; stages 1 to 3c are built and stage 4 is next (see [implementation status](#implementation-status), [gaps](#deviations-and-gaps-2026-09-15), and [next steps](#next-steps)). The design alignment pass for decisions [0009](decisions/0009-ui-design-guidelines.md) and [0010](decisions/0010-geist-typeface.md) is built; see [design alignment](design-alignment.md#implementation-status). The plan below was a proposal that the user accepted through [0002](decisions/0002-web-react-typescript-vite.md) web-only React/TypeScript/Vite; [0003](decisions/0003-combined-product-shell.md) combined shell, panels, pages, asset tree; [0004](decisions/0004-workbench-layout-and-docking.md) workbench layout with full docking; [0005](decisions/0005-first-slice-workflow-and-panel-scope.md) workflow sequence, reasoning content, roadmap meaning, first creators; [0006](decisions/0006-scripted-agent-and-layout-details.md) scripted agent and confirmed layout details; packages in [0007](decisions/0007-package-selection.md) and [0008](decisions/0008-flexlayout-docking.md). Details not covered by a decision remain recommendations. For code structure and conventions, read the [developer guide](developer-guide.md).
 
 ## Goal
 
@@ -210,7 +210,7 @@ Code in `src/app/pages/DashboardPage.tsx`, `src/app/pages/dashboardData.ts`, `sr
 
 Compared with the plan above and the package constraints, the build so far:
 
-- **Reasoning panel:** not built; a labeled placeholder (stage 4).
+- **Reasoning mode:** not built; a labeled placeholder in the Context panel (stage 4).
 - **Keyboard docking:** no command palette entry moves a tab to another tab group (`Actions.moveNode`, promised in decision 0008); tabs move by drag only.
 - **View state:** map metric and overlay, table view and quick filter, and dashboard previews and compare toggles are local component state, not logged operations. The agent cannot drive them yet.
 - **Chart specs:** built directly as ECharts options, not through the planned zod-validated JSON view schema.
@@ -222,7 +222,7 @@ Compared with the plan above and the package constraints, the build so far:
 
 Stage 4, the scripted agent, is next. Start it only after the user confirms. Scope from decisions 0006 and 0009 and the Reasoning row above:
 
-- **Contextual right-side surface** (decision 0009): one pane with Reasoning and Inspection modes instead of a Reasoning-only panel. The items below form the Reasoning mode; the surface itself and a read-only Inspection mode are built in the [design alignment](design-alignment.md) pass before stage 4.
+- **Context panel** (decision 0009): built in the [design alignment](design-alignment.md) pass with a Reasoning placeholder and a read-only Inspection mode. The items below fill the Reasoning mode; agent tool calls can switch modes with `setContextMode(mode, 'agent')`.
 - **Transcript** in the Reasoning mode: user and agent messages (Markdown through `react-markdown` and `remark-gfm`), reasoning steps, tool calls with inputs and results linked to operation log entries, and referenced links. Label all of it simulated (`agent.sessions` capability).
 - **Chat input and prompt presets**; a preset starts one of the scripted sessions. Free text without a matching script gets an honest "scripted sessions only" answer.
 - **Approvals:** tool calls that change the project model (`undoable` commands) wait for Approve or Reject. Approve runs the command with source `agent`; Reject records a rejected operation. Layout and view tool calls run directly and are logged.
@@ -238,6 +238,6 @@ Prerequisites and open design questions to settle at the start of stage 4:
 2. Add a layout operation that places a page beside another (split), and expose tab moves in the command palette to close the keyboard docking gap.
 3. Decide whether "add a dashboard chart" needs the JSON view schema now, or a narrower operation that toggles which series the existing charts compare.
 4. Decide how a replay reacts when project state differs from what its script expects (for example, no baseline yet): stop with an explanation, or offer to run the missing stages with approval.
-5. Resolved 2026-09-15: the [design alignment](design-alignment.md) pass (decisions 0009 and [0010](decisions/0010-geist-typeface.md)), including the Reasoning | Inspection surface without the agent, comes before stage 4.
+5. Resolved and built 2026-09-15: the [design alignment](design-alignment.md) pass (decisions 0009 and [0010](decisions/0010-geist-typeface.md)) came before stage 4. The view state it added, appearance and context mode, is already logged like layout operations.
 
 Later candidates, not yet discussed with the user: remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).

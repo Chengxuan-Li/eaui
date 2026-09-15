@@ -3,7 +3,7 @@
 - [Developer guide](developer-guide.md): start here to take over the code; architecture, extension recipes, test conventions, storage, and known gaps.
 - [Source handoff](20260913_product-ui-experiment-agent-handoff.md): complete initiation brief, preserved unchanged.
 - [UI design guidelines](20260915_energyatlas_ui_design_guidelines.md): current visual and interaction guidance supplied by the user on 2026-09-15 and maintained by the user (decision 0009); the Geist typeface was added at the user's request (decision 0010).
-- [Design alignment](design-alignment.md): the build compared with the design guidelines; observed gaps, recommendations, and open questions.
+- [Design alignment](design-alignment.md): the build compared with the design guidelines; decisions from discussion, the implemented plan, verification, and remaining gaps.
 - [Reference UI audit](reference-ui-audit.md): stack/hosting map, UI inventory, source evidence, legacy risks, reuse assessment, and limitations.
 - [Source manifest](reference-source-manifest.json): hashes of principal inspected reference files; no implementation copied.
 - [UI directions](ui-directions.md): three product approaches, technical comparison, recommendation, proposed slice boundaries, and two pending decisions.
@@ -11,7 +11,7 @@
 - [Package selection proposal](package-selection.md): researched package recommendations, fallbacks, constraints, spikes, and rejected candidates.
 - [Decision records](decisions/README.md): accepted constraints and future product/technical decisions.
 
-Current phase (2026-09-15): first-slice implementation; stages 1 to 3c built, design alignment in progress, stage 4 (scripted agent) after it pending the user's go-ahead. History: setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md); scripted agent and layout details in [0006](decisions/0006-scripted-agent-and-layout-details.md). Packages accepted in [0007](decisions/0007-package-selection.md); app scaffolded, and package spikes run 2026-09-14 ([results](package-selection.md#spike-results-2026-09-14)). FlexLayout accepted for docking in [0008](decisions/0008-flexlayout-docking.md). First slice in progress: stages 1 (domain state and commands), 2 (workbench shell), 3a (assets, creator, roadmap), 3b (map and table), and 3c (dashboard) are complete; see [implementation status](first-slice-proposal.md#implementation-status). UI design guidance accepted in [decision 0009](decisions/0009-ui-design-guidelines.md) and the Geist typeface in [decision 0010](decisions/0010-geist-typeface.md); the build predates it, and gaps and open questions are in [design alignment](design-alignment.md).
+Current phase (2026-09-15): first-slice implementation; stages 1 to 3c and the design alignment pass built, stage 4 (scripted agent) next pending the user's go-ahead. History: setup and source audit complete; UI stack accepted in [decision 0002](decisions/0002-web-react-typescript-vite.md) (web-only, React/TypeScript/Vite); combined product shell, workbench layout with docking, and first-slice workflow accepted in decisions [0003](decisions/0003-combined-product-shell.md), [0004](decisions/0004-workbench-layout-and-docking.md), and [0005](decisions/0005-first-slice-workflow-and-panel-scope.md); scripted agent and layout details in [0006](decisions/0006-scripted-agent-and-layout-details.md). Packages accepted in [0007](decisions/0007-package-selection.md); app scaffolded, and package spikes run 2026-09-14 ([results](package-selection.md#spike-results-2026-09-14)). FlexLayout accepted for docking in [0008](decisions/0008-flexlayout-docking.md). First slice in progress: stages 1 (domain state and commands), 2 (workbench shell), 3a (assets, creator, roadmap), 3b (map and table), and 3c (dashboard) are complete; see [implementation status](first-slice-proposal.md#implementation-status). UI design guidance accepted in [decision 0009](decisions/0009-ui-design-guidelines.md) and the Geist typeface in [decision 0010](decisions/0010-geist-typeface.md); the design alignment pass implements them, with evidence and remaining gaps in [design alignment](design-alignment.md).
 
 ## Verification recorded 2026-09-13
 
@@ -50,3 +50,12 @@ Audit machine (`C:/github/...`), read-only inspection only.
 - `npm test`: 1 Vitest component test passed.
 - `npm run test:e2e`: 1 Playwright test passed in the installed Microsoft Edge at 1280x800, with no axe violations.
 - The scaffold page implements no workflow; it states that the workbench, workflow, and agent are not implemented yet.
+
+## Node 24 baseline recorded 2026-09-15
+
+Machine paths `E:/Coding`. Design alignment verification is in [design alignment](design-alignment.md#verification-2026-09-15).
+
+- Node.js 20.11.1 was active and could not run Vitest or Vite (`node:util` has no `styleText`). nvm-windows now selects Node.js 24.21.0.
+- A running `npm run dev` locked rolldown's native binding and interrupted `npm ci`; it passed after the dev server was stopped.
+- Baseline on unchanged code: typecheck, lint, and 38 unit tests passed. With the default Playwright worker count, 25 of 30 browser tests passed and 5 timed out; those passed with 4 workers, which the configuration now uses locally.
+- `core.autocrlf=true` makes `npm run format:check` report 97 files; `npx prettier --check . --end-of-line auto` passes.
