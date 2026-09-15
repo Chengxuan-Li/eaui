@@ -18,7 +18,7 @@ git diff --check
 git log --oneline -5
 ```
 
-`.env.example` is the tracked configuration template; `.env.local` is its ignored local counterpart. No variables or keys are needed yet. On another machine, create the local counterpart if absent:
+`.env.example` is the tracked configuration template; `.env.local` is its ignored local counterpart. It lists `OPENAI_API_KEY` and `OPENAI_MODEL`, reserved for a future model provider behind the agent adapter; the first slice reads no variables ([decision 0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Never expose keys through `VITE_`-prefixed variables, which Vite bundles into client code. On another machine, create the local counterpart if absent:
 
 ```powershell
 if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
