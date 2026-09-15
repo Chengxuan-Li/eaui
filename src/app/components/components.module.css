@@ -1,24 +1,3 @@
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.375rem;
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-small);
-  line-height: 1.25rem;
-  white-space: nowrap;
-}
-
-.success {
-  color: var(--tone-success-text);
-  background: var(--tone-success-bg);
-}
-
-.info {
-  color: var(--tone-info-text);
-  background: var(--tone-info-bg);
-}
-
 .warning {
   color: var(--tone-warning-text);
   background: var(--tone-warning-bg);
@@ -29,9 +8,30 @@
   background: var(--tone-danger-bg);
 }
 
-.neutral {
-  color: var(--tone-neutral-text);
-  background: var(--tone-neutral-bg);
+/* Stage states and capability disclosure (guidelines section 8): routine
+   states are quiet text with an icon; attention states add tone and a tint. */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--font-size-small);
+  line-height: 1.25rem;
+  white-space: nowrap;
+}
+
+.stateQuiet {
+  color: var(--color-text-muted);
+}
+
+.stateRunning {
+  color: var(--tone-info-text);
+  font-weight: 600;
+}
+
+.stateAttention {
+  padding: 0 0.375rem;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
 }
 
 .button {

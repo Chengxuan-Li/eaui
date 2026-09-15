@@ -51,6 +51,32 @@ test.describe('workbench shell', () => {
       page.getByRole('contentinfo', { name: 'Status bar' }),
     ).toBeVisible()
     await expect(page.getByText('Not built yet').first()).toBeVisible()
+    // Working behavior carries no label (guidelines section 8).
+    await expect(
+      page.getByText('Working', { exact: true }).filter({ visible: true }),
+    ).toHaveCount(0)
+  })
+
+  test('runs stages from the Run split button and its menu', async ({
+    page,
+  }) => {
+    const toolbar = page.getByRole('toolbar', { name: 'Workbench commands' })
+    await expect(
+      toolbar.getByRole('button', { name: 'Run current stage' }),
+    ).toContainText('Run')
+
+    await toolbar.getByRole('button', { name: 'More run options' }).click()
+    // React Aria names the menu after its trigger button.
+    const menu = page.getByRole('menu', { name: 'More run options' })
+    await expect(
+      menu.getByRole('menuitem', { name: /Cancel running tasks/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    await menu.getByRole('menuitem', { name: /Run next ready stage/ }).click()
+    await expect(
+      page.getByRole('progressbar', {
+        name: 'Location setup / footprint capturing progress',
+      }),
+    ).toBeVisible()
   })
 
   test('runs a stage as a background task with visible progress', async ({
@@ -64,7 +90,7 @@ test.describe('workbench shell', () => {
     ).toBeVisible()
     await expect(
       workflowPanel(page).getByRole('listitem').first(),
-    ).toContainText('Done', { timeout: 10_000 })
+    ).toContainText('Complete', { timeout: 10_000 })
 
     await page.getByRole('button', { name: /Open Tasks/ }).click()
     await expect(
@@ -138,7 +164,7 @@ test.describe('workbench shell', () => {
     await runFirstStage(page)
     await expect(
       workflowPanel(page).getByRole('listitem').first(),
-    ).toContainText('Done', { timeout: 10_000 })
+    ).toContainText('Complete', { timeout: 10_000 })
     await page.keyboard.press('Control+s')
     await expect(page.getByTestId('status-notice')).toContainText(
       'Saved the project',
@@ -150,7 +176,7 @@ test.describe('workbench shell', () => {
     ).toHaveAttribute('aria-selected', 'true')
     await expect(
       workflowPanel(page).getByRole('listitem').first(),
-    ).toContainText('Done')
+    ).toContainText('Complete')
     await expect(page.getByTestId('status-notice')).toContainText(
       'Restored the project',
     )

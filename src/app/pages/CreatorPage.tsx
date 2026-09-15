@@ -490,9 +490,7 @@ function OtherCreators() {
       </p>
       <ul className={styles.plannedList}>
         {OTHER_CREATORS.map((name) => (
-          <li key={name}>
-            {name} <StatusTag status="planned" />
-          </li>
+          <li key={name}>{name}</li>
         ))}
       </ul>
     </section>

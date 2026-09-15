@@ -19,9 +19,12 @@ async function runFirstStage(page: Page) {
   await workflow
     .getByRole('button', { name: 'Run Location setup / footprint capturing' })
     .click()
-  await expect(workflow.getByRole('listitem').first()).toContainText('Done', {
-    timeout: 10_000,
-  })
+  await expect(workflow.getByRole('listitem').first()).toContainText(
+    'Complete',
+    {
+      timeout: 10_000,
+    },
+  )
 }
 
 test.beforeEach(async ({ page }) => {

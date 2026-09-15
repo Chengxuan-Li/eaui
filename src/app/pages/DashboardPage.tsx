@@ -181,8 +181,9 @@ export function DashboardPage() {
         <div className={cx(componentStyles.notice, styles.staleNotice)}>
           <TriangleAlert size={16} aria-hidden="true" />
           <span>
-            Scenario results are stale: scenario inputs changed after the last
-            run. Rerun &ldquo;{staleStage.name}&rdquo; and the stages after it.
+            Scenario results are outdated: scenario inputs changed after the
+            last run. Rerun &ldquo;{staleStage.name}&rdquo; and the stages after
+            it.
           </span>
           <ActionButton
             label={`Run ${staleStage.name}`}
@@ -287,9 +288,7 @@ export function DashboardPage() {
                   Saved: {scenario.adoptionPercent}%
                 </span>
                 {isPreview ? (
-                  <span className={styles.previewTag}>
-                    <StatusTag status="simulated" /> Preview, not saved
-                  </span>
+                  <span className={styles.previewTag}>Preview, not saved</span>
                 ) : null}
                 <ActionButton
                   label={`Apply ${adoption}% adoption to ${scenario.name}`}

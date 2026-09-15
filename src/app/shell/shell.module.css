@@ -96,6 +96,71 @@
   cursor: not-allowed;
 }
 
+/* ▶ Run ▾ (guidelines section 9): a compact primary split button. */
+.runSplit {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0 0.25rem;
+}
+
+.runPrimary,
+.runMenuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.75rem;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.runPrimary {
+  padding: 0 0.5rem 0 0.4375rem;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.runMenuButton {
+  padding: 0 0.25rem;
+  border-left-color: color-mix(
+    in srgb,
+    var(--color-on-accent) 35%,
+    var(--color-accent)
+  );
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.runPrimary:hover,
+.runMenuButton[data-hovered] {
+  background: color-mix(in srgb, var(--color-accent) 88%, var(--color-text));
+}
+
+.runPrimary:focus-visible,
+.runMenuButton[data-focus-visible] {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* When the current stage cannot run, the control stays visible but recedes. */
+.runSplitIdle .runPrimary,
+.runSplitIdle .runMenuButton {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.runSplitIdle .runPrimary {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.runSplitIdle .runPrimary:hover,
+.runSplitIdle .runMenuButton[data-hovered] {
+  background: var(--color-surface-raised);
+}
+
 .searchButton {
   display: inline-flex;
   align-items: center;

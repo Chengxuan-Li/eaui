@@ -214,7 +214,10 @@ function AssetDetails({
           <>
             <dt>Status</dt>
             <dd>
-              <StatusTag status={capability.status} /> {capability.explanation}
+              {capability.status === 'working' ? null : (
+                <StatusTag status={capability.status} />
+              )}{' '}
+              {capability.explanation}
             </dd>
           </>
         ) : null}

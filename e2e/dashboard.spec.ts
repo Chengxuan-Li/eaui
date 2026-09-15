@@ -29,7 +29,7 @@ async function runStages(page: Page, names: string[]) {
   for (const name of names) {
     const item = workflowItem(page, name)
     await item.getByRole('button', { name: `Run ${name}` }).click()
-    await expect(item).toContainText('Done', { timeout: 10_000 })
+    await expect(item).toContainText('Complete', { timeout: 10_000 })
   }
 }
 
@@ -99,8 +99,10 @@ test('dashboard compares a modeled scenario and previews adoption before applyin
   await expect(page.getByTestId('status-notice')).toContainText(
     'Set adoption for "Half retrofitted" from 50% to 60%.',
   )
-  await expect(page.getByText(/Scenario results are stale/)).toBeVisible()
-  await expect(workflowItem(page, 'Scenario modeling')).toContainText('Stale')
+  await expect(page.getByText(/Scenario results are outdated/)).toBeVisible()
+  await expect(workflowItem(page, 'Scenario modeling')).toContainText(
+    'Outdated',
+  )
 
   await page.getByText('Show monthly data table').click()
   await expect(

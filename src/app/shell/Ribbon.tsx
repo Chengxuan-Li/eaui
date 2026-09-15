@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react'
+import { Check, ChevronDown, Play } from 'lucide-react'
+import type { ReactNode } from 'react'
 import {
   Button,
   Keyboard,
@@ -12,14 +13,18 @@ import {
 } from 'react-aria-components'
 import { useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
 import { ACTION_GROUPS, type AppAction } from '../actions.ts'
+import { cx } from '../cx.ts'
 import { toAriaKeyShortcut } from '../shortcuts.ts'
 import styles from './shell.module.css'
 
+const RUN_SPLIT = 'run.split'
+
+// The Run split button (guidelines section 9) sits where the run quick button was.
 const QUICK_ACTION_IDS = [
   'file.save',
   'edit.undo',
   'edit.redo',
-  'run.current',
+  RUN_SPLIT,
   'view.toggleAssets',
   'view.toggleReasoning',
   'view.toggleMaximize',
@@ -38,10 +43,6 @@ export function Ribbon({ actions, invoke }: RibbonProps) {
     (snapshot) => snapshot.state.project.name,
   )
   const palette = actions.find((action) => action.id === 'help.palette')
-  const quickActions = QUICK_ACTION_IDS.flatMap((id) => {
-    const action = actions.find((candidate) => candidate.id === id)
-    return action ? [action] : []
-  })
 
   return (
     <header className={styles.ribbon}>
@@ -51,11 +52,13 @@ export function Ribbon({ actions, invoke }: RibbonProps) {
       </div>
       <Toolbar aria-label="Workbench commands" className={styles.toolbar}>
         {ACTION_GROUPS.map((group) => (
-          <RibbonMenu
+          <ActionMenu
             key={group}
             label={group}
             actions={actions.filter((action) => action.group === group)}
             invoke={invoke}
+            trigger={group}
+            triggerClassName={styles.menuButton}
           />
         ))}
         <Separator orientation="vertical" className={styles.separator} />
@@ -71,9 +74,15 @@ export function Ribbon({ actions, invoke }: RibbonProps) {
           </button>
         ) : null}
         <Separator orientation="vertical" className={styles.separator} />
-        {quickActions.map((action) => (
-          <QuickButton key={action.id} action={action} invoke={invoke} />
-        ))}
+        {QUICK_ACTION_IDS.map((id) => {
+          if (id === RUN_SPLIT) {
+            return <RunSplitButton key={id} actions={actions} invoke={invoke} />
+          }
+          const action = actions.find((candidate) => candidate.id === id)
+          return action ? (
+            <QuickButton key={id} action={action} invoke={invoke} />
+          ) : null
+        })}
       </Toolbar>
     </header>
   )
@@ -106,18 +115,64 @@ function QuickButton({
   )
 }
 
-function RibbonMenu({
+/** ▶ Run ▾: runs the current stage; the menu lists every Run action. */
+function RunSplitButton({ actions, invoke }: RibbonProps) {
+  const primary = actions.find((action) => action.id === 'run.current')
+  if (!primary) return null
+  const hint = primary.shortcut ? ` (${primary.shortcut})` : ''
+  return (
+    <div
+      className={cx(
+        styles.runSplit,
+        primary.disabledReason !== null && styles.runSplitIdle,
+      )}
+    >
+      <button
+        type="button"
+        className={styles.runPrimary}
+        aria-label={primary.label}
+        aria-disabled={primary.disabledReason ? true : undefined}
+        aria-keyshortcuts={
+          primary.shortcut ? toAriaKeyShortcut(primary.shortcut) : undefined
+        }
+        title={primary.disabledReason ?? `${primary.label}${hint}`}
+        onClick={() => invoke(primary)}
+      >
+        <Play size={14} aria-hidden="true" />
+        Run
+      </button>
+      <ActionMenu
+        label="Run options"
+        actions={actions.filter((action) => action.group === 'Run')}
+        invoke={invoke}
+        trigger={<ChevronDown size={14} aria-hidden="true" />}
+        triggerClassName={styles.runMenuButton}
+        triggerAriaLabel="More run options"
+      />
+    </div>
+  )
+}
+
+function ActionMenu({
   label,
   actions,
   invoke,
+  trigger,
+  triggerClassName,
+  triggerAriaLabel,
 }: {
   label: string
   actions: AppAction[]
   invoke: (action: AppAction) => void
+  trigger: ReactNode
+  triggerClassName: string | undefined
+  triggerAriaLabel?: string
 }) {
   return (
     <MenuTrigger>
-      <Button className={styles.menuButton}>{label}</Button>
+      <Button className={triggerClassName} aria-label={triggerAriaLabel}>
+        {trigger}
+      </Button>
       <Popover className={styles.popover} placement="bottom start">
         <Menu
           aria-label={`${label} menu`}

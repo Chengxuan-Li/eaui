@@ -19,7 +19,7 @@ async function runStages(page: Page, names: string[]) {
   for (const name of names) {
     const item = workflow.getByRole('listitem').filter({ hasText: name })
     await item.getByRole('button', { name: `Run ${name}` }).click()
-    await expect(item).toContainText('Done', { timeout: 10_000 })
+    await expect(item).toContainText('Complete', { timeout: 10_000 })
   }
 }
 

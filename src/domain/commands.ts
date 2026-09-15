@@ -491,7 +491,7 @@ export const commandDefinitions = {
   'edits.apply': defineCommand({
     title: 'Apply edits',
     description:
-      'Apply all pending edits as manual overrides. Stages downstream of the edited data become stale.',
+      'Apply all pending edits as manual overrides. Stages downstream of the edited data become outdated.',
     input: z.object({}),
     undoable: true,
     run(state, _input, context) {
@@ -529,7 +529,7 @@ export const commandDefinitions = {
       }
       state.pendingEdits = {}
       return applied(
-        `Applied ${edits.length} edit(s); stages downstream of the edited data are now stale.`,
+        `Applied ${edits.length} edit(s); stages downstream of the edited data are now outdated.`,
       )
     },
   }),
@@ -658,7 +658,7 @@ export const commandDefinitions = {
   'scenario.setAdoption': defineCommand({
     title: 'Set scenario adoption',
     description:
-      'Change a scenario adoption rate. Scenario definitions and downstream results become stale.',
+      'Change a scenario adoption rate. Scenario definitions and downstream results become outdated.',
     input: z.object({
       scenarioId: z.string().min(1, 'Choose a scenario.'),
       adoptionPercent: z

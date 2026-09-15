@@ -20,7 +20,7 @@ export const capabilities = {
     label: 'Workflow graph',
     status: 'working',
     explanation:
-      'Stage states, skipping, custom stages, and stale propagation are real state transitions.',
+      'Stage states, skipping, custom stages, and outdated-result propagation are real state transitions.',
   },
   'workflow.stageRuns': {
     label: 'Stage runs',
