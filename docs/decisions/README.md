@@ -14,3 +14,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0010: Geist typeface](0010-geist-typeface.md)
 - [0011: Agent chart specs and missing project state](0011-agent-view-specs-and-missing-state.md)
 - [0012: OpenFreeMap basemap and Boston Back Bay footprints](0012-openfreemap-basemap-back-bay.md)
+- [0013: 3D building extrusion on the Map page](0013-3d-building-extrusion.md)
