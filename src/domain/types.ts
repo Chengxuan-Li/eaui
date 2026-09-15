@@ -1,0 +1,244 @@
+import type { CapabilityId } from './capabilities.ts'
+
+export type CommandSource = 'manual' | 'agent' | 'system'
+
+export type Provenance =
+  | { kind: 'skeleton' }
+  | { kind: 'stage'; stageId: string; runId: string; operationId: string }
+  | { kind: 'operation'; source: CommandSource; operationId: string }
+
+export type AssetKind =
+  | 'group'
+  | 'location'
+  | 'gisDataset'
+  | 'schemaRules'
+  | 'buildings'
+  | 'zones'
+  | 'shadingResult'
+  | 'pvYield'
+  | 'archetypes'
+  | 'weather'
+  | 'energyModel'
+  | 'energyResult'
+  | 'measure'
+  | 'scenario'
+  | 'gridElements'
+  | 'gridResult'
+  | 'view'
+  | 'report'
+
+export type Asset = {
+  id: string
+  kind: AssetKind
+  name: string
+  parentId: string | null
+  childIds: string[]
+  provenance: Provenance
+  /** Honest status of what this asset represents; see capabilities.ts. */
+  capability: CapabilityId | null
+  summary: string | null
+  /** Entities this asset stands for, such as a measure or scenario. */
+  entityIds: string[]
+}
+
+export type LngLat = [number, number]
+
+export type BuildingUse =
+  'residential' | 'office' | 'retail' | 'school' | 'mixed'
+
+export type Building = {
+  id: string
+  name: string
+  footprint: LngLat[]
+  footprintAreaM2: number
+  use: BuildingUse | null
+  yearBuilt: number | null
+  floors: number | null
+  heightM: number | null
+  floorAreaM2: number | null
+  zoneCount: number | null
+  shadingFactor: number | null
+  pvYieldKwh: number | null
+  archetypeId: string | null
+}
+
+export type Archetype = {
+  id: string
+  name: string
+  use: BuildingUse
+  euiKwhPerM2: number
+}
+
+export type MeasureKind = 'envelope' | 'heating' | 'lighting' | 'pv'
+
+export type Measure = {
+  id: string
+  name: string
+  kind: MeasureKind
+  savingsPercent: number
+  appliesTo: BuildingUse | 'all'
+}
+
+export type Scenario = {
+  id: string
+  name: string
+  measureIds: string[]
+  adoptionPercent: number
+}
+
+export type ResultSet = {
+  id: string
+  label: string
+  runId: string
+  totalKwh: number
+  peakKw: number
+  monthlyKwh: number[]
+  byBuildingKwh: Record<string, number>
+}
+
+export type GridElementKind =
+  'bus' | 'line' | 'transformer' | 'utilityPv' | 'load'
+
+export type GridElement = {
+  id: string
+  kind: GridElementKind
+  name: string
+  coordinates: LngLat[]
+  ratingKva: number | null
+  buildingIds: string[]
+}
+
+export type GridResult = {
+  runId: string
+  transformerLoadingPercent: Record<string, number>
+}
+
+export type StageRun = {
+  runId: string
+  operationId: string
+  outcome: 'succeeded' | 'failed'
+  message: string | null
+  /** Upstream stage revisions this run consumed. */
+  inputRevisions: Record<string, number>
+  /** This stage's own edit revision when the run consumed it. */
+  inputEditRevision: number
+  finishedAt: string
+}
+
+export type StageRecord = {
+  id: string
+  name: string
+  description: string
+  capability: CapabilityId
+  skippable: boolean
+  custom: boolean
+  skipped: boolean
+  /** Changes whenever this stage's outputs change: a run, an edit of data it owns, or a skip toggle. */
+  revision: number
+  /** Changes whenever inputs owned by this stage change, such as new measures. */
+  editRevision: number
+  runCount: number
+  lastRun: StageRun | null
+  unavailableReason: string | null
+}
+
+export type StageEdge = { from: string; to: string }
+
+export type WorkflowState = {
+  stageIds: string[]
+  stages: Record<string, StageRecord>
+  edges: StageEdge[]
+  /** The stage the user is focused on; shown as a marker over its derived state. */
+  currentStageId: string | null
+}
+
+export type StageState =
+  | 'future'
+  | 'ready'
+  | 'running'
+  | 'executed'
+  | 'skipped'
+  | 'blocked'
+  | 'failed'
+  | 'stale'
+  | 'unavailable'
+
+export type TaskStatus =
+  'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+
+export type Task = {
+  id: string
+  label: string
+  stageId: string
+  runId: string
+  status: TaskStatus
+  progress: number
+  message: string | null
+  source: CommandSource
+  createdAt: string
+  updatedAt: string
+}
+
+export type IssueSeverity = 'info' | 'warning' | 'error'
+
+export type Issue = {
+  id: string
+  severity: IssueSeverity
+  message: string
+  stageId: string | null
+  createdAt: string
+}
+
+export type SelectableEntity = 'building' | 'gridElement'
+
+export type Selection = {
+  entityType: SelectableEntity | null
+  ids: string[]
+}
+
+export type EditableBuildingField = 'floors' | 'archetypeId'
+
+export type EditValue = number | string | null
+
+export type PendingEdit = {
+  entityId: string
+  field: EditableBuildingField
+  from: EditValue
+  to: EditValue
+}
+
+/** An applied manual edit that survives reruns of the stage that generated the field. */
+export type ManualOverride = {
+  entityId: string
+  field: EditableBuildingField
+  value: EditValue
+  operationId: string
+  source: CommandSource
+}
+
+export type WorkbenchState = {
+  project: {
+    id: string
+    name: string
+    location: { name: string; center: LngLat } | null
+  }
+  assets: Record<string, Asset>
+  rootAssetIds: string[]
+  buildings: Record<string, Building>
+  buildingIds: string[]
+  archetypes: Record<string, Archetype>
+  measures: Record<string, Measure>
+  scenarios: Record<string, Scenario>
+  results: { baseline: ResultSet | null; scenarios: Record<string, ResultSet> }
+  gridElements: Record<string, GridElement>
+  gridResult: GridResult | null
+  overrides: Record<string, ManualOverride>
+  workflow: WorkflowState
+  tasks: Record<string, Task>
+  taskIds: string[]
+  issues: Issue[]
+  selection: Selection
+  pendingEdits: Record<string, PendingEdit>
+  /** Monotonic counter for ids and revisions; never rewound by undo. */
+  nextId: number
+}

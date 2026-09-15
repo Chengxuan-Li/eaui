@@ -21,7 +21,7 @@ A single synthetic project can be taken through the whole 12-stage workflow in t
 ## Cross-cutting state model
 
 - **Project document:** typed asset tree with stable IDs, kind, status, and provenance (manual, agent, or stage output, with inputs).
-- **Workflow graph:** stages are nodes with dependency edges; the default is the linear 12-stage sequence. Node states: `future`, `ready`, `current`, `running`, `executed`, `skipped`, `blocked`, `failed`, `stale`, `unavailable`. A stage becomes `stale` when an upstream input changes after it executed. `unavailable` marks planned capability and is never shown as executed (the reference's calibration page marked unimplemented work complete; see the audit). Graph edits (insert, skip, remove) are operations that must keep the graph acyclic. Nodes link their inputs, produced assets, and any reasoning entries that proposed or explained them.
+- **Workflow graph:** stages are nodes with dependency edges; the default is the linear 12-stage sequence. Node states: `future`, `ready`, `running`, `executed`, `skipped`, `blocked`, `failed`, `stale`, `unavailable`. The current stage is a focus marker shown over its derived state rather than a state of its own (implemented in `src/domain/workflow.ts`). A stage becomes `stale` when an upstream input changes after it executed. `unavailable` marks planned capability and is never shown as executed (the reference's calibration page marked unimplemented work complete; see the audit). Graph edits (insert, skip, remove) are operations that must keep the graph acyclic. Nodes link their inputs, produced assets, and any reasoning entries that proposed or explained them.
 - **Operations:** every mutation (create or edit an asset, run or skip a stage, change a scenario control, apply an approval) is a typed command with validation and a result, appended to an operation log. Manual controls and the agent invoke the same commands; agent tool calls in the reasoning panel link to their log entries, and agent-proposed commands wait for approval.
 - **Background tasks:** running stages are tasks with progress, cancellation, and terminal states, shown in the status bar.
 - **Selection:** one project-scoped selection shared by assets, map, table, and dashboard. An empty selection stays explicit and never silently widens.
@@ -45,7 +45,7 @@ A single synthetic project can be taken through the whole 12-stage workflow in t
 | 11 | Grid modeling | Grid results |
 | 12 | Dashboard / visualization | Views, report |
 
-Whether stage 7 includes running the baseline simulation is an assumption to confirm in fixtures.
+Implemented assumption: stage 7 selects synthetic weather and computes baseline results.
 
 ## Working, simulated, and planned boundary
 
@@ -87,3 +87,29 @@ Proposed scripted agent sessions (decision 0006), at minimum:
 - **UI restructuring:** open Map beside Table, focus a selection, and restore the default layout.
 - **Data representation:** color the map by PV yield and add a dashboard chart comparing baseline and scenario.
 - **Model change:** propose a measure or stage change that waits for approval, then show the resulting stale stages.
+
+## Implementation status
+
+### Stage 1: domain state and commands (2026-09-14)
+
+Code in `src/domain/`; 21 unit tests in `src/domain/*.test.ts`.
+
+- **Real:**
+  - Typed workbench state and the asset tree skeleton from decision 0003.
+  - Derived stage states with stale propagation, run blockers, and custom stage insertion with cycle checks.
+  - Background task lifecycle and a task simulator with an injectable scheduler.
+  - A shared selection that rejects unknown ids and never widens.
+  - Validated pending edits, applied as manual overrides that survive stage reruns.
+  - Measure and scenario creators with validation.
+  - One command path, `createWorkbench().execute`, with zod-validated inputs, an operation log recording the source (manual, agent, system), and undo/redo for model changes through Immer patches.
+  - A JSON Schema command catalog (`describeCommands`) for future agent tools.
+- **Simulated:** every stage output in `src/domain/simulation.ts` is a deterministic synthetic stand-in:
+  - 400 footprints near latitude 0, longitude 0 (open ocean), with uses, floors, zones, shading, and PV yield;
+  - archetype energy intensities, baseline and scenario demand;
+  - grid elements and transformer loading.
+
+  Grid modeling fails on its first attempt by design so the failed state and recovery can be exercised.
+- **Deferred to later stages:** all UI, layout commands, dashboard scenario controls, and the scripted agent with approvals.
+- **Design notes:**
+  - Undo covers model changes only: skip or restore, insert stage, apply edits, create measure or scenario. Runs, tasks, selection, and pending edits are not undoable. The id and revision counter never rewinds, so undone changes cannot collide with later ones.
+  - Stage state is derived, never stored. An executed stage becomes stale when an upstream revision or its own edit revision differs from what its last run consumed, or when an upstream stage is no longer executed or skipped.
