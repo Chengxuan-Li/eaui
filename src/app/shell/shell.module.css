@@ -247,6 +247,12 @@
   grid-area: kbd;
 }
 
+/* Submenu rows point to their side menu, like desktop menus. */
+.submenuChevron {
+  grid-area: kbd;
+  color: var(--color-text-muted);
+}
+
 /* Main area */
 
 .main {

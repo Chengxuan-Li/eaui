@@ -29,6 +29,51 @@ h6 {
   font-weight: 600;
 }
 
+/* Scrollbars stay out of the way: a dim rectangle over the content that
+   brightens on hover, rather than a permanent track (VS Code's behavior). */
+/* Firefox has no overlay scrollbars: keep it thin and dim until hovered.
+   Chromium ignores the ::-webkit-scrollbar rules below when scrollbar-width is
+   set, so only Firefox gets these. */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
+    scrollbar-color: color-mix(
+        in srgb,
+        var(--color-text-muted) 45%,
+        transparent
+      )
+      transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* A dim rectangle over the content, brighter when pointed at. Chromium draws
+   these as overlays here, so they reserve no width. */
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-text-muted) 40%, transparent);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-text-muted) 75%, transparent);
+  background-clip: content-box;
+}
+
 .visually-hidden {
   position: absolute !important;
   width: 1px;

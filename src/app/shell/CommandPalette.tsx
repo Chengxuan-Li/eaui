@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   Autocomplete,
   Dialog,
@@ -28,6 +29,26 @@ export function CommandPalette({
   invoke,
 }: CommandPaletteProps) {
   const { contains } = useFilter({ sensitivity: 'base' })
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // React Aria's Autocomplete replays the field's keys on the focused menu
+  // item. The item cancels Backspace, and Autocomplete then cancels the real
+  // key, so the field never edits (Delete is unaffected). Stop the replayed
+  // Backspace at the menu so the field deletes normally.
+  useEffect(() => {
+    const menu = menuRef.current
+    if (!menu || !isOpen) return
+    const stopReplayedBackspace = (event: KeyboardEvent) => {
+      if (event.key === 'Backspace' && !event.isTrusted) {
+        event.stopImmediatePropagation()
+      }
+    }
+    menu.addEventListener('keydown', stopReplayedBackspace, true)
+    return () => {
+      menu.removeEventListener('keydown', stopReplayedBackspace, true)
+    }
+  }, [isOpen])
+
   return (
     <ModalOverlay
       isOpen={isOpen}
@@ -49,6 +70,7 @@ export function CommandPalette({
               />
             </SearchField>
             <Menu
+              ref={menuRef}
               items={actions}
               className={styles.paletteMenu}
               disabledKeys={actions

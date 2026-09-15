@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Play } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Play } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
   Button,
@@ -8,11 +8,16 @@ import {
   MenuTrigger,
   Popover,
   Separator,
+  SubmenuTrigger,
   Text,
   Toolbar,
 } from 'react-aria-components'
 import { useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
-import { ACTION_GROUPS, type AppAction } from '../actions.ts'
+import {
+  ACTION_GROUPS,
+  type ActionSubmenu,
+  type AppAction,
+} from '../actions.ts'
 import { cx } from '../cx.ts'
 import { toAriaKeyShortcut } from '../shortcuts.ts'
 import styles from './shell.module.css'
@@ -153,6 +158,39 @@ function RunSplitButton({ actions, invoke }: RibbonProps) {
   )
 }
 
+/** One menu row: check mark, label, reason when unavailable, and shortcut. */
+function ActionItem({ action }: { action: AppAction }) {
+  return (
+    <MenuItem
+      id={action.id}
+      textValue={action.label}
+      className={styles.menuItem}
+    >
+      <span className={styles.menuCheck} aria-hidden="true">
+        {action.pressed ? <Check size={14} /> : null}
+      </span>
+      <Text slot="label" className={styles.menuLabel}>
+        {action.label}
+        {action.pressed ? <span className="visually-hidden"> (on)</span> : null}
+      </Text>
+      {action.disabledReason ? (
+        <Text slot="description" className={styles.menuDescription}>
+          {action.disabledReason}
+        </Text>
+      ) : null}
+      {action.shortcut ? (
+        <Keyboard className={styles.kbd}>{action.shortcut}</Keyboard>
+      ) : null}
+    </MenuItem>
+  )
+}
+
+function disabledIds(actions: AppAction[]): string[] {
+  return actions
+    .filter((action) => action.disabledReason)
+    .map((action) => action.id)
+}
+
 function ActionMenu({
   label,
   actions,
@@ -168,6 +206,16 @@ function ActionMenu({
   triggerClassName: string | undefined
   triggerAriaLabel?: string
 }) {
+  const onAction = (key: React.Key) => {
+    const action = actions.find((candidate) => candidate.id === key)
+    if (action) invoke(action)
+  }
+  const topLevel = actions.filter((action) => !action.submenu)
+  // Panel visibility and appearance live in submenus, as desktop menus do.
+  const submenus = [
+    ...new Set(actions.flatMap((a) => (a.submenu ? [a.submenu] : []))),
+  ]
+
   return (
     <MenuTrigger>
       <Button className={triggerClassName} aria-label={triggerAriaLabel}>
@@ -177,40 +225,42 @@ function ActionMenu({
         <Menu
           aria-label={`${label} menu`}
           className={styles.menu}
-          items={actions}
-          disabledKeys={actions
-            .filter((action) => action.disabledReason)
-            .map((action) => action.id)}
-          onAction={(key) => {
-            const action = actions.find((candidate) => candidate.id === key)
-            if (action) invoke(action)
-          }}
+          disabledKeys={disabledIds(topLevel)}
+          onAction={onAction}
         >
-          {(action) => (
-            <MenuItem
-              id={action.id}
-              textValue={action.label}
-              className={styles.menuItem}
-            >
-              <span className={styles.menuCheck} aria-hidden="true">
-                {action.pressed ? <Check size={14} /> : null}
-              </span>
-              <Text slot="label" className={styles.menuLabel}>
-                {action.label}
-                {action.pressed ? (
-                  <span className="visually-hidden"> (on)</span>
-                ) : null}
-              </Text>
-              {action.disabledReason ? (
-                <Text slot="description" className={styles.menuDescription}>
-                  {action.disabledReason}
-                </Text>
-              ) : null}
-              {action.shortcut ? (
-                <Keyboard className={styles.kbd}>{action.shortcut}</Keyboard>
-              ) : null}
-            </MenuItem>
-          )}
+          {topLevel.map((action) => (
+            <ActionItem key={action.id} action={action} />
+          ))}
+          {submenus.map((submenu: ActionSubmenu) => {
+            const items = actions.filter((action) => action.submenu === submenu)
+            return (
+              <SubmenuTrigger key={submenu}>
+                <MenuItem textValue={submenu} className={styles.menuItem}>
+                  <span className={styles.menuCheck} aria-hidden="true" />
+                  <Text slot="label" className={styles.menuLabel}>
+                    {submenu}
+                  </Text>
+                  <ChevronRight
+                    size={14}
+                    aria-hidden="true"
+                    className={styles.submenuChevron}
+                  />
+                </MenuItem>
+                <Popover className={styles.popover} placement="right top">
+                  <Menu
+                    aria-label={`${submenu} menu`}
+                    className={styles.menu}
+                    disabledKeys={disabledIds(items)}
+                    onAction={onAction}
+                  >
+                    {items.map((action) => (
+                      <ActionItem key={action.id} action={action} />
+                    ))}
+                  </Menu>
+                </Popover>
+              </SubmenuTrigger>
+            )
+          })}
         </Menu>
       </Popover>
     </MenuTrigger>

@@ -82,14 +82,21 @@ function pageTab(page: PageId): IJsonTabNode {
   }
 }
 
+/** Panels can be closed from their ribbon tab; togglePanel docks them back. */
 function panelTab(panel: PanelId): IJsonTabNode {
   return {
     type: 'tab',
     id: panelTabId(panel),
     name: PANELS[panel].name,
     component: PANELS[panel].component,
-    enableClose: false,
   }
+}
+
+/** The side a panel returns to when it is reopened after being closed. */
+const PANEL_HOME: Record<PanelId, 'left' | 'right'> = {
+  assets: 'left',
+  workflow: 'left',
+  reasoning: 'right',
 }
 
 export function createDefaultLayout(): IJsonModel {
@@ -99,9 +106,15 @@ export function createDefaultLayout(): IJsonModel {
       tabEnableRenderOnDemand: false,
       tabEnablePopout: false,
       tabEnableFloat: false,
-      enableRotateBorderIcons: false,
+      // Both side ribbons read top to bottom, with icons rotated to match.
+      enableRotateBorderIcons: true,
+      borderLeftTabDirection: 'down',
+      // Side containers stay in place when empty so panels can be docked back.
       borderEnableAutoHide: false,
       borderMinSize: 180,
+      // Hovering scrollbars over the content instead of reserved gutters.
+      tabEnableScrollbars: true,
+      borderEnableTabScrollbar: true,
     },
     borders: [
       {
@@ -254,6 +267,22 @@ export function createLayoutController(
     return [...borders.values()]
   }
 
+  /** Id of the border on a side, so closed panels can be docked back. */
+  const borderByLocation = (location: 'left' | 'right'): string | undefined => {
+    let found: string | undefined
+    model.visitNodes((node) => {
+      if (
+        node.getType() === 'border' &&
+        (node as unknown as { getLocation: () => { getName: () => string } })
+          .getLocation()
+          .getName() === location
+      ) {
+        found = node.getId()
+      }
+    })
+    return found
+  }
+
   const ensurePageTab = (page: PageId): TabNode | null => {
     const existing = model.getNodeById(pageTabId(page))
     if (existing instanceof TabNode) return existing
@@ -368,11 +397,26 @@ export function createLayoutController(
       const id = panelTabId(panel)
       const node = model.getNodeById(id)
       if (!(node instanceof TabNode)) {
-        reject(
+        // The panel was closed from its ribbon: dock it back on its own side.
+        const home = borderByLocation(PANEL_HOME[panel])
+        if (!home) {
+          reject(
+            'layout.togglePanel',
+            'Toggle panel',
+            { panel },
+            `The ${PANELS[panel].name} panel is not in this layout. Reset the layout.`,
+            source,
+          )
+          return
+        }
+        model.doAction(
+          Actions.addNode(panelTab(panel), home, DockLocation.CENTER, -1, true),
+        )
+        log(
           'layout.togglePanel',
           'Toggle panel',
           { panel },
-          `The ${PANELS[panel].name} panel is not in this layout. Reset the layout.`,
+          `Docked the ${PANELS[panel].name} panel back on the ${PANEL_HOME[panel]} side.`,
           source,
         )
         return

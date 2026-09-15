@@ -41,6 +41,9 @@ import { saveProject } from './persistence.ts'
 
 export type ActionGroup = 'File' | 'Edit' | 'View' | 'Run' | 'Help'
 
+/** Menu actions gathered behind one submenu, as desktop menus do. */
+export type ActionSubmenu = 'Panels' | 'Appearance'
+
 export const ACTION_GROUPS: ActionGroup[] = [
   'File',
   'Edit',
@@ -53,6 +56,8 @@ export type AppAction = {
   id: string
   label: string
   group: ActionGroup
+  /** Groups this action into a submenu of its menu; the palette stays flat. */
+  submenu?: ActionSubmenu
   icon?: LucideIcon
   shortcut?: string
   alternateShortcuts?: string[]
@@ -198,6 +203,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: 'view.toggleAssets',
         label: 'Show or hide Assets',
         group: 'View',
+        submenu: 'Panels',
         icon: FolderTree,
         shortcut: 'Ctrl+B',
         pressed: layout.isPanelOpen('assets'),
@@ -208,6 +214,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: 'view.toggleWorkflow',
         label: 'Show or hide Workflow',
         group: 'View',
+        submenu: 'Panels',
         icon: Workflow,
         shortcut: 'Ctrl+Shift+E',
         pressed: layout.isPanelOpen('workflow'),
@@ -218,6 +225,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: 'view.toggleReasoning',
         label: 'Show or hide Context',
         group: 'View',
+        submenu: 'Panels',
         icon: PanelRight,
         shortcut: 'Ctrl+Alt+B',
         pressed: layout.isPanelOpen('reasoning'),
@@ -307,6 +315,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: 'view.appearance.system',
         label: 'Follow system appearance',
         group: 'View',
+        submenu: 'Appearance',
         icon: Monitor,
         pressed: appearancePreference === 'system',
         disabledReason: null,
@@ -316,6 +325,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: `view.appearance.${appearance.id}`,
         label: `Use ${appearance.label} appearance`,
         group: 'View',
+        submenu: 'Appearance',
         icon: appearance.scheme === 'dark' ? Moon : Sun,
         pressed: appearancePreference === appearance.id,
         disabledReason: null,

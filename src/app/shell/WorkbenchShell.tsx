@@ -73,11 +73,9 @@ const COMPACT_QUERY = '(max-width: 1099px)'
 function renderTab(node: TabNode, values: ITabRenderValues) {
   const Icon = TAB_ICONS[node.getComponent() ?? '']
   if (!Icon) return
-  if (node.isInsideBorder()) {
-    values.content = <Icon size={18} aria-hidden="true" />
-  } else {
-    values.leading = <Icon size={14} aria-hidden="true" />
-  }
+  // Ribbon tabs mirror center tabs, rotated: icon, name, and close.
+  values.leading = <Icon size={14} aria-hidden="true" />
+  if (node.isInsideBorder()) values.content = node.getName()
 }
 
 function renderTabContent(node: TabNode) {

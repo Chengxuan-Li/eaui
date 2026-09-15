@@ -240,3 +240,20 @@ test.describe('workbench shell', () => {
     ).toBeVisible()
   })
 })
+
+// React Aria's Autocomplete replays field keys on the focused menu item, which
+// cancelled Backspace in the palette while Delete kept working.
+test('edits the command palette query with Backspace', async ({ page }) => {
+  await page.goto('/')
+  await expect(
+    page.getByRole('toolbar', { name: 'Workbench commands' }),
+  ).toBeVisible()
+  await page.keyboard.press('Control+k')
+  const query = page.getByPlaceholder('Type a command')
+  await expect(query).toBeVisible()
+  await query.pressSequentially('map')
+  await page.keyboard.press('Backspace')
+  await expect(query).toHaveValue('ma')
+  await page.keyboard.press('Backspace')
+  await expect(query).toHaveValue('m')
+})
