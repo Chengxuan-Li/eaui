@@ -317,6 +317,23 @@ A pass over reported UI problems, on `feature/agentic`, after `feature/basemap` 
   - Chromium draws overlay scrollbars here: they reserve no width and never appear in screenshots, even for a control element with a red thumb on a yellow track. Scrollbar styling is verified through computed styles instead. Setting `scrollbar-width` makes Chromium ignore `::-webkit-scrollbar` rules, so it is scoped to Firefox.
   - FlexLayout's own hovering scrollbars wrap the border tab strip, not panel content, so they do not govern the panels; panel scrolling stays with the panel elements.
 
+### Shell follow-up: separators, side containers, and menu structure (2026-09-15)
+
+A second pass over reported UI problems, on `feature/agentic`. Code in `src/app/layout/flexlayout-theme.css`, `src/app/layout/layoutController.ts`, `src/app/actions.ts`, `src/app/shell/Ribbon.tsx`, `src/app/panels/panels.module.css`, and `src/app/components/components.module.css`.
+
+- **Real:**
+  - **Separators:** the seam stays a hairline until pointed at, then takes the accent color and shows a filled circle with a two-way arrow marking the direction it moves; the arrow turns for horizontal seams.
+  - **Side containers:** two ribbon buttons collapse and expand the left and right containers independently, as in Visual Studio Code, whatever each holds. Collapsing selects no tab; expanding restores the first.
+  - **Panels menu:** every page (Map to Tasks) and every panel (Assets, Workflow, Context) sits under one Panels submenu, named plainly without the "Show or hide" prefix, keeping check marks and shortcuts.
+  - **Appearance menu:** holds Reset layout and a Theme submenu; the themes are named plainly (System, Light, Dark, Technical monochrome, Lieflat-inspired, Clean technical light, Dark engineering).
+- **Verification (2026-09-15):**
+  - Typecheck, lint, and `npm run format:check` pass; `npm test`: 126 tests in 17 files; `npm run test:e2e`: 48 tests.
+  - Screenshots at 1600x900: the splitter circle magnified, each side container collapsed on its own and restored, and the three menu levels.
+- **Findings from review:**
+  - FlexLayout's hovering mini-scrollbars wrap only border strips and tab bars, never tab content: their containers do not overflow and their bars measure 0x0. Handing panel scrolling to the docked tab therefore removed the indicator entirely, so panels and pages keep their own scrolling with the overlay thumb, which still reserves no width.
+  - Drawing the separator's arrow with `clip-path` produced four corner fragments; an SVG mask filled with the on-accent token renders cleanly and keeps color in tokens.
+  - Renaming menu actions to plain names broke four end-to-end tests that typed "open settings" and similar into the palette; they now type the plain name.
+
 ## Deviations and gaps (2026-09-15)
 
 Compared with the plan above and the package constraints, the build so far:
