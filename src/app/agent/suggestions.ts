@@ -1,14 +1,12 @@
 import type { AgentPreset } from './types.ts'
 
 // "Suggested next steps based on your conversation" (decision 0016). The
-// scripted agent has a fixed set of sessions, so a suggestion is honest only if
-// it says why it is offered now. Ranking is pure and unit tested.
+// scripted agent has a fixed set of sessions, so the conversation decides their
+// order. Ranking is pure and unit tested.
 
 export type Suggestion = {
   id: string
   label: string
-  /** Why this step is suggested now, shown under the label. */
-  reason: string
 }
 
 export const MAX_SUGGESTIONS = 3
@@ -28,41 +26,14 @@ export function suggestNextSteps(
   const ran = new Set(ranSessionIds)
   const rearranged = ran.has(LAYOUT_SESSION_ID) && !ran.has(RESTORE_SESSION_ID)
 
+  const rankOf = (preset: AgentPreset): number => {
+    if (preset.id === RESTORE_SESSION_ID && rearranged) return 0
+    return ran.has(preset.id) ? 2 : 1
+  }
+
   return presets
-    .map((preset, index) => {
-      if (preset.id === RESTORE_SESSION_ID && rearranged) {
-        return {
-          rank: 0,
-          index,
-          suggestion: {
-            id: preset.id,
-            label: preset.label,
-            reason: 'The workbench is rearranged from an earlier session.',
-          },
-        }
-      }
-      if (!ran.has(preset.id)) {
-        return {
-          rank: 1,
-          index,
-          suggestion: {
-            id: preset.id,
-            label: preset.label,
-            reason: preset.description,
-          },
-        }
-      }
-      return {
-        rank: 2,
-        index,
-        suggestion: {
-          id: preset.id,
-          label: preset.label,
-          reason: 'Already run in this conversation; running it again is fine.',
-        },
-      }
-    })
+    .map((preset, index) => ({ preset, index, rank: rankOf(preset) }))
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .slice(0, MAX_SUGGESTIONS)
-    .map((entry) => entry.suggestion)
+    .map(({ preset }) => ({ id: preset.id, label: preset.label }))
 }

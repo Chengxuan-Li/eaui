@@ -27,18 +27,16 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAgentSnapshot, useServices } from '../WorkbenchContext.tsx'
 import {
+  MODEL_OPTIONS,
   PERMISSION_MODES,
   permissionModeOption,
   SEND_MODES,
-  sendModeOption,
-  type ModeOption,
 } from '../agent/modes.ts'
 import { suggestNextSteps } from '../agent/suggestions.ts'
 import { toolInputOf, toolTypeOf } from '../agent/tools.ts'
 import type {
   PermissionMode,
   ReferenceTarget,
-  SendMode,
   TranscriptItem,
 } from '../agent/types.ts'
 import { ActionButton } from '../components/ActionButton.tsx'
@@ -46,6 +44,12 @@ import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
 import componentStyles from '../components/components.module.css'
 import { cx } from '../cx.ts'
 import styles from './reasoning.module.css'
+
+/** The prompt field grows to this many lines before it starts scrolling. */
+const PROMPT_FIELD_MAX_ROWS = 6
+
+/** Pressing the left half of the split button queues the message. */
+const DEFAULT_SEND_MODE = 'queue'
 
 type EntryProps = {
   item: TranscriptItem
@@ -227,36 +231,58 @@ function TranscriptEntry({ item, onFollow, onApprove, onDecline }: EntryProps) {
   }
 }
 
-/** A compact menu that picks one mode and explains each choice. */
-function ModeMenu<Id extends string>({
-  label,
-  options,
+/**
+ * Grows with its content up to PROMPT_FIELD_MAX_ROWS lines, then scrolls. The
+ * border has to be added back because box-sizing is border-box while
+ * scrollHeight covers only content and padding; without it the field is a
+ * couple of pixels short and shows a scrollbar at every size.
+ */
+function usePromptField(value: string) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const field = ref.current
+    if (!field) return
+    const computed = getComputedStyle(field)
+    const lineHeight = parseFloat(computed.lineHeight) || 20
+    const borders =
+      parseFloat(computed.borderTopWidth) +
+      parseFloat(computed.borderBottomWidth)
+    const padding =
+      parseFloat(computed.paddingTop) + parseFloat(computed.paddingBottom)
+    const max = lineHeight * PROMPT_FIELD_MAX_ROWS + padding + borders
+    field.style.height = 'auto'
+    const natural = field.scrollHeight + borders
+    field.style.height = `${Math.min(natural, max)}px`
+    field.style.overflowY = natural > max ? 'auto' : 'hidden'
+  }, [value])
+  return ref
+}
+
+/** Picks the permission mode and explains each choice. */
+function PermissionMenu({
   selected,
   onSelect,
-  triggerLabel,
-  className,
 }: {
-  label: string
-  options: ModeOption<Id>[]
-  selected: Id
-  onSelect: (id: Id) => void
-  triggerLabel: string
-  className: string | undefined
+  selected: PermissionMode
+  onSelect: (mode: PermissionMode) => void
 }) {
   return (
     <MenuTrigger>
-      <Button className={className} aria-label={`${label}: ${triggerLabel}`}>
-        {triggerLabel}
+      <Button
+        className={styles.modeButton}
+        aria-label={`Permission mode: ${permissionModeOption(selected).label}`}
+      >
+        {permissionModeOption(selected).label}
         <ChevronDown size={12} aria-hidden="true" />
       </Button>
       <Popover className={styles.popover} placement="top start">
         <Menu
           className={styles.menu}
-          onAction={(key) => onSelect(key as Id)}
+          onAction={(key) => onSelect(key as PermissionMode)}
           selectionMode="single"
           selectedKeys={[selected]}
         >
-          {options.map((option) => (
+          {PERMISSION_MODES.map((option) => (
             <MenuItem
               key={option.id}
               id={option.id}
@@ -277,23 +303,47 @@ function ModeMenu<Id extends string>({
   )
 }
 
-/** Grows with its content instead of staying a one-line field. */
-function useAutoGrow(value: string) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-  useLayoutEffect(() => {
-    const field = ref.current
-    if (!field) return
-    field.style.height = 'auto'
-    field.style.height = `${field.scrollHeight}px`
-  }, [value])
-  return ref
+/** Names the model answering. Only the scripted player can be chosen here. */
+function ModelMenu({ label }: { label: string }) {
+  const unavailable = MODEL_OPTIONS.filter(
+    (option) => option.unavailableReason !== null,
+  ).map((option) => option.id)
+  return (
+    <MenuTrigger>
+      <Button className={styles.modeButton} aria-label={`Model: ${label}`}>
+        {label}
+        <ChevronDown size={12} aria-hidden="true" />
+      </Button>
+      <Popover className={styles.popover} placement="top start">
+        <Menu className={styles.menu} disabledKeys={unavailable}>
+          {MODEL_OPTIONS.map((option) => (
+            <MenuItem
+              key={option.id}
+              id={option.id}
+              className={styles.menuItem}
+              textValue={option.label}
+            >
+              <Text slot="label" className={styles.menuLabel}>
+                {option.label}
+              </Text>
+              {option.unavailableReason ? (
+                <Text slot="description" className={styles.menuDescription}>
+                  {option.unavailableReason}
+                </Text>
+              ) : null}
+            </MenuItem>
+          ))}
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  )
 }
 
 /**
  * The Reasoning panel: the agent transcript with tool calls linked to
- * operation log entries, approvals, references, and a composer whose send and
- * permission modes decide when a message arrives and how much the agent may do
- * without asking (decisions 0005, 0006, 0011, and 0016).
+ * operation log entries, approvals, references, and a composer whose send
+ * actions and permission mode decide when a message arrives and how much the
+ * agent may do without asking (decisions 0005, 0006, 0011, and 0016).
  */
 export function ReasoningPanel() {
   const { agent, layout, workbench, showInspection } = useServices()
@@ -304,9 +354,8 @@ export function ReasoningPanel() {
   const queued = useAgentSnapshot((snapshot) => snapshot.queued)
   const ranSessionIds = useAgentSnapshot((snapshot) => snapshot.ranSessionIds)
   const [message, setMessage] = useState('')
-  const [sendMode, setSendMode] = useState<SendMode>('send')
   const endRef = useRef<HTMLDivElement>(null)
-  const textAreaRef = useAutoGrow(message)
+  const promptRef = usePromptField(message)
   const suggestionsLabelId = useId()
   const queueLabelId = useId()
 
@@ -321,8 +370,6 @@ export function ReasoningPanel() {
       : status === 'awaitingApproval'
         ? 'Answer the pending approval first.'
         : null
-  const sendBlocker = agent.sendBlocker(sendMode, message)
-  const sendOption = sendModeOption(sendMode)
 
   const follow = (target: ReferenceTarget) => {
     switch (target.type) {
@@ -342,11 +389,27 @@ export function ReasoningPanel() {
     }
   }
 
-  const submit = () => {
-    if (sendBlocker) return
-    agent.send(message, sendMode)
+  /** Sends the message one specific way; a blocked send explains itself. */
+  const sendVia = (mode: (typeof SEND_MODES)[number]['id'], label: string) => {
+    const blocker = agent.sendBlocker(mode, message)
+    if (blocker) {
+      workbench.record({
+        type: 'action.blocked',
+        title: label,
+        status: 'rejected',
+        summary: '',
+        issues: [{ path: '', message: blocker }],
+      })
+      return
+    }
+    agent.send(message, mode)
     setMessage('')
   }
+
+  const defaultOption = SEND_MODES.find(
+    (option) => option.id === DEFAULT_SEND_MODE,
+  )!
+  const defaultBlocked = agent.sendBlocker(DEFAULT_SEND_MODE, message) !== null
 
   return (
     <section className={styles.reasoning} aria-label="Reasoning">
@@ -400,9 +463,6 @@ export function ReasoningPanel() {
               >
                 {suggestion.label}
               </ActionButton>
-              <span className={styles.suggestionReason}>
-                {suggestion.reason}
-              </span>
             </li>
           ))}
         </ul>
@@ -434,53 +494,34 @@ export function ReasoningPanel() {
           className={styles.composer}
           onSubmit={(event) => {
             event.preventDefault()
-            submit()
+            sendVia(DEFAULT_SEND_MODE, defaultOption.label)
           }}
         >
-          <div className={styles.inputRow}>
-            <TextField
-              className={styles.messageField}
-              value={message}
-              onChange={setMessage}
-            >
-              <Label className="visually-hidden">Message the agent</Label>
-              <TextArea
-                ref={textAreaRef}
-                className={styles.messageInput}
-                placeholder="Ask the agent"
-                rows={1}
-                maxLength={500}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    submit()
-                  }
-                }}
-              />
-            </TextField>
-            <div className={styles.sendGroup}>
-              <ActionButton
-                label={sendOption.label}
-                variant="primary"
-                disabledReason={sendBlocker}
-                onPress={submit}
-              >
-                <CornerDownLeft size={14} aria-hidden="true" />
-              </ActionButton>
-              <ModeMenu
-                label="Send mode"
-                options={SEND_MODES}
-                selected={sendMode}
-                onSelect={setSendMode}
-                triggerLabel={sendOption.label}
-                className={styles.modeButton}
-              />
-            </div>
-          </div>
+          {/* The field spans the panel, so every line wraps on the same
+              margins as the text above it. */}
+          <TextField
+            className={styles.messageField}
+            value={message}
+            onChange={setMessage}
+          >
+            <Label className="visually-hidden">Message the agent</Label>
+            <TextArea
+              ref={promptRef}
+              className={styles.messageInput}
+              placeholder="Ask the agent"
+              rows={1}
+              maxLength={500}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  sendVia(DEFAULT_SEND_MODE, defaultOption.label)
+                }
+              }}
+            />
+          </TextField>
 
-          {/* Outside the box: what a message carries, who approves, and which
-              model answers. The first and last are planned, so they explain
-              themselves instead of doing nothing. */}
+          {/* Below the box: what a message carries, who approves, which model
+              answers, and the send control. */}
           <div className={styles.composerTools}>
             <ActionButton
               label="Attach context to the message"
@@ -489,22 +530,11 @@ export function ReasoningPanel() {
             >
               <Plus size={14} aria-hidden="true" />
             </ActionButton>
-            <ModeMenu
-              label="Permission mode"
-              options={PERMISSION_MODES}
+            <PermissionMenu
               selected={permissionMode}
-              onSelect={(mode: PermissionMode) => agent.setPermissionMode(mode)}
-              triggerLabel={permissionModeOption(permissionMode).label}
-              className={styles.modeButton}
+              onSelect={(mode) => agent.setPermissionMode(mode)}
             />
-            <ActionButton
-              label="Choose a model and reasoning effort"
-              disabledReason="Choosing a language model and its reasoning effort is planned; this prototype replays scripted sessions."
-              onPress={() => {}}
-            >
-              Scripted agent
-            </ActionButton>
-            <CapabilityBadge id="agent.reasoningEffort" />
+            <ModelMenu label="Scripted" />
             {status !== 'idle' ? (
               <ActionButton
                 label="Stop the agent session"
@@ -514,6 +544,70 @@ export function ReasoningPanel() {
                 Stop
               </ActionButton>
             ) : null}
+
+            {/* One control, like ▶ Run ▾: the left half queues the message,
+                the right half sends it a named way. */}
+            <div
+              className={cx(
+                styles.sendSplit,
+                defaultBlocked && styles.sendSplitIdle,
+              )}
+            >
+              <button
+                type="button"
+                className={styles.sendPrimary}
+                aria-label={defaultOption.label}
+                aria-disabled={defaultBlocked ? true : undefined}
+                title={
+                  agent.sendBlocker(DEFAULT_SEND_MODE, message) ??
+                  defaultOption.label
+                }
+                onClick={() => sendVia(DEFAULT_SEND_MODE, defaultOption.label)}
+              >
+                <CornerDownLeft size={14} aria-hidden="true" />
+              </button>
+              <MenuTrigger>
+                <Button
+                  className={styles.sendMenuButton}
+                  aria-label="More send options"
+                >
+                  <ChevronDown size={14} aria-hidden="true" />
+                </Button>
+                <Popover className={styles.popover} placement="top end">
+                  <Menu
+                    className={styles.menu}
+                    onAction={(key) => {
+                      const option = SEND_MODES.find(
+                        (candidate) => candidate.id === key,
+                      )
+                      if (option) sendVia(option.id, option.label)
+                    }}
+                  >
+                    {SEND_MODES.map((option) => {
+                      const blocker = agent.sendBlocker(option.id, message)
+                      return (
+                        <MenuItem
+                          key={option.id}
+                          id={option.id}
+                          className={styles.menuItem}
+                          textValue={option.label}
+                        >
+                          <Text slot="label" className={styles.menuLabel}>
+                            {option.label}
+                          </Text>
+                          <Text
+                            slot="description"
+                            className={styles.menuDescription}
+                          >
+                            {blocker ?? option.description}
+                          </Text>
+                        </MenuItem>
+                      )
+                    })}
+                  </Menu>
+                </Popover>
+              </MenuTrigger>
+            </div>
           </div>
         </form>
       </div>

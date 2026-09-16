@@ -251,17 +251,8 @@
   list-style: none;
 }
 
-/* The panel is narrow, so the reason sits under its button rather than in a
-   second column that would wrap to a few words per line. */
 .suggestions li {
-  display: grid;
-  gap: 0.125rem;
-  justify-items: start;
-}
-
-.suggestionReason {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  display: flex;
 }
 
 .queue {
@@ -312,23 +303,17 @@
   gap: var(--space-1);
 }
 
-/* The field grows with its content; the send control stays beside it. */
-.inputRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-1);
-}
-
+/* The field spans the panel so its text wraps on the same margins as the
+   text above it; the send control sits in the row below. */
 .messageField {
-  flex: 1;
-  min-width: 8rem;
+  display: block;
+  width: 100%;
 }
 
 .messageInput {
   box-sizing: border-box;
   display: block;
   width: 100%;
-  max-height: 9rem;
   min-height: 1.75rem;
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--color-border);
@@ -336,8 +321,11 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
+  /* An explicit line height makes the row cap measurable. */
+  line-height: 1.25rem;
   resize: none;
-  overflow-y: auto;
+  /* usePromptField turns this on only past PROMPT_FIELD_MAX_ROWS lines. */
+  overflow-y: hidden;
 }
 
 .messageInput[data-focused] {
@@ -345,10 +333,69 @@
   outline-offset: -1px;
 }
 
-.sendGroup {
-  display: flex;
-  flex-shrink: 0;
-  gap: 0.125rem;
+/* One control like the ribbon's Run split button: a single filled rectangle
+   with a dividing line, the enter symbol left and the menu arrow right. */
+.sendSplit {
+  display: inline-flex;
+  align-items: stretch;
+  margin-left: auto;
+}
+
+.sendPrimary,
+.sendMenuButton {
+  display: inline-flex;
+  align-items: center;
+  height: 1.625rem;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sendPrimary {
+  padding: 0 0.4375rem;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.sendMenuButton {
+  padding: 0 0.25rem;
+  border-left-color: color-mix(
+    in srgb,
+    var(--color-on-accent) 35%,
+    var(--color-accent)
+  );
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.sendPrimary:hover,
+.sendMenuButton[data-hovered] {
+  background: color-mix(in srgb, var(--color-accent) 88%, var(--color-text));
+}
+
+.sendPrimary:focus-visible,
+.sendMenuButton[data-focus-visible] {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/* Nothing to send yet: the control stays visible but recedes, and pressing it
+   still records why. */
+.sendSplitIdle .sendPrimary,
+.sendSplitIdle .sendMenuButton {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.sendSplitIdle .sendPrimary {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.sendSplitIdle .sendPrimary:hover,
+.sendSplitIdle .sendMenuButton[data-hovered] {
+  background: var(--color-surface-raised);
 }
 
 .composerTools {

@@ -102,8 +102,11 @@ test('free text without a prepared session gets an honest answer', async ({
   await panel
     .getByRole('textbox', { name: 'Message the agent' })
     .fill('What is the weather tomorrow?')
-  // Exact: the send-mode menu trigger is named "Send mode: Send message".
-  await panel.getByRole('button', { name: 'Send message', exact: true }).click()
+  // The left half of the split control queues the message; the agent answers it
+  // as soon as it is idle. Exact: the menu half is named "More send options".
+  await panel
+    .getByRole('button', { name: 'Queue message', exact: true })
+    .click()
   await expect(
     panel.getByRole('log', { name: 'Agent transcript' }),
   ).toContainText('I can only run the prepared sessions')
