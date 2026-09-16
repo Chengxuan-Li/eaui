@@ -221,7 +221,7 @@ Conventions and pitfalls found while building:
 - Status messages are asserted through `getByTestId('status-notice')`.
 - Hidden docked tabs stay mounted, so page-wide text locators can match hidden content; scope to a region or use `.filter({ visible: true })`. Give buttons in the side panels distinct accessible names (for example "Clear selection from Inspection") so page-level locators stay unique.
 - React Aria's `MenuTrigger` names a menu after its trigger button, overriding the menu's own `aria-label`.
-- Playwright matches an accessible name by substring, so "Send message" also matches the send-mode menu trigger "Send mode: Send message". Pass `exact: true` when two controls share a word.
+- Playwright matches an accessible name by substring, so pass `exact: true` when two controls share a word. The composer's send control is named "Queue message" (its left half) and "More send options" (its menu half).
 - A container with `overflow: auto` that actually scrolls needs `tabIndex={0}`, or axe reports `scrollable-region-focusable`. The agent transcript began scrolling only once the composer grew, so the rule appeared on every page at once.
 - At 1280 px the Settings tab can sit in FlexLayout's overflow menu; tests open it through the command palette.
 - MapLibre must stay excluded from Vite dependency pre-bundling (`vite.config.ts`), or its worker fails to load.

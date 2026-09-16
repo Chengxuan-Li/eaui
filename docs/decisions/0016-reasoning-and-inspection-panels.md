@@ -18,7 +18,7 @@ The user asked for both, listing the composer in detail: an expandable input, an
 - **Two independent panels.** Reasoning and Inspection are separate entries in `PANELS`, each with its own Panels menu entry, its own toggle, and its own tab, dockable anywhere in the workbench. Reasoning keeps the `panel.reasoning` component id so saved layouts still restore; Inspection is the new `panel.inspection`. `LAYOUT_KEY` moves to `eaui.layout.v2`, because a v1 layout has no Inspection tab.
 - **This supersedes the last clause of section 10 of the guidelines** ("These two modes should share the same contextual surface rather than competing as separate permanent panels") and the matching consequence of [decision 0009](0009-ui-design-guidelines.md). The guidelines document itself is the user's, so it is left unchanged; this record is the amendment. Both panels still default to the right border, so the shared surface stays the starting point.
 - **The `context.setMode` view operation is removed**, with the `ContextMode` type and `ViewState.context`. Which panel is shown is layout state, so it goes through `layout.togglePanel`, which is already logged. `showInspection` opens the Inspection panel.
-- **Send modes** decide when a typed message reaches the agent: **Send message** needs an idle agent, **Queue message** waits for the current session to end, and **Stir** reaches a running session. A stirred message is recorded in the transcript immediately and answered when the session ends, because a scripted session cannot change course; this is disclosed as the `agent.steering` capability. Stopping a session discards queued messages.
+- **Send modes are actions, not a sticky setting.** The send control is a split button shaped like the ribbon's ▶ Run ▾: one filled rectangle with a dividing line, the enter symbol on the left and the menu arrow on the right. The left half queues the message; the menu sends it a named way there and then, rather than switching a mode for later. **Send now** needs an idle agent, **Queue message** waits for the current session to end, and **Stir in** reaches a running session. A stirred message is recorded in the transcript immediately and answered when the session ends, because a scripted session cannot change course; this is disclosed as the `agent.steering` capability. Stopping a session discards queued messages.
 - **Permission modes** act on the approval gate that already guards stage runs and project model changes:
   - **Ask for approval** — every stage run and model change waits for the user. This is the default and the previous behavior.
   - **Automatic** — stage runs are approved without asking; project model changes still wait. A call built at run time counts as a model change, because its type is not known until it runs.
@@ -26,8 +26,9 @@ The user asked for both, listing the composer in detail: an expandable input, an
   - **Plan** — the agent lists the calls it would make and stops, changing nothing.
 
   An approval answered by a mode is recorded in the operation log and labeled in the transcript ("Approved by Automatic mode"), so an automatic decision is never silent.
-- **Suggested next steps** replace "Prepared sessions". `suggestNextSteps` ranks the prepared sessions by what the conversation has already done and gives each one a reason, so a suggestion says why it is offered now.
-- **Attachments and model choice are planned, not silent.** The "+" button and the model selector are present, explain themselves when pressed, and carry the `agent.attachments` and `agent.reasoningEffort` capabilities. This keeps the handoff rule that an unavailable control explains itself rather than doing nothing.
+- **Suggested next steps** replace "Prepared sessions". `suggestNextSteps` orders the prepared sessions by what the conversation has already done. The buttons carry no explanatory text beside them.
+- **The composer spans the panel.** The prompt field takes the full panel width, so its text wraps on the same margins as everything above it, and the controls sit in a row beneath. It grows with its content to `PROMPT_FIELD_MAX_ROWS` (6) lines and only then shows a scrollbar. The measurement adds the border width back, because `box-sizing` is `border-box` while `scrollHeight` covers only content and padding; without that the field is two pixels short and shows a scrollbar at every size.
+- **Attachments and model choice are planned, not silent.** The "+" button explains itself when pressed (`agent.attachments`). The model control opens a menu of Scripted, Opus 5, and GPT-5.6 Sol, where the two language models cannot be chosen and say why (`agent.reasoningEffort`). The menu itself carries that disclosure, so no Planned label sits beside the control.
 
 ## Rationale
 
@@ -48,7 +49,7 @@ The user asked for both, listing the composer in detail: an expandable input, an
 - Both panels default to the right border, where a border shows one tab at a time. Seeing them side by side means dragging one into the main area or the other side — possible now because they are independent panels, but not the default.
 - The right border is no longer a single "Context" tab, so browser specs address `region` names "Reasoning" and "Inspection".
 - The transcript region is focusable, because the taller composer makes it scroll (axe `scrollable-region-focusable`).
-- Playwright matches accessible names by substring, so the send button and its mode menu ("Send message" and "Send mode: Send message") need `exact: true` in specs.
+- Playwright matches accessible names by substring, so specs name the send control exactly: "Queue message" for the left half and "More send options" for the menu half.
 - A real model provider replacing the scripted adapter inherits the send and permission modes through `AgentAdapter`; it does not inherit the honest limits of `agent.steering`, which exist only because the sessions are scripted.
 
 ## Verification (2026-09-15)
@@ -59,3 +60,9 @@ Node.js 24 and Microsoft Edge with 4 workers on the `C:/github/eaui` checkout.
 - `npm test`: 137 tests in 18 files pass, including `src/app/agent/suggestions.test.ts` and the permission-mode and send-mode groups in `src/app/agent/scriptedAgent.test.ts` (Automatic runs stages but still asks for a model change, Bypass applies one, Plan changes nothing, Queue answers after the session, Stir is refused when idle, Stop discards the queue).
 - `npm run test:e2e`: 49 tests pass in about 1.1 minutes, including a new `e2e/context.spec.ts` case that closes Reasoning from the Panels menu and leaves Inspection docked.
 - Not verified by test: how the two panels look side by side after a manual drag, and the composer at narrow widths.
+
+## Revision (2026-09-15)
+
+After review the user asked for five changes, all made and re-verified: no explanatory text beside the suggestion buttons; every line of the composer wrapping on the dockable panel's own margins; a scrollbar on the prompt field only past six rows; a model menu in place of a single planned button, with the Planned label removed; and the send control rebuilt as a Run-style split button whose menu items are send actions rather than a mode switch.
+
+Measured in the running app at a 320px panel: the prompt field's right edge sits at the panel's content edge at every height, and `overflow-y` stays `hidden` at 1, 4, and 6 rows and becomes `auto` at 9.
