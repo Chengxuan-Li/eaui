@@ -11,9 +11,11 @@ The experiment had no continuous integration and no published build: every check
 ## Decision
 
 - **GitHub Pages, built and deployed by GitHub Actions** from `master`, in `.github/workflows/pages.yml`. The workflow also runs on pull requests, where it stops after the checks and publishes nothing.
-- **Three jobs.** `verify` runs `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, and `npm run build`, then uploads `dist` as the Pages artifact. `e2e` installs Playwright's Chromium and runs the browser specs with `PLAYWRIGHT_CHANNEL=chromium`, because the local default is the installed Microsoft Edge. `deploy` needs both and publishes.
+- **One check job, then a deploy.** `verify` installs once and runs `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, the browser specs, `npm run build`, and finally the production spec against the bundle it just built, then uploads `dist` as the Pages artifact. `deploy` needs it and publishes. Playwright runs with `PLAYWRIGHT_CHANNEL=chromium`, because the local default is the installed Microsoft Edge. Keeping it to one job means one checkout, one `npm ci`, one browser install, and one build.
 - **The browser specs gate the deploy.** They take about a minute and stub OpenFreeMap and Mapterhorn through `e2e/test.ts`, so the run needs no network and cannot be broken by a tile service being down.
 - **The base path applies to the build only.** A project site is served from `/<repository>/`, so `vite.config.ts` sets `base` when `command === 'build' || isPreview`. The dev server stays at `/`, which matters because `playwright.config.ts` points at `http://127.0.0.1:5173` and the specs visit `/`; `vite preview` needs the prefix because it serves the built bundle. `EAUI_BASE_PATH` overrides it, and the workflow sets it from `github.event.repository.name` so renaming the repository does not break asset URLs.
+- **The build emits MapLibre's worker.** MapLibre 6.9.1 derives its worker URL from `import.meta.url` at run time, so the bundler never sees the reference and emits no file. A plugin in `vite.config.ts` copies `maplibre-gl-worker.mjs`, and the `maplibre-gl-shared.mjs` it imports, into the assets directory under their exact unhashed names.
+- **`e2e/production.spec.ts` checks the built bundle**, through `playwright.preview.config.ts` and `npm run test:e2e:preview`. It stays out of the everyday `npm run test:e2e`, which needs no build and keeps its speed.
 - **No secrets take part.** The build reads no environment variables beyond the base path. `.env.example` reserves `OPENAI_API_KEY` for a future model provider and warns against a `VITE_` prefix, which would put a value in the browser bundle; a static Pages deployment could not hold such a key safely in any case.
 
 ## Rationale
@@ -52,3 +54,27 @@ Three things caught during setup, all fixed and worth remembering:
 - On Windows, Git Bash rewrites `EAUI_BASE_PATH=/eaui/` into `C:/Program Files/Git/eaui/` through MSYS path conversion. Local builds need no override, since `/eaui/` is the default.
 
 **Not verified:** the workflow has never run, because nothing has been pushed. Whether GitHub Pages is enabled for the repository, whether the repository is public, and whether the pinned action versions resolve can only be confirmed by the first run on GitHub.
+
+## Revision (2026-09-16): the map was missing on the published page
+
+The first deployment published a map that never appeared. MapLibre 6.9.1 computes its worker URL at run time:
+
+```js
+let t = e.endsWith(`-dev.mjs`) ? `maplibre-gl-worker-dev.mjs` : `maplibre-gl-worker.mjs`
+return new URL(`./${t}`, import.meta.url).href
+```
+
+Because no static reference exists, the bundler emitted nothing, and the request for `assets/maplibre-gl-worker.mjs` failed. Nothing caught it:
+
+- the dev server resolves the worker from `node_modules`, so the browser specs passed;
+- `vite preview` answers a missing file with `index.html` and a **200**, so the failure showed only as a console warning about a `text/html` MIME type. GitHub Pages has no fallback and returns a real 404.
+
+The fix emits the worker and the shared chunk it imports. `require.resolve('maplibre-gl')` cannot be used to find them: the package exports `"."` for `import` only, so the plugin resolves `maplibre-gl/package.json`, which the exports map lists.
+
+`e2e/production.spec.ts` now guards it, and the guard was checked by breaking it: with the emitted filename altered, the spec fails on the content type (`text/html` rather than `javascript`) rather than on the status, which the fallback would have kept at 200.
+
+### Verification (2026-09-16)
+
+- `npm run typecheck`, `npm run lint`, `npm run format:check` pass; `npm test` runs 137 tests; `npm run test:e2e` runs 49; `npm run test:e2e:preview` runs 1 against the built bundle in about 5 seconds including the build.
+- `dist/assets/` contains `maplibre-gl-worker.mjs` (19 kB) and `maplibre-gl-shared.mjs` (514 kB) beside the MapLibre chunk.
+- Still unverified: the published page itself, since the workflow has not run and the deployment host is unreachable from here.
