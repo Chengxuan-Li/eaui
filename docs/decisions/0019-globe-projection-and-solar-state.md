@@ -77,3 +77,15 @@ The fix keeps the strong intensity, because that is what deepens the shaded side
 At the default controls a light appearance now runs at about a 4.4 to 1 ratio between a lit and a shaded face, with the lit side just under its own colour. `faceShading` states the shader's formula in code, and three unit tests hold the invariants for every light appearance: a lit face never reaches its own colour, the ratio stays above 4, and the shaded side stays under a quarter brightness. A fourth checks the dark appearances still lift their lit faces.
 
 Checked in the running app in the Light and Technical monochrome appearances: buildings read as distinctly darker than the basemap with visible shading, where before they were near-white blobs.
+
+## Revision (2026-09-16): the globe was veiled in white
+
+On the globe the light appearances washed out: the sunlit side glared and the rest read as an ordinary daytime map, with no contrast between them. The user asked for the lit side to be toned down, with no day/night terminator and no change to the dark appearances.
+
+The same sky values serve a street-level dome and a globe seen from space. At street level a pale, generous atmosphere reads as air; over a whole sphere it becomes a white veil. Two things caused it: `atmosphere-blend` ran at about 0.92, above MapLibre's own default of 0.8, and the `haze` token of every light appearance was nearly white.
+
+`veilStrength` now halves the atmosphere and both fog blends for a light appearance and leaves a dark one at 1, and the four light appearances take a deeper `haze`. A unit test holds that a light appearance lays on less than a dark one, that its atmosphere stays under MapLibre's default, and that a dark appearance still sits at 0.92, so the themes that were already right cannot drift.
+
+Checked in the running app in the Light appearance at globe zoom: continents, ocean and labels read as a map with the atmosphere reduced to a halo at the limb, where before the sphere was a uniform pale blur.
+
+**Still true:** there is no day/night terminator. The globe is evenly lit, so the side facing away from the sun is not dark; the user chose to tone down the lit side rather than add one.
