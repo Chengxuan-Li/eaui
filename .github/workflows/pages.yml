@@ -1,8 +1,10 @@
 name: Pages
 
 # Verifies every push and pull request, and publishes master to GitHub Pages
-# (decision 0017). The browser specs stub OpenFreeMap and Mapterhorn through
-# e2e/test.ts, so the whole run stays offline.
+# (decision 0017). One job, so the checkout, npm ci, and browser install happen
+# once and the production spec reuses the build the deploy publishes. The
+# browser specs stub OpenFreeMap and Mapterhorn through e2e/test.ts, so the
+# whole run stays offline.
 
 on:
   push:
@@ -20,8 +22,11 @@ concurrency:
 
 jobs:
   verify:
-    name: Checks, unit tests, and build
+    name: Checks, tests, and build
     runs-on: ubuntu-latest
+    env:
+      # Microsoft Edge is the local default; CI uses Playwright's own Chromium.
+      PLAYWRIGHT_CHANNEL: chromium
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,33 +34,24 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
+      - run: npm run test:e2e
+
       - run: npm run build
         env:
           # A project site lives under /<repository>/; a rename follows along.
           EAUI_BASE_PATH: /${{ github.event.repository.name }}/
+      # Checks the bundle just built, rather than building a second time.
+      - run: npx playwright test -c playwright.preview.config.ts
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-
-  e2e:
-    name: Browser tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      # Microsoft Edge is the local default; CI uses Playwright's own Chromium.
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-        env:
-          PLAYWRIGHT_CHANNEL: chromium
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -65,9 +61,9 @@ jobs:
 
   deploy:
     name: Deploy to GitHub Pages
-    # Only master publishes; pull requests stop after the two check jobs.
+    # Only master publishes; pull requests stop after the checks.
     if: github.event_name != 'pull_request'
-    needs: [verify, e2e]
+    needs: [verify]
     runs-on: ubuntu-latest
     permissions:
       pages: write
