@@ -105,7 +105,7 @@ export function litCeiling(scheme: 'light' | 'dark'): number {
  * appearances are unchanged.
  */
 export function veilStrength(scheme: 'light' | 'dark'): number {
-  return scheme === 'light' ? 0.5 : 1
+  return scheme === 'light' ? 0.7 : 1
 }
 
 /**
@@ -116,7 +116,7 @@ export function veilStrength(scheme: 'light' | 'dark'): number {
  * globe without pretending to a day and night side. Dark appearances need none.
  */
 export function globeDimOpacity(scheme: 'light' | 'dark'): number {
-  return scheme === 'light' ? 0.55 : 0
+  return scheme === 'light' ? 0.45 : 0
 }
 
 /** Zoom stops for that dimming: full when the globe is whole, gone by the district. */

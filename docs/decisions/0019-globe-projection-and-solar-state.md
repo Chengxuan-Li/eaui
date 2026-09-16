@@ -99,3 +99,7 @@ With no terminator wanted, the remap darkens the map itself. A `background` laye
 Unit tests hold that the dark appearances get no dimming, and that the stops start full, fade without ever brightening as the camera comes in, and reach zero by zoom 8.
 
 Checked in the running app in the Light appearance at globe zoom: the sphere reads as a slate globe with land and ocean clearly apart and labels crisp, where the user's screenshot showed a near-white sphere. Only the Light appearance was looked at; the other three light appearances share the same code path. The strength is one number, `globeDimOpacity`, if it proves too dark.
+
+## Revision (2026-09-16): lighter globe, lit side more than shaded
+
+After the dimming the user asked, for light appearances only, for the lit side of the globe to be lighter and the shaded side slightly lighter. The lit side's brightness comes from the atmosphere, which MapLibre draws brighter toward the sun, while the dimming layer darkens both sides evenly. So `veilStrength` for a light appearance rises from 0.5 to 0.7, which brightens the lit side most, and `globeDimOpacity` falls from 0.55 to 0.45, which lifts both sides a little. Dark appearances are unchanged.
