@@ -108,6 +108,25 @@ export function veilStrength(scheme: 'light' | 'dark'): number {
   return scheme === 'light' ? 0.5 : 1
 }
 
+/**
+ * How far the globe is dimmed where it is seen whole. A light basemap is built
+ * for a street, and at that scale it is right; wrapped over a sphere the same
+ * near-white land and water read as glare, with nothing to give the sunlit and
+ * shaded halves apart. Dimming the map itself is the remap: it darkens the
+ * globe without pretending to a day and night side. Dark appearances need none.
+ */
+export function globeDimOpacity(scheme: 'light' | 'dark'): number {
+  return scheme === 'light' ? 0.55 : 0
+}
+
+/** Zoom stops for that dimming: full when the globe is whole, gone by the district. */
+export const GLOBE_DIM_STOPS: readonly (readonly [number, number])[] = [
+  [0, 1],
+  [4, 0.9],
+  [6, 0.5],
+  [8, 0],
+] as const
+
 /** Scales a #rrggbb colour's channels, keeping its hue. */
 export function scaleHex(hex: string, factor: number): string {
   const [r, g, b] = parseHex(hex)

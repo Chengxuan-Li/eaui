@@ -43,7 +43,11 @@ import {
   SelectionSilhouette,
   type SilhouettePrism,
 } from './SelectionSilhouette.tsx'
-import { buildLightingScene } from './lighting.ts'
+import {
+  buildLightingScene,
+  GLOBE_DIM_STOPS,
+  globeDimOpacity,
+} from './lighting.ts'
 import { useSceneLighting } from './useSceneLighting.ts'
 import {
   exaggerationLabel,
@@ -172,6 +176,7 @@ export function MapPage() {
     [mapView.lighting, appearance],
   )
   useSceneLighting(mapRef, loaded, view3d, scene)
+  const globeDim = globeDimOpacity(appearance.scheme)
 
   // The globe replaces Mercator (decision 0019). Projection is style state, so
   // a basemap or appearance swap drops it; styledata puts it back.
@@ -689,6 +694,27 @@ export function MapPage() {
               paint={hillshadePaint(appearance, scene.illuminationDirectionDeg)}
             />
           </Source>
+          {/* Seen whole, a light basemap reads as glare; this dims the globe
+              and fades out before the district (decision 0019). */}
+          {globeDim > 0 ? (
+            <Layer
+              id="globe-dim"
+              type="background"
+              beforeId={labelLayerId}
+              paint={{
+                'background-color': appearance.data.sky.night,
+                'background-opacity': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  ...GLOBE_DIM_STOPS.flatMap(([zoom, share]) => [
+                    zoom,
+                    globeDim * share,
+                  ]),
+                ] as unknown as ExpressionSpecification,
+              }}
+            />
+          ) : null}
           <Source
             id="buildings"
             type="geojson"

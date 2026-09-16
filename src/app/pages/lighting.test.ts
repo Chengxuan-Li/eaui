@@ -4,6 +4,8 @@ import {
   buildLightingScene,
   createInitialLighting,
   faceShading,
+  GLOBE_DIM_STOPS,
+  globeDimOpacity,
   lightingSummary,
   mixHex,
   type LightingState,
@@ -215,6 +217,31 @@ describe('face contrast', () => {
       expect(faceShading(noon(candidate).light.intensity).lit).toBeGreaterThan(
         1,
       )
+    }
+  })
+})
+
+// Seen whole, a light basemap reads as glare over the globe; the map itself is
+// dimmed there and left alone at the district.
+describe('globe dimming', () => {
+  it('dims the globe in the light appearances and leaves the dark ones alone', () => {
+    expect(globeDimOpacity('light')).toBeGreaterThan(0)
+    expect(globeDimOpacity('dark')).toBe(0)
+  })
+
+  it('is full while the globe is whole and gone before the district', () => {
+    const first = GLOBE_DIM_STOPS[0]!
+    const last = GLOBE_DIM_STOPS.at(-1)!
+    expect(first).toEqual([0, 1])
+    // District zoom sits well above this, so the street view is untouched.
+    expect(last[1]).toBe(0)
+    expect(last[0]).toBeLessThanOrEqual(8)
+    // Fading, never brightening, as the camera comes in.
+    for (let index = 1; index < GLOBE_DIM_STOPS.length; index += 1) {
+      const [zoom, share] = GLOBE_DIM_STOPS[index]!
+      const [previousZoom, previousShare] = GLOBE_DIM_STOPS[index - 1]!
+      expect(zoom).toBeGreaterThan(previousZoom)
+      expect(share).toBeLessThanOrEqual(previousShare)
     }
   })
 })
