@@ -4,6 +4,8 @@ Date: 2026-09-16
 
 Status: accepted by the user on 2026-09-16, who chose the sun from season and UTC time, the controls in Inspection only, a sticky worked-surface rule, and night lights from basemap land use with whatever else could be found.
 
+**Superseded in part by [decision 0019](0019-globe-projection-and-solar-state.md)**, which removed the night lights entirely, replaced Mercator with the globe, moved the sun to a single subsolar state, took sky colour from new appearance tokens, and stopped showing the sun's elevation and azimuth. Everything else here still holds.
+
 ## Context
 
 The Map page had a 3D view ([decision 0013](0013-3d-building-extrusion.md)) and live terrain ([decision 0015](0015-terrain.md)), but no lighting: extrusions took MapLibre's default light, there was no sky, and the scene read the same at every hour. The user asked for contextual lighting driven by time of day and horizon dustiness, with night lights from human activity, and for terrain to belong to the 3D view rather than stand apart.
