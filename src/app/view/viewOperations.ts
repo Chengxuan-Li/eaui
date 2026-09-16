@@ -19,12 +19,9 @@ import {
 // the agent use one path (first-slice stage 4, prerequisite 1). View state is
 // neither saved with the project nor undoable.
 
-export type ContextMode = 'reasoning' | 'inspection'
-
 export type TableView = 'buildings' | 'grid'
 
 export type ViewState = {
-  context: { mode: ContextMode }
   map: {
     metric: MetricId
     gridOverlay: boolean
@@ -44,7 +41,6 @@ export type ViewState = {
 
 export function createInitialViewState(): ViewState {
   return {
-    context: { mode: 'reasoning' },
     map: {
       metric: 'floors',
       gridOverlay: true,
@@ -92,21 +88,6 @@ function rejected(message: string, path = ''): ViewOutcome {
 const EXAGGERATION_MESSAGE = `Use a whole number from ${MIN_EXAGGERATION} to ${MAX_EXAGGERATION}.`
 
 export const viewOperationDefinitions = {
-  'context.setMode': defineViewOperation({
-    title: 'Set context mode',
-    description:
-      'Show Reasoning or Inspection in the right-side context panel. Inspection follows the shared selection.',
-    input: z.object({ mode: z.enum(['reasoning', 'inspection']) }),
-    run(view, { mode }) {
-      view.context.mode = mode
-      return applied(
-        mode === 'inspection'
-          ? 'The context panel shows Inspection.'
-          : 'The context panel shows Reasoning.',
-      )
-    },
-  }),
-
   'map.setMetric': defineViewOperation({
     title: 'Color map by metric',
     description:

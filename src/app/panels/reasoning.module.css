@@ -1,11 +1,13 @@
 /* The transcript scrolls on its own so the session controls never cover the
    newest entries. */
 .reasoning {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   height: 100%;
   min-height: 0;
+  padding: var(--space-3);
 }
 
 .agentHeader {
@@ -232,26 +234,191 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
-.presetsLabel {
+.controlsLabel {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
   font-weight: 600;
 }
 
-.presets {
-  display: flex;
-  flex-wrap: wrap;
+/* Each suggestion carries why it is offered now, so it cannot read as a
+   generic preset list. */
+.suggestions {
+  display: grid;
   gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The panel is narrow, so the reason sits under its button rather than in a
+   second column that would wrap to a few words per line. */
+.suggestions li {
+  display: grid;
+  gap: 0.125rem;
+  justify-items: start;
+}
+
+.suggestionReason {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.queue {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.125rem var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.queueText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.queueRemove {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 0.125rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.queueRemove:hover {
+  color: var(--color-text);
+}
+
+.queueRemove:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 .composer {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* The field grows with its content; the send control stays beside it. */
+.inputRow {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-end;
   gap: var(--space-1);
 }
 
 .messageField {
   flex: 1;
-  min-width: 10rem;
+  min-width: 8rem;
+}
+
+.messageInput {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-height: 9rem;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  resize: none;
+  overflow-y: auto;
+}
+
+.messageInput[data-focused] {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -1px;
+}
+
+.sendGroup {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.125rem;
+}
+
+.composerTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.modeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.625rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.modeButton[data-hovered] {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.modeButton[data-focus-visible] {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.popover {
+  max-width: 18rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.menu {
+  display: grid;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  outline: none;
+}
+
+.menuItem {
+  display: grid;
+  gap: 0.0625rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+}
+
+.menuItem[data-focused] {
+  background: var(--color-surface-raised);
+}
+
+.menuItem[data-selected] .menuLabel::after {
+  content: ' ✓';
+}
+
+.menuLabel {
+  font-weight: 600;
+}
+
+.menuDescription {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
 }

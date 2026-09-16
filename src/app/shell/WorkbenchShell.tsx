@@ -5,8 +5,9 @@ import {
   LayoutDashboard,
   ListChecks,
   Map as MapIcon,
-  PanelRight,
+  MessageSquare,
   Route,
+  ScanSearch,
   Settings,
   SquarePlus,
   Table2,
@@ -34,7 +35,8 @@ import { SettingsPage } from '../pages/SettingsPage.tsx'
 import { TablePage } from '../pages/TablePage.tsx'
 import { TasksPage } from '../pages/TasksPage.tsx'
 import { AssetsPanel } from '../panels/AssetsPanel.tsx'
-import { ContextPanel } from '../panels/ContextPanel.tsx'
+import { InspectionPanel } from '../panels/InspectionPanel.tsx'
+import { ReasoningPanel } from '../panels/ReasoningPanel.tsx'
 import { WorkflowPanel } from '../panels/WorkflowPanel.tsx'
 import { useShortcuts } from '../useShortcuts.ts'
 import { CommandPalette } from './CommandPalette.tsx'
@@ -52,7 +54,8 @@ type OpenDialog = 'palette' | 'shortcuts' | 'capabilities' | 'newProject' | null
 const TAB_ICONS: Record<string, LucideIcon> = {
   'panel.assets': FolderTree,
   'panel.workflow': Workflow,
-  'panel.reasoning': PanelRight,
+  'panel.reasoning': MessageSquare,
+  'panel.inspection': ScanSearch,
   'page.map': MapIcon,
   'page.table': Table2,
   'page.dashboard': LayoutDashboard,
@@ -91,7 +94,9 @@ function renderTabContent(node: TabNode) {
     case 'panel.assets':
       return <AssetsPanel />
     case 'panel.reasoning':
-      return <ContextPanel />
+      return <ReasoningPanel />
+    case 'panel.inspection':
+      return <InspectionPanel />
     case 'page.map':
       return <MapPage />
     case 'page.table':

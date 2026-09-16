@@ -1,8 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from './test.ts'
 
-// Design alignment (guidelines section 10): Reasoning and Inspection share the
-// right-side context panel, and Inspection follows the shared selection.
+// Reasoning and Inspection are independent dockable panels (decision 0016).
+// Inspection follows the shared selection read-only.
 
 async function seriousViolations(page: Page): Promise<string[]> {
   const results = await new AxeBuilder({ page }).analyze()
@@ -45,53 +45,79 @@ test('inspection shows the shared selection read-only', async ({ page }) => {
     'Location setup / footprint capturing',
     'Geospatial data enriching',
   ])
-  const context = page.getByRole('region', { name: 'Context' })
-  await expect(context.getByRole('tab', { name: 'Reasoning' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  )
+  // Both panels are docked on the right; Reasoning is the one shown first.
+  const reasoningTab = page.getByRole('tab', { name: 'Reasoning', exact: true })
+  const inspectionTab = page.getByRole('tab', {
+    name: 'Inspection',
+    exact: true,
+  })
+  await expect(reasoningTab).toHaveAttribute('aria-selected', 'true')
+  await expect(inspectionTab).toHaveAttribute('aria-selected', 'false')
 
-  await context.getByRole('tab', { name: 'Inspection' }).click()
-  await expect(context.getByText('Nothing selected')).toBeVisible()
-  await expect(page.getByTestId('status-notice')).toContainText(
-    'The context panel shows Inspection.',
-  )
+  await inspectionTab.click()
+  await expect(inspectionTab).toHaveAttribute('aria-selected', 'true')
+  const inspection = page.getByRole('region', { name: 'Inspection' })
+  await expect(inspection.getByText('Nothing selected')).toBeVisible()
 
   await selectFirstBuildingInTable(page)
-  await expect(context.locator('header').first()).toContainText('B0001')
+  await expect(inspection.locator('header').first()).toContainText('B0001')
   await expect(
-    context.getByRole('region', { name: 'Properties' }),
+    inspection.getByRole('region', { name: 'Properties' }),
   ).toContainText('Floors')
   await expect(
-    context.getByRole('region', { name: 'Provenance' }),
+    inspection.getByRole('region', { name: 'Provenance' }),
   ).toContainText('Simulated')
   expect(await seriousViolations(page)).toEqual([])
 
-  await context
+  await inspection
     .getByRole('button', { name: 'Clear selection from Inspection' })
     .click()
-  await expect(context.getByText('Nothing selected')).toBeVisible()
+  await expect(inspection.getByText('Nothing selected')).toBeVisible()
   await expect(page.getByText('0 selected', { exact: true })).toBeVisible()
 })
 
-test('inspect selection opens the context panel on Inspection', async ({
-  page,
-}) => {
+test('inspect selection opens the Inspection panel', async ({ page }) => {
   await runStages(page, ['Location setup / footprint capturing'])
-  const contextTab = page.getByRole('tab', { name: 'Context', exact: true })
-  await expect(contextTab).toHaveAttribute('aria-selected', 'true')
-  await contextTab.click()
-  await expect(contextTab).toHaveAttribute('aria-selected', 'false')
+  const inspectionTab = page.getByRole('tab', {
+    name: 'Inspection',
+    exact: true,
+  })
+  await expect(inspectionTab).toHaveAttribute('aria-selected', 'false')
 
   await selectFirstBuildingInTable(page)
   await page.keyboard.press('Control+k')
   await page.keyboard.type('inspect selection')
   await page.keyboard.press('Enter')
 
-  await expect(contextTab).toHaveAttribute('aria-selected', 'true')
-  const context = page.getByRole('region', { name: 'Context' })
-  await expect(
-    context.getByRole('tab', { name: 'Inspection' }),
-  ).toHaveAttribute('aria-selected', 'true')
-  await expect(context.locator('header').first()).toContainText('B0001')
+  await expect(inspectionTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'Showed the Inspection panel.',
+  )
+  const inspection = page.getByRole('region', { name: 'Inspection' })
+  await expect(inspection.locator('header').first()).toContainText('B0001')
+})
+
+test('each panel has its own toggle, so both can be open at once', async ({
+  page,
+}) => {
+  const reasoningTab = page.getByRole('tab', { name: 'Reasoning', exact: true })
+  const inspectionTab = page.getByRole('tab', {
+    name: 'Inspection',
+    exact: true,
+  })
+
+  // Closing Reasoning from the Panels menu leaves Inspection docked.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('reasoning')
+  await page.keyboard.press('Enter')
+  await expect(reasoningTab).toHaveAttribute('aria-selected', 'false')
+  await expect(inspectionTab).toBeVisible()
+
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('inspection')
+  await page.keyboard.press('Enter')
+  await expect(inspectionTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'Showed the Inspection panel.',
+  )
 })

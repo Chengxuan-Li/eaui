@@ -40,10 +40,8 @@ import {
   readAppearancePreference,
   storeAppearancePreference,
 } from './theme.ts'
-import type { ContextMode, ViewState } from './view/viewOperations.ts'
+import type { ViewState } from './view/viewOperations.ts'
 import { createViewStore, type ViewStore } from './view/viewStore.ts'
-
-export type { ContextMode } from './view/viewOperations.ts'
 
 type CoreServices = {
   storage: Storage | null
@@ -64,9 +62,7 @@ export type Services = CoreServices & {
   /** Whether the Map page shows the OpenFreeMap basemap (decision 0012). */
   basemapEnabled: boolean
   setBasemapEnabled: (enabled: boolean) => void
-  contextMode: ContextMode
-  setContextMode: (mode: ContextMode, source?: CommandSource) => void
-  /** Opens the context panel on Inspection, which follows the shared selection. */
+  /** Opens the Inspection panel, which follows the shared selection. */
   showInspection: (source?: CommandSource) => void
 }
 
@@ -127,7 +123,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     readBasemapPreference(core.storage),
   )
   const appearance = resolveAppearance(appearancePreference, systemDark)
-  const contextMode = useStore(core.view.store, (view) => view.context.mode)
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -148,12 +143,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
 
   const services = useMemo<Services>(() => {
-    const setContextMode = (
-      mode: ContextMode,
-      source: CommandSource = 'manual',
-    ) => {
-      core.view.execute({ type: 'context.setMode', input: { mode } }, source)
-    }
     return {
       ...core,
       appearancePreference,
@@ -184,16 +173,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
             : 'The Map shows footprints on a plain background.',
         })
       },
-      contextMode,
-      setContextMode,
       showInspection: (source = 'manual') => {
-        if (!core.layout.isPanelOpen('reasoning')) {
-          core.layout.togglePanel('reasoning', source)
+        if (!core.layout.isPanelOpen('inspection')) {
+          core.layout.togglePanel('inspection', source)
         }
-        setContextMode('inspection', source)
       },
     }
-  }, [core, appearancePreference, appearance, basemapEnabled, contextMode])
+  }, [core, appearancePreference, appearance, basemapEnabled])
 
   return (
     <ServicesContext.Provider value={services}>
@@ -221,7 +207,7 @@ export function useWorkbenchSnapshot<T>(
   return useStore(useServices().workbench.store, selector)
 }
 
-/** Reads logged view state (map, table, dashboard, context panel). */
+/** Reads logged view state (map, table, dashboard). */
 export function useViewState<T>(selector: (view: ViewState) => T): T {
   return useStore(useServices().view.store, selector)
 }

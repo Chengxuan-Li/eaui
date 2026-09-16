@@ -2,7 +2,7 @@ import type { StoreApi } from 'zustand/vanilla'
 import type { PageId } from '../layout/layoutController.ts'
 import type { ToolCall, ToolResult } from './tools.ts'
 
-// The agent adapter is the seam between the Reasoning mode and whatever
+// The agent adapter is the seam between the Reasoning panel and whatever
 // produces agent behavior. The first slice uses a scripted player (decision
 // 0006); a real model provider can implement the same adapter later.
 
@@ -30,6 +30,8 @@ export type TranscriptItem =
       description: string
       callTitles: string[]
       status: 'pending' | 'approved' | 'declined'
+      /** Set when a permission mode answered the approval instead of the user. */
+      decidedBy: PermissionMode | null
     }
   | {
       id: string
@@ -39,6 +41,15 @@ export type TranscriptItem =
     }
 
 export type AgentStatus = 'idle' | 'running' | 'awaitingApproval'
+
+/** How a typed message reaches the agent (decision 0016). */
+export type SendMode = 'send' | 'queue' | 'stir'
+
+/**
+ * How much the agent may do without asking (decision 0016). The modes act on
+ * the approval gate that already guards stage runs and model changes.
+ */
+export type PermissionMode = 'ask' | 'automatic' | 'bypass' | 'plan'
 
 export type AgentPreset = {
   id: string
@@ -52,14 +63,27 @@ export type AgentSnapshot = {
   transcript: TranscriptItem[]
   activeSessionId: string | null
   presets: AgentPreset[]
+  permissionMode: PermissionMode
+  /** Messages waiting for the agent to become idle, oldest first. */
+  queued: string[]
+  /** Sessions started in this conversation, oldest first. */
+  ranSessionIds: string[]
 }
 
 export type AgentAdapter = {
   label: string
   store: StoreApi<AgentSnapshot>
-  /** Sends a free-text message; ignored while a session is busy. */
-  send: (text: string) => void
+  /**
+   * Sends a free-text message. "send" needs an idle agent, "queue" waits for
+   * one, and "stir" reaches a running session.
+   */
+  send: (text: string, mode?: SendMode) => void
+  /** Why this send mode cannot be used right now, or null. */
+  sendBlocker: (mode: SendMode, text: string) => string | null
   startPreset: (presetId: string) => void
+  setPermissionMode: (mode: PermissionMode) => void
+  /** Drops a queued message that has not been delivered yet. */
+  dropQueued: (index: number) => void
   approve: (itemId: string) => void
   decline: (itemId: string) => void
   /** Stops the active session; applied changes stay in the project. */

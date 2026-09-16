@@ -129,6 +129,24 @@ export const capabilities = {
     status: 'planned',
     explanation: 'Grounding agent answers in project documents is planned.',
   },
+  'agent.steering': {
+    label: 'Steering a running session',
+    status: 'simulated',
+    explanation:
+      'A scripted session cannot change course. A stirred message is recorded and answered when the session ends.',
+  },
+  'agent.attachments': {
+    label: 'Attachments',
+    status: 'planned',
+    explanation:
+      'Attaching documents, images, or selections to a message is planned.',
+  },
+  'agent.reasoningEffort': {
+    label: 'Model and reasoning effort',
+    status: 'planned',
+    explanation:
+      'Choosing a language model and its reasoning effort is planned; the first slice replays scripted sessions.',
+  },
   'ribbon.comments': {
     label: 'Comments',
     status: 'planned',

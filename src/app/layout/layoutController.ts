@@ -29,9 +29,10 @@ export const PAGES = {
 export const PANELS = {
   assets: { name: 'Assets', component: 'panel.assets' },
   workflow: { name: 'Workflow', component: 'panel.workflow' },
-  // The context panel (Reasoning | Inspection) keeps the panel.reasoning
-  // component id so layouts saved before the rename still restore.
-  reasoning: { name: 'Context', component: 'panel.reasoning' },
+  // Reasoning keeps the panel.reasoning component id through both renames
+  // (Reasoning, Context, Reasoning again) so saved layouts still restore.
+  reasoning: { name: 'Reasoning', component: 'panel.reasoning' },
+  inspection: { name: 'Inspection', component: 'panel.inspection' },
 } as const
 
 export type PageId = keyof typeof PAGES
@@ -63,7 +64,9 @@ export const DEFAULT_PAGES: PageId[] = [
 ]
 
 export const MAIN_TABSET_ID = 'tabset:main'
-const LAYOUT_KEY = 'eaui.layout.v1'
+// v2 splits the Context panel into Reasoning and Inspection (decision 0016);
+// a v1 layout has no Inspection tab, so it is not restored.
+const LAYOUT_KEY = 'eaui.layout.v2'
 
 export function pageTabId(page: PageId): string {
   return `page:${page}`
@@ -97,6 +100,7 @@ const PANEL_HOME: Record<PanelId, 'left' | 'right'> = {
   assets: 'left',
   workflow: 'left',
   reasoning: 'right',
+  inspection: 'right',
 }
 
 export function createDefaultLayout(): IJsonModel {
@@ -129,7 +133,7 @@ export function createDefaultLayout(): IJsonModel {
         location: 'right',
         size: 320,
         selected: 0,
-        children: [panelTab('reasoning')],
+        children: [panelTab('reasoning'), panelTab('inspection')],
       },
     ],
     layout: {

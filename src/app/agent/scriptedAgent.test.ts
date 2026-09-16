@@ -141,6 +141,102 @@ describe('scripted agent', () => {
   })
 })
 
+// Permission modes act on the approval gate; send modes decide when a typed
+// message reaches the agent (decision 0016).
+describe('agent permission modes', () => {
+  it('runs stages without asking in Automatic mode', () => {
+    const { manual, agent, lastApproval, agentEntries } = setup()
+    agent.setPermissionMode('automatic')
+    agent.startPreset('layout')
+    manual.runAll(20000)
+    expect(agent.store.getState().status).toBe('idle')
+    expect(lastApproval()).toMatchObject({
+      status: 'approved',
+      decidedBy: 'automatic',
+    })
+    expect(agentEntries().map((entry) => entry.type)).toContain(
+      'workflow.runStage',
+    )
+  })
+
+  it('still asks for a project model change in Automatic mode', () => {
+    const { manual, agent, lastApproval } = setup()
+    agent.setPermissionMode('automatic')
+    agent.startPreset('modelChange')
+    manual.runAll(50)
+    expect(agent.store.getState().status).toBe('awaitingApproval')
+    expect(lastApproval().decidedBy).toBeNull()
+  })
+
+  it('applies a model change without asking in Bypass approval mode', () => {
+    const { workbench, manual, agent, lastApproval } = setup()
+    agent.setPermissionMode('bypass')
+    agent.startPreset('modelChange')
+    manual.runAll(200)
+    expect(lastApproval().decidedBy).toBe('bypass')
+    expect(Object.values(workbench.getState().scenarios)).toHaveLength(1)
+  })
+
+  it('lists what it would do and changes nothing in Plan mode', () => {
+    const { workbench, manual, agent, transcript } = setup()
+    agent.setPermissionMode('plan')
+    agent.startPreset('modelChange')
+    manual.runAll(200)
+    expect(agent.store.getState().status).toBe('idle')
+    expect(workbench.getState().measures).toEqual({})
+    expect(transcript().some((item) => item.kind === 'approval')).toBe(false)
+    expect(JSON.stringify(transcript())).toContain('Plan only')
+  })
+})
+
+describe('agent send modes', () => {
+  it('queues a message while a session runs and answers it afterwards', () => {
+    const { manual, agent, lastApproval, transcript } = setup()
+    agent.startPreset('layout')
+    manual.runAll(50)
+    expect(agent.sendBlocker('send', 'reset the layout')).toContain(
+      'waiting for your approval',
+    )
+
+    agent.send('reset the layout', 'queue')
+    expect(agent.store.getState().queued).toEqual(['reset the layout'])
+    agent.approve(lastApproval().id)
+    manual.runAll(20000)
+    expect(agent.store.getState().queued).toEqual([])
+    expect(agent.store.getState().ranSessionIds).toEqual(['layout', 'restore'])
+    expect(JSON.stringify(transcript())).toContain('default layout is back')
+  })
+
+  it('refuses to stir when no session is running', () => {
+    const { agent, transcript } = setup()
+    expect(agent.sendBlocker('stir', 'hello')).toContain('running session')
+    agent.send('hello', 'stir')
+    expect(agent.store.getState().queued).toEqual([])
+    expect(transcript()).toEqual([])
+  })
+
+  it('records a stirred message and says a scripted session cannot change course', () => {
+    const { manual, agent, lastApproval, transcript } = setup()
+    agent.startPreset('layout')
+    manual.runAll(50)
+    agent.send('reset the layout', 'stir')
+    expect(JSON.stringify(transcript())).toContain('cannot change course')
+    agent.approve(lastApproval().id)
+    manual.runAll(20000)
+    expect(agent.store.getState().ranSessionIds).toEqual(['layout', 'restore'])
+  })
+
+  it('discards queued messages when the session is stopped', () => {
+    const { manual, agent, transcript } = setup()
+    agent.startPreset('layout')
+    manual.runAll(50)
+    agent.send('reset the layout', 'queue')
+    agent.stop()
+    expect(agent.store.getState().queued).toEqual([])
+    expect(JSON.stringify(transcript().at(-1))).toContain('discarded')
+  })
+})
+
 describe('agent tools', () => {
   it('requires approval for stage runs and project model changes only', () => {
     expect(

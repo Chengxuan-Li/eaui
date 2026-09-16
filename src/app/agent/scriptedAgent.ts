@@ -11,6 +11,7 @@ import {
   type StepSource,
   type TitledCall,
 } from './sessions.ts'
+import { permissionModeOption } from './modes.ts'
 import {
   command,
   executeToolCall,
@@ -18,7 +19,13 @@ import {
   type ToolCall,
   type ToolDeps,
 } from './tools.ts'
-import type { AgentAdapter, AgentSnapshot, TranscriptItem } from './types.ts'
+import type {
+  AgentAdapter,
+  AgentSnapshot,
+  PermissionMode,
+  SendMode,
+  TranscriptItem,
+} from './types.ts'
 
 /** Pause between transcript steps, so a replay reads as a session. */
 export const STEP_DELAY_MS = 350
@@ -53,6 +60,9 @@ export function createScriptedAgent(
       prompt,
       description,
     })),
+    permissionMode: 'ask',
+    queued: [],
+    ranSessionIds: [],
   }))
 
   let itemCount = 0
@@ -114,6 +124,32 @@ export function createScriptedAgent(
     approvedCalls = []
     pending = null
     store.setState({ status: 'idle', activeSessionId: null })
+    deliverQueued()
+  }
+
+  /** Hands the oldest queued message to the agent now that it is idle. */
+  function deliverQueued() {
+    const [next, ...rest] = store.getState().queued
+    if (next === undefined) return
+    store.setState({ queued: rest })
+    schedule(() => deliver(next))
+  }
+
+  /** Answers a message: starts the session it matches, or explains that none does. */
+  function deliver(prompt: string) {
+    const session = matchSession(prompt)
+    if (session) {
+      start(session, prompt)
+      return
+    }
+    push({ id: nextId(), kind: 'user', text: prompt })
+    push({
+      id: nextId(),
+      kind: 'agent',
+      markdown:
+        'I am a **scripted agent** in this prototype. I can only run the prepared sessions offered below, so I did not act on this message. Choose a session, or use the workbench controls directly.',
+    })
+    deliverQueued()
   }
 
   function endWith(tone: 'info' | 'warning' | 'error', text: string) {
@@ -132,7 +168,11 @@ export function createScriptedAgent(
     })
     context = createContext()
     queue = [...session.steps]
-    store.setState({ status: 'running', activeSessionId: session.id })
+    store.setState({
+      status: 'running',
+      activeSessionId: session.id,
+      ranSessionIds: [...store.getState().ranSessionIds, session.id],
+    })
     schedule(advance)
   }
 
@@ -229,7 +269,44 @@ export function createScriptedAgent(
     schedule(check, STAGE_POLL_MS)
   }
 
+  /**
+   * Workflow calls run or restore stages with simulated computation. Every
+   * other call that needs approval changes the project model, which "Automatic"
+   * still leaves to the user. A call built at run time is unknown until then,
+   * so it counts as a model change.
+   */
+  function isWorkflowCall(titled: TitledCall): boolean {
+    if (typeof titled.call === 'function') return false
+    return (
+      titled.call.kind === 'command' &&
+      titled.call.command.type.startsWith('workflow.')
+    )
+  }
+
+  /** The permission mode that answers this proposal, or null to ask the user. */
+  function autoDecision(calls: TitledCall[]): PermissionMode | null {
+    const mode = store.getState().permissionMode
+    if (mode === 'bypass' || mode === 'plan') return mode
+    if (mode === 'automatic' && calls.every(isWorkflowCall)) return mode
+    return null
+  }
+
   function propose(title: string, description: string, calls: TitledCall[]) {
+    const decided = autoDecision(calls)
+    if (decided === 'plan') {
+      push({
+        id: nextId(),
+        kind: 'agent',
+        markdown: `**Plan only.** To continue I would ${title[0]?.toLowerCase()}${title.slice(1)}:\n\n${calls
+          .map((call) => `- ${call.title}`)
+          .join('\n')}${description ? `\n\n${description}` : ''}`,
+      })
+      endWith(
+        'info',
+        'Plan mode: nothing was changed. Choose another permission mode and ask again to carry this out.',
+      )
+      return
+    }
     const itemId = nextId()
     push({
       id: itemId,
@@ -237,10 +314,41 @@ export function createScriptedAgent(
       title,
       description,
       callTitles: calls.map((call) => call.title),
-      status: 'pending',
+      status: decided ? 'approved' : 'pending',
+      decidedBy: decided,
     })
+    if (decided) {
+      workbench.record({
+        type: 'agent.proposal',
+        title: `Agent proposal: ${title}`,
+        input: {
+          calls: calls.map((call) => call.title),
+          permissionMode: decided,
+        },
+        summary: `Approved "${title}" without asking, because the agent is in ${permissionModeOption(decided).label} mode.`,
+      })
+      approvedCalls = [...calls]
+      pending = null
+      schedule(runApproved)
+      return
+    }
     pending = { itemId, title, calls }
     store.setState({ status: 'awaitingApproval' })
+  }
+
+  /** Why a send mode cannot be used right now, or null. */
+  function sendBlocker(mode: SendMode, text: string): string | null {
+    if (!text.trim()) return 'Type a message first.'
+    const status = store.getState().status
+    if (mode === 'send' && status !== 'idle') {
+      return status === 'awaitingApproval'
+        ? 'The agent is waiting for your approval. Answer it, or queue this message.'
+        : 'A session is running. Queue this message, stir it in, or stop the session.'
+    }
+    if (mode === 'stir' && status === 'idle') {
+      return 'Stirring adds guidance to a running session. Use Send message instead.'
+    }
+    return null
   }
 
   function ensure(
@@ -300,25 +408,64 @@ export function createScriptedAgent(
   return {
     label: 'Scripted agent',
     store,
-    send(text) {
+    send(text, mode = 'send') {
       const prompt = text.trim()
-      if (!prompt || store.getState().status !== 'idle') return
-      const session = matchSession(prompt)
-      if (session) {
-        start(session, prompt)
+      if (sendBlocker(mode, prompt)) return
+      if (mode === 'send') {
+        deliver(prompt)
         return
       }
-      push({ id: nextId(), kind: 'user', text: prompt })
-      push({
-        id: nextId(),
-        kind: 'agent',
-        markdown:
-          'I am a **scripted agent** in this prototype. I can only run the prepared sessions offered below, so I did not act on this message. Choose a session, or use the workbench controls directly.',
+      store.setState({ queued: [...store.getState().queued, prompt] })
+      if (mode === 'stir') {
+        // A scripted session cannot change course, so say so where it happens
+        // rather than implying the message steered it (agent.steering).
+        push({ id: nextId(), kind: 'user', text: prompt })
+        push({
+          id: nextId(),
+          kind: 'notice',
+          tone: 'info',
+          text: 'Noted while the session runs. A scripted session cannot change course, so I will answer this once it ends.',
+        })
+      }
+      workbench.record({
+        type: 'agent.queueMessage',
+        title: mode === 'stir' ? 'Stir a message in' : 'Queue a message',
+        input: { text: prompt, mode },
+        summary:
+          mode === 'stir'
+            ? 'Added the message to the running session; the agent answers it when the session ends.'
+            : 'Queued the message; the agent answers it when it is idle.',
       })
+      if (store.getState().status === 'idle') deliverQueued()
     },
+    sendBlocker,
     startPreset(presetId) {
       const session = SESSIONS.find((candidate) => candidate.id === presetId)
       if (session) start(session, session.prompt)
+    },
+    setPermissionMode(mode) {
+      if (store.getState().permissionMode === mode) return
+      store.setState({ permissionMode: mode })
+      const option = permissionModeOption(mode)
+      workbench.record({
+        type: 'agent.setPermissionMode',
+        title: 'Set agent permission mode',
+        input: { mode },
+        summary: `Agent permission mode: ${option.label}. ${option.description}`,
+      })
+    },
+    dropQueued(index) {
+      const queued = store.getState().queued
+      if (index < 0 || index >= queued.length) return
+      store.setState({
+        queued: queued.filter((_, position) => position !== index),
+      })
+      workbench.record({
+        type: 'agent.dropQueuedMessage',
+        title: 'Remove a queued message',
+        input: { text: queued[index] },
+        summary: 'Removed a queued message before the agent answered it.',
+      })
     },
     approve(itemId) {
       if (store.getState().status !== 'awaitingApproval') return
@@ -357,9 +504,13 @@ export function createScriptedAgent(
     stop() {
       if (store.getState().status === 'idle') return
       if (pending) setApprovalStatus(pending.itemId, 'declined')
+      // Stopping means stop: queued messages would otherwise start a session
+      // straight after the one the user just ended.
+      const dropped = store.getState().queued.length
+      store.setState({ queued: [] })
       endWith(
         'info',
-        'Session stopped. Changes that were already applied stay in the project.',
+        `Session stopped. Changes that were already applied stay in the project.${dropped > 0 ? ` ${dropped} queued message${dropped === 1 ? '' : 's'} discarded.` : ''}`,
       )
     },
   }

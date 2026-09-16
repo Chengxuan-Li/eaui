@@ -104,15 +104,6 @@ describe('view store', () => {
     expect(workbench.store.getState().log.at(-1)?.status).toBe('rejected')
   })
 
-  it('switches the context mode with the summary shown in the status bar', () => {
-    const { workbench, view } = setup()
-    view.execute({ type: 'context.setMode', input: { mode: 'inspection' } })
-    expect(view.getState().context.mode).toBe('inspection')
-    expect(workbench.store.getState().log.at(-1)?.summary).toBe(
-      'The context panel shows Inspection.',
-    )
-  })
-
   it('tracks compared scenarios and rejects unknown ones', () => {
     const { view } = setup(modeled)
     view.execute({

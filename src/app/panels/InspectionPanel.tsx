@@ -1,11 +1,9 @@
 import { Info, TriangleAlert } from 'lucide-react'
 import { useId, useMemo, type ReactNode } from 'react'
-import { Tab, TabList, TabPanel, Tabs } from 'react-aria-components'
 import { useServices, useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
-import { ReasoningMode } from './ReasoningMode.tsx'
-import styles from './context.module.css'
+import styles from './inspection.module.css'
 import {
   buildInspection,
   type Fact,
@@ -13,41 +11,6 @@ import {
   type MultipleInspection,
   type SingleInspection,
 } from './inspection.ts'
-
-/**
- * The right-side contextual surface (guidelines section 10): Reasoning and
- * Inspection share one panel instead of competing as separate panels.
- */
-export function ContextPanel() {
-  const { contextMode, setContextMode } = useServices()
-  return (
-    <section className={styles.panel} aria-label="Context">
-      <Tabs
-        className={styles.tabs}
-        selectedKey={contextMode}
-        onSelectionChange={(key) => {
-          const next = key === 'inspection' ? 'inspection' : 'reasoning'
-          if (next !== contextMode) setContextMode(next)
-        }}
-      >
-        <TabList aria-label="Context mode" className={styles.modeSwitch}>
-          <Tab id="reasoning" className={styles.mode}>
-            Reasoning
-          </Tab>
-          <Tab id="inspection" className={styles.mode}>
-            Inspection
-          </Tab>
-        </TabList>
-        <TabPanel id="reasoning" className={styles.modePanel}>
-          <ReasoningMode />
-        </TabPanel>
-        <TabPanel id="inspection" className={styles.modePanel}>
-          <InspectionMode />
-        </TabPanel>
-      </Tabs>
-    </section>
-  )
-}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const headingId = useId()
@@ -193,7 +156,12 @@ function MultipleView({
   )
 }
 
-function InspectionMode() {
+/**
+ * Inspection of the shared selection, read-only (guidelines section 10). Its
+ * own dockable panel since decision 0016, so it can sit beside Reasoning
+ * instead of taking turns with it.
+ */
+export function InspectionPanel() {
   const { workbench, layout } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const inspection = useMemo(() => buildInspection(state), [state])
@@ -226,21 +194,27 @@ function InspectionMode() {
 
   if (inspection.kind === 'empty') {
     return (
-      <div className={styles.empty}>
-        <p className={styles.emptyTitle}>
-          <Info size={16} aria-hidden="true" /> Nothing selected
-        </p>
-        <p className={styles.muted}>
-          Select buildings or grid elements on the Map or Table page to see
-          their properties, results, warnings, and linked objects here.
-        </p>
-        <div className={styles.actions}>{pageActions}</div>
-      </div>
+      // The panel scrolls itself, so it takes focus for keyboard scrolling
+      // (axe scrollable-region-focusable).
+      <section className={styles.panel} aria-label="Inspection" tabIndex={0}>
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>
+            <Info size={16} aria-hidden="true" /> Nothing selected
+          </p>
+          <p className={styles.muted}>
+            Select buildings or grid elements on the Map or Table page to see
+            their properties, results, warnings, and linked objects here.
+          </p>
+          <div className={styles.actions}>{pageActions}</div>
+        </div>
+      </section>
     )
   }
 
   return (
-    <div>
+    // The panel scrolls itself, so it takes focus for keyboard scrolling
+    // (axe scrollable-region-focusable).
+    <section className={styles.panel} aria-label="Inspection" tabIndex={0}>
       <header className={styles.header}>
         <p className={styles.eyebrow}>{inspection.eyebrow}</p>
         <h3 className={styles.title}>{inspection.title}</h3>
@@ -262,6 +236,6 @@ function InspectionMode() {
           Clear selection
         </ActionButton>
       </div>
-    </div>
+    </section>
   )
 }

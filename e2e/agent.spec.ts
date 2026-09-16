@@ -1,8 +1,8 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from './test.ts'
 
-// First-slice build stage 4: scripted agent sessions in the Reasoning mode
-// (decisions 0006 and 0011).
+// First-slice build stage 4: scripted agent sessions in the Reasoning panel
+// (decisions 0006, 0011, and 0016).
 
 async function seriousViolations(page: Page): Promise<string[]> {
   const results = await new AxeBuilder({ page }).analyze()
@@ -14,8 +14,8 @@ async function seriousViolations(page: Page): Promise<string[]> {
     .map((violation) => `${violation.id} (${violation.nodes.length})`)
 }
 
-function contextPanel(page: Page) {
-  return page.getByRole('region', { name: 'Context' })
+function reasoningPanel(page: Page) {
+  return page.getByRole('region', { name: 'Reasoning' })
 }
 
 test.beforeEach(async ({ page }) => {
@@ -29,7 +29,7 @@ test('layout session runs missing stages after approval, then arranges the workb
   page,
 }) => {
   test.setTimeout(90_000)
-  const panel = contextPanel(page)
+  const panel = reasoningPanel(page)
   await panel
     .getByRole('button', {
       name: 'Start session: Map beside Table, tallest buildings',
@@ -71,7 +71,7 @@ test('layout session runs missing stages after approval, then arranges the workb
 test('a model change waits for approval and rejecting it changes nothing', async ({
   page,
 }) => {
-  const panel = contextPanel(page)
+  const panel = reasoningPanel(page)
   await panel
     .getByRole('button', { name: 'Start session: Propose a scenario change' })
     .click()
@@ -98,11 +98,12 @@ test('a model change waits for approval and rejecting it changes nothing', async
 test('free text without a prepared session gets an honest answer', async ({
   page,
 }) => {
-  const panel = contextPanel(page)
+  const panel = reasoningPanel(page)
   await panel
     .getByRole('textbox', { name: 'Message the agent' })
     .fill('What is the weather tomorrow?')
-  await panel.getByRole('button', { name: 'Send message' }).click()
+  // Exact: the send-mode menu trigger is named "Send mode: Send message".
+  await panel.getByRole('button', { name: 'Send message', exact: true }).click()
   await expect(
     panel.getByRole('log', { name: 'Agent transcript' }),
   ).toContainText('I can only run the prepared sessions')
@@ -112,7 +113,7 @@ test('data representation session colors the map and adds a chart from a specifi
   page,
 }) => {
   test.setTimeout(150_000)
-  const panel = contextPanel(page)
+  const panel = reasoningPanel(page)
   await panel
     .getByRole('button', {
       name: 'Start session: PV yield map and demand chart',
