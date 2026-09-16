@@ -1,5 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 
 const FLEXLAYOUT_STYLESHEET =
@@ -23,6 +25,42 @@ function stripMissingFlexLayoutSourceMaps(): Plugin {
   }
 }
 
+// MapLibre 6 builds its worker URL from import.meta.url at run time, so the
+// bundler never sees the reference and emits nothing; the request then 404s on
+// a static host (decision 0017). The worker also imports the package's shared
+// chunk, so both files ship beside the MapLibre chunk under their exact names.
+const MAPLIBRE_WORKER_FILES = [
+  'maplibre-gl-worker.mjs',
+  'maplibre-gl-shared.mjs',
+]
+
+function emitMapLibreWorker(): Plugin {
+  let assetsDir = 'assets'
+  return {
+    name: 'eaui:emit-maplibre-worker',
+    apply: 'build',
+    configResolved(config) {
+      assetsDir = config.build.assetsDir
+    },
+    async generateBundle() {
+      // The package exports "." for import only, so require.resolve cannot take
+      // it; its exports map lists "./package.json", which resolves either way.
+      const require = createRequire(import.meta.url)
+      const packageDist = join(
+        dirname(require.resolve('maplibre-gl/package.json')),
+        'dist',
+      )
+      for (const file of MAPLIBRE_WORKER_FILES) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `${assetsDir}/${file}`,
+          source: await readFile(join(packageDist, file)),
+        })
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ command, isPreview }) => ({
   // GitHub Pages serves a project site from /<repository>/, so a built bundle
@@ -37,7 +75,7 @@ export default defineConfig(({ command, isPreview }) => ({
     command === 'build' || isPreview
       ? (process.env.EAUI_BASE_PATH ?? '/eaui/')
       : '/',
-  plugins: [stripMissingFlexLayoutSourceMaps(), react()],
+  plugins: [stripMissingFlexLayoutSourceMaps(), emitMapLibreWorker(), react()],
   optimizeDeps: {
     // Pre-bundling moves maplibre-gl but not its worker module, which then 404s.
     exclude: ['maplibre-gl'],
