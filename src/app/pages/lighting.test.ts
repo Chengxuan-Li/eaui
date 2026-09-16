@@ -191,6 +191,24 @@ describe('face contrast', () => {
     }
   })
 
+  it('lays less atmosphere and fog over a light appearance than a dark one', () => {
+    const state = { ...createInitialLighting(), minutesUtc: NOON }
+    const light = buildLightingScene(state, APPEARANCES.light, LAT, LON)
+    const dark = buildLightingScene(state, APPEARANCES.dark, LAT, LON)
+    for (const key of [
+      'atmosphere-blend',
+      'horizon-fog-blend',
+      'fog-ground-blend',
+    ] as const) {
+      expect(light.sky[key]).toBeLessThan(dark.sky[key])
+    }
+    // A globe seen from space would otherwise vanish under a white veil;
+    // MapLibre's own default is 0.8.
+    expect(light.sky['atmosphere-blend']).toBeLessThan(0.8)
+    // The dark appearances keep exactly what they had.
+    expect(dark.sky['atmosphere-blend']).toBeCloseTo(0.92, 2)
+  })
+
   it('leaves the dark appearances lifting their lit faces as before', () => {
     for (const candidate of Object.values(APPEARANCES)) {
       if (candidate.scheme !== 'dark') continue

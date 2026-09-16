@@ -97,6 +97,17 @@ export function litCeiling(scheme: 'light' | 'dark'): number {
   return scheme === 'light' ? 0.92 : 1.4
 }
 
+/**
+ * How much atmosphere and fog an appearance lays over the scene. The same sky
+ * values serve a street-level dome and a globe seen from space, and on a pale
+ * palette they turn into a white veil over the whole sphere, so a light
+ * appearance lays on less and reads as colour rather than glare. Dark
+ * appearances are unchanged.
+ */
+export function veilStrength(scheme: 'light' | 'dark'): number {
+  return scheme === 'light' ? 0.5 : 1
+}
+
 /** Scales a #rrggbb colour's channels, keeping its hue. */
 export function scaleHex(hex: string, factor: number): string {
   const [r, g, b] = parseHex(hex)
@@ -183,7 +194,7 @@ export function buildLightingScene(
     tokens.golden,
     golden * 0.8,
   )
-  // Dust lifts the horizon colour toward a pale, flat veil.
+  // Dust lifts the horizon colour toward the veil colour.
   const fogColor = mixHex(horizonColor, tokens.haze, 0.25 + 0.35 * haze)
 
   // Haze costs brightness, and a diffuse sun flattens the light a little.
@@ -222,15 +233,17 @@ export function buildLightingScene(
     intensity,
   }
 
+  const veil = veilStrength(appearance.scheme)
   const sky: SkyPaint = {
     'sky-color': skyColor,
     'horizon-color': horizonColor,
     'fog-color': fogColor,
     // A softer sun spreads the horizon glow further up the dome.
     'sky-horizon-blend': clamp(0.5 + 0.45 * softness, 0, 1),
-    'horizon-fog-blend': clamp(0.2 + 0.75 * haze, 0, 1),
-    'fog-ground-blend': clamp(0.05 + 0.7 * haze, 0, 1),
-    'atmosphere-blend': clamp(0.6 + 0.4 * (1 - haze) * daylight, 0, 1),
+    'horizon-fog-blend': clamp((0.2 + 0.75 * haze) * veil, 0, 1),
+    'fog-ground-blend': clamp((0.05 + 0.7 * haze) * veil, 0, 1),
+    // MapLibre's own default is 0.8; a light appearance stays well under it.
+    'atmosphere-blend': clamp((0.6 + 0.4 * (1 - haze) * daylight) * veil, 0, 1),
   }
 
   return {
