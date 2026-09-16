@@ -17,3 +17,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0013: 3D building extrusion on the Map page](0013-3d-building-extrusion.md)
 - [0014: LF line endings through Git attributes](0014-lf-line-endings.md)
 - [0015: Live 3D terrain for map display](0015-terrain.md)
+- [0016: Independent Reasoning and Inspection panels, with agent send and permission modes](0016-reasoning-and-inspection-panels.md)

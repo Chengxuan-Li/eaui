@@ -20,7 +20,7 @@ A browser-only React application with one synthetic project that can be taken th
 - **Shell:** ribbon (menus, quick buttons, the ▶ Run ▾ split button, command palette), FlexLayout docking area, status bar with tasks, issues, notices, and simulated compute.
 - **Left border (icon side bar):** Assets tree and Workflow panel.
 - **Center pages:** Map, Table, Dashboard, Roadmap, Creator, Settings; Issues and Tasks open from the status bar.
-- **Right border:** the Context panel. Its Reasoning mode runs scripted agent sessions with tool calls and approvals; its Inspection mode is a read-only view of the shared selection.
+- **Right border:** two independent panels ([decision 0016](decisions/0016-reasoning-and-inspection-panels.md)). Reasoning runs scripted agent sessions with tool calls, approvals, send modes, and permission modes; Inspection is a read-only view of the shared selection. Each has its own Panels menu entry and can be docked anywhere.
 - **Appearance:** System or one of six curated appearances (Light, Dark, Technical monochrome, Lieflat-inspired, Clean technical light, Dark engineering), set in Geist with a three-size type scale.
 
 There is no server, no model provider, and no real engineering calculation. Every number comes from deterministic synthetic code in `src/domain/simulation.ts`, and the UI discloses it as simulated through the capability registry.
@@ -88,7 +88,7 @@ Key domain rules:
 
 | Area | Files |
 | --- | --- |
-| Services and hooks | `WorkbenchContext.tsx`: `useServices` (including `view`, `agent`, `appearance`, `setAppearance`, `contextMode`, `setContextMode`, `showInspection`), `useAppearance`, `useWorkbenchSnapshot`, `useViewState`, `useAgentSnapshot`, `useStageStates`, `useLayoutVersion` |
+| Services and hooks | `WorkbenchContext.tsx`: `useServices` (including `view`, `agent`, `appearance`, `setAppearance`, `showInspection`), `useAppearance`, `useWorkbenchSnapshot`, `useViewState`, `useAgentSnapshot`, `useStageStates`, `useLayoutVersion` |
 | View state | `view/viewOperations.ts` (`ViewState`, operation registry, `describeViewOperations`), `view/viewStore.ts` (`createViewStore`), `view/chartSpec.ts` (chart specification schema, validation, and compilation) |
 | Agent | `agent/types.ts` (the `AgentAdapter` seam and transcript items), `agent/tools.ts` (tool calls, `requiresApproval`, `describeAgentTools`), `agent/sessions.ts` (scripted sessions), `agent/scriptedAgent.ts` (the player) |
 | App actions | `actions.ts` (the registry), `useShortcuts.ts`, `shortcuts.ts` (parsing and matching, unit-tested) |
@@ -96,7 +96,7 @@ Key domain rules:
 | Appearance | `appearance/appearances.ts` (six appearances: chrome tokens, data palette, `resolveAppearance`), `appearance/contrast.ts`, `theme.ts` (stored preference, `applyAppearance`) |
 | Shell | `shell/WorkbenchShell.tsx`, `Ribbon.tsx` (menus, quick buttons, Run split button), `StatusBar.tsx`, `CommandPalette.tsx`, `HelpDialogs.tsx` |
 | Shared components | `components/ActionButton.tsx` (explains unavailable actions), `StateBadge.tsx` (semantic stage states), `CapabilityBadge.tsx` (`CapabilityBadge` and `StatusTag`), `CapabilityTable.tsx`, `EmptyState.tsx`, `forms.module.css` |
-| Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/ContextPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/ReasoningMode.tsx` (agent transcript, approvals, prepared sessions) |
+| Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/InspectionPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/ReasoningPanel.tsx` (agent transcript, approvals, composer) + `agent/modes.ts` (send and permission modes) + `agent/suggestions.ts` (suggested next steps) |
 | Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts`; `basemapStyle.ts` (recolors the OpenFreeMap style from appearance tokens, attribution) and `useBasemap.ts` (loading, failure, retry); `silhouette.ts` (projects a building's ground, roof, and walls with a camera matrix) and `SelectionSilhouette.tsx` (the 3D selection outline: a custom layer supplies the matrix every frame, and the silhouette's boundary is drawn on an overlay canvas); `terrain.ts` (the Mapterhorn source, hillshade paint from appearance tokens, attribution, legend wording) and `useTerrain.ts` (applies terrain once its source exists, with loading, failure, and retry) |
 | Visualization | `viz/EChart.tsx` (modular ECharts wrapper and `useChartFont`), `grid/agGrid.ts` (AG Grid theme from CSS tokens) |
 | Persistence and global styles | `persistence.ts`, `storage.ts`, `basemapPreference.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
@@ -148,7 +148,7 @@ Add an `AppAction` in `src/app/actions.ts`. Set `menuPath` to place it in the ri
 1. Add it to `PAGES` or `PANELS` in `src/app/layout/layoutController.ts` (and to `DEFAULT_PAGES` or the default borders if it belongs in the default layout).
 2. Map its component id in `renderTabContent` and give it an icon in `TAB_ICONS` in `src/app/shell/WorkbenchShell.tsx`.
 3. Open it only through `layout.openPage` or `layout.togglePanel`, never through FlexLayout directly, so the change is logged and available to the agent.
-4. Saved layouts contain component ids; renaming one breaks restored layouts, which then show the "Unknown tab" message until reset. Rename tab names in `PANELS` instead, as the Context panel did (its component id stays `panel.reasoning`). Bump `LAYOUT_KEY` if a change makes old layouts invalid.
+4. Saved layouts contain component ids; renaming one breaks restored layouts, which then show the "Unknown tab" message until reset. Rename tab names in `PANELS` instead, as Reasoning did through two renames (its component id stays `panel.reasoning`). Bump `LAYOUT_KEY` if a change makes old layouts invalid; it is at `eaui.layout.v2` since the Reasoning and Inspection split ([decision 0016](decisions/0016-reasoning-and-inspection-panels.md)).
 5. Tabs stay mounted while hidden (`tabEnableRenderOnDemand: false`) and can measure 0x0; size-dependent components (maps, charts, React Flow) must refit when they become visible. See `RoadmapPage.tsx` and `viz/EChart.tsx`.
 
 ### Label honestly
@@ -190,7 +190,7 @@ Canvas text must use `useChartFont().family`, and chart options must depend on t
 
 ### Packages
 
-Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` render Markdown messages in the Reasoning transcript (`src/app/panels/ReasoningMode.tsx`).
+Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason in `docs/package-selection.md` or a new decision before adding one. `react-markdown` and `remark-gfm` render Markdown messages in the Reasoning transcript (`src/app/panels/ReasoningPanel.tsx`).
 
 ## Testing
 
@@ -216,11 +216,13 @@ End-to-end specs:
 Conventions and pitfalls found while building:
 
 - Playwright treats `aria-disabled` buttons and React Aria's hidden native checkbox and radio inputs as not actionable. Use `focus()` then `Enter` or `Space`.
-- Clicking an already selected border tab (Assets, Workflow, Context) closes that panel. Check `aria-selected` before clicking; the helper in `e2e/dashboard.spec.ts` shows how.
+- Clicking an already selected border tab (Assets, Workflow, Reasoning, Inspection) closes that panel. Check `aria-selected` before clicking; the helper in `e2e/dashboard.spec.ts` shows how.
 - Stage runs take about 1.6 seconds each through the simulator; wait for the "Complete" state label rather than sleeping. Long flows set `test.setTimeout`.
 - Status messages are asserted through `getByTestId('status-notice')`.
-- Hidden docked tabs stay mounted, so page-wide text locators can match hidden content; scope to a region or use `.filter({ visible: true })`. Give buttons in the Context panel distinct accessible names (for example "Clear selection from Inspection") so page-level locators stay unique.
+- Hidden docked tabs stay mounted, so page-wide text locators can match hidden content; scope to a region or use `.filter({ visible: true })`. Give buttons in the side panels distinct accessible names (for example "Clear selection from Inspection") so page-level locators stay unique.
 - React Aria's `MenuTrigger` names a menu after its trigger button, overriding the menu's own `aria-label`.
+- Playwright matches an accessible name by substring, so "Send message" also matches the send-mode menu trigger "Send mode: Send message". Pass `exact: true` when two controls share a word.
+- A container with `overflow: auto` that actually scrolls needs `tabIndex={0}`, or axe reports `scrollable-region-focusable`. The agent transcript began scrolling only once the composer grew, so the rule appeared on every page at once.
 - At 1280 px the Settings tab can sit in FlexLayout's overflow menu; tests open it through the command palette.
 - MapLibre must stay excluded from Vite dependency pre-bundling (`vite.config.ts`), or its worker fails to load.
 - Pass react-maplibre a stable, memoized `mapStyle`. A new style object on every render makes it call `setStyle`, whose diff removes sources added at runtime and loses feature state such as the selection outline.
