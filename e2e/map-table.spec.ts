@@ -345,15 +345,17 @@ test('the map offers its lighting in Inspection when nothing is selected', async
   // Working in the map hands Inspection to it.
   await page.getByRole('heading', { name: 'Map', exact: true }).click()
   await expect(inspection.getByText('Scene lighting')).toBeVisible()
-  // The lighting is disclosed as display only.
+  // The lighting is disclosed as display only, and the sun's own numbers are
+  // not shown (decision 0019).
   await expect(inspection).toContainText('Simulated')
-  await expect(inspection).toContainText('Elevation')
+  await expect(inspection).not.toContainText('Elevation')
+  await expect(inspection).not.toContainText('Azimuth')
 
-  const nightLights = inspection.getByRole('slider', { name: 'Night lights' })
-  await nightLights.focus()
+  const haze = inspection.getByRole('slider', { name: 'Horizon haze' })
+  await haze.focus()
   await page.keyboard.press('ArrowRight')
   await expect(page.getByTestId('status-notice')).toContainText(
-    'Night lights are 65%.',
+    'Horizon haze is 25%.',
   )
 
   const season = inspection.getByRole('slider', { name: 'Season' })

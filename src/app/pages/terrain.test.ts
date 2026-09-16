@@ -6,6 +6,7 @@ import {
   firstSymbolLayerId,
   hillshadePaint,
   TERRAIN_ATTRIBUTION,
+  DEFAULT_ILLUMINATION_DIRECTION,
 } from './terrain.ts'
 
 const STYLE: StyleSpecification = {
@@ -29,6 +30,8 @@ describe('terrain display', () => {
     'colors hillshade from $label tokens',
     (appearance) => {
       expect(hillshadePaint(appearance)).toEqual({
+        'hillshade-illumination-anchor': 'map',
+        'hillshade-illumination-direction': DEFAULT_ILLUMINATION_DIRECTION,
         'hillshade-shadow-color': appearance.data.ink.secondary,
         'hillshade-highlight-color': appearance.chrome.surface,
         'hillshade-accent-color': appearance.data.ink.muted,
@@ -36,6 +39,20 @@ describe('terrain display', () => {
       })
     },
   )
+
+  // Decision 0019: relief is lit from where the sun is.
+  it('lights hillshade from the sun, wrapped into a compass bearing', () => {
+    const appearance = APPEARANCE_LIST[0]!
+    expect(
+      hillshadePaint(appearance, 120)['hillshade-illumination-direction'],
+    ).toBe(120)
+    expect(
+      hillshadePaint(appearance, -30)['hillshade-illumination-direction'],
+    ).toBe(330)
+    expect(
+      hillshadePaint(appearance, 411.6)['hillshade-illumination-direction'],
+    ).toBe(52)
+  })
 
   it('places hillshade beneath the first visible basemap label', () => {
     expect(firstSymbolLayerId(STYLE)).toBe('highway-name-minor')

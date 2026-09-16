@@ -114,31 +114,16 @@ export function MapProperties() {
         </h3>
       </header>
 
-      <section className={styles.section} aria-label="Sun">
-        <h4>Sun</h4>
+      <section className={styles.section} aria-label="Scene">
         <p className={styles.provenanceNote}>
           <CapabilityBadge id="map.lighting" />
         </p>
-        <dl className={styles.facts}>
-          <div className={styles.fact}>
-            <dt>Scene</dt>
-            <dd>{lightingSummary(scene)}</dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Elevation</dt>
-            <dd>{scene.sun.elevationDeg.toFixed(1)}&deg;</dd>
-          </div>
-          <div className={styles.fact}>
-            <dt>Azimuth</dt>
-            <dd>{scene.sun.azimuthDeg.toFixed(0)}&deg; from north</dd>
-          </div>
-        </dl>
-        {mapView.view3d ? null : (
-          <p className={styles.muted}>
-            Turn on 3D buildings to see the scene lit; a flat map shows no sky
-            or shading.
-          </p>
-        )}
+        <p className={styles.muted}>
+          The scene is {lightingSummary(scene)}.
+          {mapView.view3d
+            ? ''
+            : ' Turn on 3D buildings to see it lit; a flat map shows no sky or shading.'}
+        </p>
       </section>
 
       <section className={styles.section} aria-label="Sun position">
@@ -209,23 +194,6 @@ export function MapProperties() {
             input: { percent: value },
           })}
           description="Dust and occlusion at the horizon, which thickens the fog and dims the light."
-        />
-      </section>
-
-      <section className={styles.section} aria-label="Night">
-        <h4>Night</h4>
-        <LightingSlider
-          label="Night lights"
-          value={lighting.nightLightsPercent}
-          min={limits.nightLightsPercent.min}
-          max={limits.nightLightsPercent.max}
-          step={5}
-          format={percent}
-          operation={(value) => ({
-            type: 'map.setNightLights',
-            input: { percent: value },
-          })}
-          description="Light from human activity after dark, from each building's use and floors, and from basemap land use where the basemap is on."
         />
       </section>
     </section>

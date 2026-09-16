@@ -91,6 +91,27 @@ export type DataPalette = {
     axis: string
     surface: string
   }
+  /**
+   * Scene lighting for the map (decision 0019). The sky, horizon and light
+   * colours are mixed from these by solar elevation, so each appearance lights
+   * its own way and the monochrome themes stay monochrome.
+   */
+  sky: {
+    /** Zenith in full day. */
+    day: string
+    /** Zenith in full night. */
+    night: string
+    /** The band around the horizon while the sun is near it. */
+    twilight: string
+    /** Warm cast of a low sun. */
+    golden: string
+    /** Haze and fog veil. */
+    haze: string
+    /** Directional light by day. */
+    sunlight: string
+    /** Directional light after dark. */
+    moonlight: string
+  }
   /** Reserved for state; always shown with an icon and a label. */
   status: { good: string; warning: string; critical: string }
 }
@@ -191,6 +212,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         axis: '#c3c2b7',
         surface: '#ffffff',
       },
+      sky: {
+        day: '#86b6ef',
+        night: '#0d1b2a',
+        twilight: '#4a6b93',
+        golden: '#eb6834',
+        haze: '#dfe6ee',
+        sunlight: '#fff4e2',
+        moonlight: '#3b4f6b',
+      },
       status: STATUS,
     },
   },
@@ -231,6 +261,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         grid: '#2c2c2a',
         axis: '#383835',
         surface: '#1d2126',
+      },
+      sky: {
+        day: '#3a6ea5',
+        night: '#080b10',
+        twilight: '#2b4260',
+        golden: '#d95926',
+        haze: '#2a323c',
+        sunlight: '#f2e6d4',
+        moonlight: '#2a3a52',
       },
       status: STATUS,
     },
@@ -276,6 +315,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         axis: '#cfcfcb',
         surface: '#ffffff',
       },
+      sky: {
+        day: '#c9c9c5',
+        night: '#1c1c1b',
+        twilight: '#6f6f6b',
+        golden: '#c2410c',
+        haze: '#e4e4e1',
+        sunlight: '#ffffff',
+        moonlight: '#4a4a47',
+      },
       status: STATUS,
     },
   },
@@ -320,6 +368,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         axis: '#d3cabb',
         surface: '#fffdf9',
       },
+      sky: {
+        day: '#b4c2d4',
+        night: '#141b26',
+        twilight: '#4a6a91',
+        golden: '#c0503a',
+        haze: '#e9e2d6',
+        sunlight: '#fff6e8',
+        moonlight: '#2f3f56',
+      },
       status: STATUS,
     },
   },
@@ -362,6 +419,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         axis: '#cdd4db',
         surface: '#ffffff',
       },
+      sky: {
+        day: '#a9cdea',
+        night: '#0c1620',
+        twilight: '#3f6d93',
+        golden: '#c08a52',
+        haze: '#e3e9ef',
+        sunlight: '#fffaf0',
+        moonlight: '#35506e',
+      },
       status: STATUS,
     },
   },
@@ -403,6 +469,15 @@ export const APPEARANCES: Record<AppearanceId, Appearance> = {
         grid: '#262a30',
         axis: '#3a4048',
         surface: '#1a1d21',
+      },
+      sky: {
+        day: '#44719b',
+        night: '#0a0d10',
+        twilight: '#2c4d6f',
+        golden: '#d9975b',
+        haze: '#262a30',
+        sunlight: '#efe3d2',
+        moonlight: '#25384f',
       },
       status: STATUS,
     },

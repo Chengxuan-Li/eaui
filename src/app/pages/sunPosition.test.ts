@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   dayOfYearLabel,
   MINUTES_IN_DAY,
+  subsolarPoint,
+  sunFromSubsolar,
   sunPosition,
   timeOfDayLabel,
 } from './sunPosition.ts'
@@ -95,5 +97,40 @@ describe('lighting labels', () => {
   it('formats the time in UTC', () => {
     expect(timeOfDayLabel(0)).toBe('00:00 UTC')
     expect(timeOfDayLabel(16 * 60 + 45)).toBe('16:45 UTC')
+  })
+})
+
+// The globe's single solar state (decision 0019), from which each place takes
+// its own sun.
+describe('subsolarPoint', () => {
+  it('sets its latitude from the season alone', () => {
+    expect(subsolarPoint(SUMMER_SOLSTICE, 0).latitudeDeg).toBeCloseTo(23.4, 0)
+    expect(subsolarPoint(WINTER_SOLSTICE, 0).latitudeDeg).toBeCloseTo(-23.4, 0)
+    expect(Math.abs(subsolarPoint(EQUINOX, 0).latitudeDeg)).toBeLessThan(1)
+  })
+
+  it('walks its longitude west as the UTC clock runs', () => {
+    // At 12:00 UTC the sun is overhead near Greenwich.
+    const atNoon = subsolarPoint(EQUINOX, 12 * 60).longitudeDeg
+    expect(Math.abs(atNoon)).toBeLessThan(5)
+    // Six hours is a quarter turn of the earth.
+    const sixHoursLater = subsolarPoint(EQUINOX, 18 * 60).longitudeDeg
+    expect(Math.abs(sixHoursLater - (atNoon - 90))).toBeLessThan(1)
+  })
+
+  it('gives the same sun whether asked directly or through the globe state', () => {
+    for (const minutes of [0, 6 * 60, 13 * 60, 21 * 60]) {
+      expect(
+        sunFromSubsolar(subsolarPoint(EQUINOX, minutes), LAT, LON),
+      ).toEqual(sunPosition(EQUINOX, minutes, LAT, LON))
+    }
+  })
+
+  it('lights opposite sides of the globe at opposite times', () => {
+    const subsolar = subsolarPoint(EQUINOX, 12 * 60)
+    const atNoon = sunFromSubsolar(subsolar, 0, subsolar.longitudeDeg)
+    const antipode = sunFromSubsolar(subsolar, 0, subsolar.longitudeDeg + 180)
+    expect(atNoon.elevationDeg).toBeGreaterThan(85)
+    expect(antipode.elevationDeg).toBeLessThan(-85)
   })
 })

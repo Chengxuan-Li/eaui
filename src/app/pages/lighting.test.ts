@@ -4,10 +4,10 @@ import {
   buildLightingScene,
   createInitialLighting,
   lightingSummary,
-  litWindowFactor,
   mixHex,
   type LightingState,
 } from './lighting.ts'
+import { subsolarPoint } from './sunPosition.ts'
 
 const LAT = 42.35
 const LON = -71.08
@@ -39,6 +39,13 @@ describe('mixHex', () => {
 })
 
 describe('buildLightingScene', () => {
+  it('carries the globe solar state the scene sun is derived from', () => {
+    const scene = at({ minutesUtc: NOON })
+    expect(scene.subsolar).toEqual(
+      subsolarPoint(createInitialLighting().dayOfYear, NOON),
+    )
+  })
+
   it('lights the scene by day and darkens it at night', () => {
     const day = at({ minutesUtc: NOON })
     const night = at({ minutesUtc: MIDNIGHT })
@@ -49,12 +56,13 @@ describe('buildLightingScene', () => {
     expect(lightingSummary(night)).toBe('night')
   })
 
-  it('puts the sun where MapLibre expects it', () => {
-    const { light, sun } = at({ minutesUtc: NOON })
+  it('puts the sun where MapLibre expects it, and lights terrain from there', () => {
+    const { light, sun, illuminationDirectionDeg } = at({ minutesUtc: NOON })
     expect(light.anchor).toBe('map')
     // [radial, azimuthal, polar], with polar measured from straight up.
     expect(light.position[1]).toBeCloseTo(sun.azimuthDeg, 5)
     expect(light.position[2]).toBeCloseTo(90 - sun.elevationDeg, 5)
+    expect(illuminationDirectionDeg).toBeCloseTo(sun.azimuthDeg, 5)
   })
 
   it('scales brightness with the intensity control', () => {
@@ -96,62 +104,40 @@ describe('buildLightingScene', () => {
     )
   })
 
-  it('turns night lights on only after dark, and follows their control', () => {
-    expect(at({ minutesUtc: NOON, nightLightsPercent: 100 }).glow).toBeLessThan(
-      0.05,
-    )
-    const half = at({ minutesUtc: MIDNIGHT, nightLightsPercent: 50 })
-    const full = at({ minutesUtc: MIDNIGHT, nightLightsPercent: 100 })
-    expect(full.glow).toBeGreaterThan(half.glow)
-    expect(full.glow).toBeGreaterThan(0.9)
-    expect(at({ minutesUtc: MIDNIGHT, nightLightsPercent: 0 }).glow).toBe(0)
-  })
-
   it('warms the light near the horizon, not overhead', () => {
     const noon = at({ minutesUtc: NOON })
     const lowSun = at({ dayOfYear: 80, minutesUtc: 21 * 60 + 40 })
     expect(lowSun.golden).toBeGreaterThan(noon.golden)
   })
 
-  it('produces valid colors for every appearance', () => {
+  it('produces valid colors from every appearance, day and night', () => {
     for (const candidate of Object.values(APPEARANCES)) {
-      const scene = buildLightingScene(
-        createInitialLighting(),
-        candidate,
-        LAT,
-        LON,
-      )
-      for (const color of [
-        scene.light.color,
-        scene.sky['sky-color'],
-        scene.sky['horizon-color'],
-        scene.sky['fog-color'],
-      ]) {
-        expect(color).toMatch(/^#[0-9a-f]{6}$/i)
+      for (const minutesUtc of [NOON, MIDNIGHT]) {
+        const scene = buildLightingScene(
+          { ...createInitialLighting(), minutesUtc },
+          candidate,
+          LAT,
+          LON,
+        )
+        for (const color of [
+          scene.light.color,
+          scene.sky['sky-color'],
+          scene.sky['horizon-color'],
+          scene.sky['fog-color'],
+        ]) {
+          expect(color).toMatch(/^#[0-9a-f]{6}$/i)
+        }
       }
     }
   })
-})
 
-describe('litWindowFactor', () => {
-  it('lights workplaces and shops more than homes and schools', () => {
-    expect(litWindowFactor('retail', 4)).toBeGreaterThan(
-      litWindowFactor('residential', 4),
-    )
-    expect(litWindowFactor('residential', 4)).toBeGreaterThan(
-      litWindowFactor('school', 4),
-    )
-  })
-
-  it('rises with floors and levels off, and handles missing data', () => {
-    expect(litWindowFactor('office', 12)).toBeGreaterThan(
-      litWindowFactor('office', 2),
-    )
-    expect(litWindowFactor('office', 40)).toBeCloseTo(
-      litWindowFactor('office', 12),
-      5,
-    )
-    expect(litWindowFactor(null, null)).toBeGreaterThan(0)
-    expect(litWindowFactor(null, null)).toBeLessThanOrEqual(1)
+  it('lights the same instant differently on opposite sides of the globe', () => {
+    const state = { ...createInitialLighting(), minutesUtc: NOON }
+    const boston = buildLightingScene(state, appearance, LAT, LON)
+    // Half a world away, the same UTC minute is the other half of the day.
+    const antipode = buildLightingScene(state, appearance, -LAT, LON + 180)
+    expect(boston.subsolar).toEqual(antipode.subsolar)
+    expect(boston.daylight).toBeGreaterThan(0.9)
+    expect(antipode.daylight).toBeLessThan(0.05)
   })
 })

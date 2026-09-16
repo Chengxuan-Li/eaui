@@ -17,9 +17,20 @@ export const MAX_EXAGGERATION = 10
 export const TERRAIN_ATTRIBUTION =
   '<a href="https://mapterhorn.com/attribution/" target="_blank" rel="noreferrer">&copy; Mapterhorn</a> (USGS 3DEP)'
 
+/** The default direction MapLibre lights hillshade from, used before a sun is known. */
+export const DEFAULT_ILLUMINATION_DIRECTION = 335
+
 /** Quiet hillshade from the active appearance, so relief reads without competing with buildings. */
-export function hillshadePaint(appearance: Appearance) {
+export function hillshadePaint(
+  appearance: Appearance,
+  illuminationDirectionDeg: number = DEFAULT_ILLUMINATION_DIRECTION,
+) {
   return {
+    // Anchored to the map so the relief is lit from where the sun actually is.
+    'hillshade-illumination-anchor': 'map' as const,
+    'hillshade-illumination-direction': Math.round(
+      ((illuminationDirectionDeg % 360) + 360) % 360,
+    ),
     'hillshade-shadow-color': appearance.data.ink.secondary,
     'hillshade-highlight-color': appearance.chrome.surface,
     'hillshade-accent-color': appearance.data.ink.muted,

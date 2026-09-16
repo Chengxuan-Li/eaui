@@ -56,7 +56,7 @@ export const capabilities = {
     label: 'Map lighting',
     status: 'simulated',
     explanation:
-      'The sun is computed for the district from the season and the UTC time, but the lighting is for display: it feeds no shading or PV result, MapLibre casts no shadows, and night lights come from synthetic building attributes.',
+      'The globe carries one solar state from the season and the UTC time, and each place takes its own sun from it, but the lighting is for display: it feeds no shading or PV result, and MapLibre casts no shadows.',
   },
   'map.terrain': {
     label: 'Terrain',

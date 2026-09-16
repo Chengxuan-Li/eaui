@@ -43,7 +43,7 @@ import {
   SelectionSilhouette,
   type SilhouettePrism,
 } from './SelectionSilhouette.tsx'
-import { buildLightingScene, litWindowFactor } from './lighting.ts'
+import { buildLightingScene } from './lighting.ts'
 import { useSceneLighting } from './useSceneLighting.ts'
 import {
   exaggerationLabel,
@@ -173,6 +173,25 @@ export function MapPage() {
   )
   useSceneLighting(mapRef, loaded, view3d, scene)
 
+  // The globe replaces Mercator (decision 0019). Projection is style state, so
+  // a basemap or appearance swap drops it; styledata puts it back.
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !loaded) return
+    const apply = () => {
+      try {
+        map.setProjection({ type: 'globe' })
+      } catch {
+        // The style is still loading; the next styledata event applies it.
+      }
+    }
+    apply()
+    map.on('styledata', apply)
+    return () => {
+      map.off('styledata', apply)
+    }
+  }, [loaded])
+
   // Working in the map makes it the surface Inspection describes. Docked tabs
   // stay mounted while hidden, so becoming visible is the signal for "switched
   // to this tab"; the first observation is the app's own startup, which should
@@ -195,13 +214,6 @@ export function MapPage() {
     return () => observer.disconnect()
   }, [claimWorked])
   const labelLayerId = useMemo(() => firstSymbolLayerId(mapStyle), [mapStyle])
-  const vectorSourceId = useMemo(
-    () =>
-      Object.entries(mapStyle.sources ?? {}).find(
-        ([, source]) => source.type === 'vector',
-      )?.[0],
-    [mapStyle],
-  )
   const handledFocusRequest = useRef(0)
   const [hover, setHover] = useState<Hover | null>(null)
 
@@ -236,7 +248,6 @@ export function MapPage() {
               name: building.name,
               value: values.values[id] ?? -1,
               height: building.heightM ?? 0,
-              lit: litWindowFactor(building.use, building.floors),
             },
             geometry: {
               type: 'Polygon' as const,
@@ -675,36 +686,9 @@ export function MapPage() {
               type="hillshade"
               beforeId={labelLayerId}
               layout={{ visibility: terrain.active ? 'visible' : 'none' }}
-              paint={hillshadePaint(appearance)}
+              paint={hillshadePaint(appearance, scene.illuminationDirectionDeg)}
             />
           </Source>
-          {/* Night lights over land use. Needs the basemap's vector source, so
-              it is absent with the basemap off and empty offline. */}
-          {view3d && scene.glow > 0 && vectorSourceId ? (
-            <Layer
-              id="night-landuse-glow"
-              type="fill"
-              source={vectorSourceId}
-              source-layer="landuse"
-              beforeId={labelLayerId}
-              paint={{
-                'fill-color': scene.glowColor,
-                'fill-opacity': [
-                  'match',
-                  ['get', 'class'],
-                  'retail',
-                  0.5 * scene.glow,
-                  'commercial',
-                  0.45 * scene.glow,
-                  'industrial',
-                  0.3 * scene.glow,
-                  'residential',
-                  0.22 * scene.glow,
-                  0.12 * scene.glow,
-                ] as ExpressionSpecification,
-              }}
-            />
-          ) : null}
           <Source
             id="buildings"
             type="geojson"
@@ -761,17 +745,11 @@ export function MapPage() {
               paint={{
                 // Selection never changes a building's color; in 3D it is
                 // outlined by SelectionSilhouette.
-                // After dark the lit-window factor blends the metric color
-                // toward the night-light color; by day the glow is 0.
-                'fill-extrusion-color': [
-                  'interpolate',
-                  ['linear'],
-                  ['*', ['get', 'lit'], scene.glow],
-                  0,
-                  fillExpression(values.min, values.max, palette),
-                  1,
-                  scene.glowColor,
-                ] as ExpressionSpecification,
+                'fill-extrusion-color': fillExpression(
+                  values.min,
+                  values.max,
+                  palette,
+                ),
                 'fill-extrusion-height': ['get', 'height'],
                 'fill-extrusion-opacity': 0.9,
               }}

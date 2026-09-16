@@ -190,12 +190,6 @@ describe('view store', () => {
       summary: 'Map lighting is set to 21 June.',
     })
 
-    expect(
-      view.execute({ type: 'map.setNightLights', input: { percent: 30 } })
-        .outcome.status,
-    ).toBe('applied')
-    expect(view.getState().map.lighting.nightLightsPercent).toBe(30)
-
     // Out of range, and fractions, are refused rather than clamped.
     for (const operation of [
       { type: 'map.setSeason' as const, input: { dayOfYear: 400 } },

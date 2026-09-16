@@ -296,22 +296,6 @@ export const viewOperationDefinitions = {
     },
   }),
 
-  'map.setNightLights': defineViewOperation({
-    title: 'Set the night lights on the map',
-    description: `Set how brightly human activity lights the district after dark, as a percentage from ${LIGHTING_LIMITS.nightLightsPercent.min} to ${LIGHTING_LIMITS.nightLightsPercent.max}.`,
-    input: z.object({
-      percent: z
-        .number()
-        .int()
-        .min(LIGHTING_LIMITS.nightLightsPercent.min)
-        .max(LIGHTING_LIMITS.nightLightsPercent.max),
-    }),
-    run(view, { percent }) {
-      view.map.lighting.nightLightsPercent = percent
-      return applied(`Night lights are ${percent}%.`)
-    },
-  }),
-
   'table.setView': defineViewOperation({
     title: 'Switch table view',
     description: 'Show buildings or grid elements on the Table page.',

@@ -1,15 +1,29 @@
-// Solar position for the map's contextual lighting (decision 0018). Display
-// only: the sun drives how the scene is lit and never feeds the shading or PV
+// Solar position for the map's contextual lighting (decisions 0018 and 0019).
+// Display only: the sun lights the scene and never feeds the shading or PV
 // stage, whose numbers come from the simulator.
 //
-// NOAA's solar position equations, which are accurate to about a tenth of a
-// degree over the years this prototype cares about.
+// The globe carries one solar state, the subsolar point: the place where the
+// sun is overhead. Its latitude is the solar declination, which depends on the
+// time of year, and its longitude follows the earth's rotation through the UTC
+// time shared by everyone on the globe. Every location's own sun is derived
+// from that one state.
+//
+// NOAA's equations, accurate to about a tenth of a degree over the years this
+// prototype cares about.
 
 export type SunPosition = {
   /** Degrees above the horizon; negative while the sun is down. */
   elevationDeg: number
   /** Degrees clockwise from true north, so 90 is due east and 180 due south. */
   azimuthDeg: number
+}
+
+/** Where the sun is overhead: the globe's whole solar state. */
+export type SubsolarPoint = {
+  /** Solar declination, which the time of year sets. */
+  latitudeDeg: number
+  /** Where it is solar noon, which the UTC time sets. */
+  longitudeDeg: number
 }
 
 const DEG = Math.PI / 180
@@ -20,17 +34,19 @@ export const MINUTES_IN_DAY = 1440
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value))
 
+/** Wraps degrees into -180 to 180. */
+function wrapDegrees(value: number): number {
+  return ((((value + 180) % 360) + 360) % 360) - 180
+}
+
 /**
- * The sun's direction for a day of the year and a time in UTC, at a place on
- * the globe. Both inputs come from the map's lighting controls; the place is
- * the district centre, so shadows and sky match where the footprints are.
+ * The subsolar point for a day of the year and a time in UTC. This is the
+ * globe-level state: no observer takes part.
  */
-export function sunPosition(
+export function subsolarPoint(
   dayOfYear: number,
   minutesUtc: number,
-  latitudeDeg: number,
-  longitudeDeg: number,
-): SunPosition {
+): SubsolarPoint {
   const hour = minutesUtc / 60
   const gamma =
     ((2 * Math.PI) / DAYS_IN_YEAR) * (dayOfYear - 1 + (hour - 12) / 24)
@@ -54,12 +70,27 @@ export function sunPosition(
     0.002697 * Math.cos(3 * gamma) +
     0.00148 * Math.sin(3 * gamma)
 
-  // True solar time, in minutes. UTC needs no timezone term, only longitude.
-  const trueSolarTime = minutesUtc + eqTime + 4 * longitudeDeg
-  const hourAngleDeg = trueSolarTime / 4 - 180
+  // Solar noon happens where the true solar time is 720 minutes.
+  return {
+    latitudeDeg: declination / DEG,
+    longitudeDeg: wrapDegrees((720 - minutesUtc - eqTime) / 4),
+  }
+}
 
+/**
+ * One location's sun, derived from the globe's subsolar point. The hour angle
+ * is simply how far that location sits east or west of solar noon.
+ */
+export function sunFromSubsolar(
+  subsolar: SubsolarPoint,
+  latitudeDeg: number,
+  longitudeDeg: number,
+): SunPosition {
+  const declination = subsolar.latitudeDeg * DEG
+  const hourAngleDeg = wrapDegrees(longitudeDeg - subsolar.longitudeDeg)
   const lat = latitudeDeg * DEG
   const hourAngle = hourAngleDeg * DEG
+
   const cosZenith =
     Math.sin(lat) * Math.sin(declination) +
     Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle)
@@ -79,6 +110,20 @@ export function sunPosition(
   }
 
   return { elevationDeg, azimuthDeg }
+}
+
+/** The sun at a place, for a day of the year and a time in UTC. */
+export function sunPosition(
+  dayOfYear: number,
+  minutesUtc: number,
+  latitudeDeg: number,
+  longitudeDeg: number,
+): SunPosition {
+  return sunFromSubsolar(
+    subsolarPoint(dayOfYear, minutesUtc),
+    latitudeDeg,
+    longitudeDeg,
+  )
 }
 
 /** "21 June", from a day of the year; a non-leap reference year keeps day 1 on 1 January. */
