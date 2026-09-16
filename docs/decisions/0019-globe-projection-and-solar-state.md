@@ -89,3 +89,13 @@ The same sky values serve a street-level dome and a globe seen from space. At st
 Checked in the running app in the Light appearance at globe zoom: continents, ocean and labels read as a map with the atmosphere reduced to a halo at the limb, where before the sphere was a uniform pale blur.
 
 **Still true:** there is no day/night terminator. The globe is evenly lit, so the side facing away from the sun is not dark; the user chose to tone down the lit side rather than add one.
+
+## Revision (2026-09-16): dimming the globe itself
+
+Toning down the atmosphere was not enough. The user's screenshot showed the whole sphere still pale in the Light appearance, both halves alike. The remaining glare was not the atmosphere at all: it was the light basemap, whose near-white land and pale water are right for a street and read as glare when wrapped over a globe.
+
+With no terminator wanted, the remap darkens the map itself. A `background` layer named `globe-dim` sits above the basemap and below its labels, coloured from the appearance's `sky.night` token. Its opacity is `globeDimOpacity` (0.55 for a light appearance, 0 for a dark one) scaled along `GLOBE_DIM_STOPS`: full at zoom 0, 0.9 at 4, 0.5 at 6, and gone by zoom 8. The district sits well above that, so the street view is untouched, and the labels stay crisp because the layer is drawn beneath them.
+
+Unit tests hold that the dark appearances get no dimming, and that the stops start full, fade without ever brightening as the camera comes in, and reach zero by zoom 8.
+
+Checked in the running app in the Light appearance at globe zoom: the sphere reads as a slate globe with land and ocean clearly apart and labels crisp, where the user's screenshot showed a near-white sphere. Only the Light appearance was looked at; the other three light appearances share the same code path. The strength is one number, `globeDimOpacity`, if it proves too dark.
