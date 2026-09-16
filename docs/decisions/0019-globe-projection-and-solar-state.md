@@ -56,3 +56,24 @@ Node.js 24 and Microsoft Edge with 4 workers, on `feature/basemap`.
 - A browser check confirmed the globe: with the first stage run and 3D on, zooming out showed the earth as a sphere with its atmosphere, the basemap recoloured as usual, and no console errors. The sky renders along the horizon at low zoom.
 
 **Not verified:** the look of the sky in each of the six appearances, which was reviewed only in the dark theme; and any day/night terminator across the globe, which is not drawn at all.
+
+## Revision (2026-09-16): contrast in the light appearances
+
+The light appearances came out washed out: lit faces saturated to white and the scene read flat. The cause is in MapLibre's fill-extrusion shader:
+
+```glsl
+directional = mix(1.0 - u_lightintensity, max(0.5 + u_lightintensity, 1.0), dot(normal, u_lightpos));
+v_color.r += clamp(color.r * directional * u_lightcolor.r, ...);
+```
+
+Any intensity above 0.5 multiplies a lit face **past its own colour**. At the intensity in use, about 0.9, that is a 1.4 multiplier, which a pale palette clamps to white, while the near-white `sunlight` token gave nothing back.
+
+The fix keeps the strong intensity, because that is what deepens the shaded side, and dims the light itself instead:
+
+- `intensityHeadroom` scales the control range into 0.85 for a light appearance and 0.9 for a dark one;
+- `litCeiling` says how much of its own colour a lit face may show: 0.92 for a light appearance, and 1.4 for a dark one, which leaves the dark themes exactly as they were;
+- the light colour is scaled by `litCeiling / litGain`, so a lit face lands at or under the ceiling and both sides darken together.
+
+At the default controls a light appearance now runs at about a 4.4 to 1 ratio between a lit and a shaded face, with the lit side just under its own colour. `faceShading` states the shader's formula in code, and three unit tests hold the invariants for every light appearance: a lit face never reaches its own colour, the ratio stays above 4, and the shaded side stays under a quarter brightness. A fourth checks the dark appearances still lift their lit faces.
+
+Checked in the running app in the Light and Technical monochrome appearances: buildings read as distinctly darker than the basemap with visible shading, where before they were near-white blobs.
