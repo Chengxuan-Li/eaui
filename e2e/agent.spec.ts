@@ -90,7 +90,7 @@ test('a model change waits for approval and rejecting it changes nothing', async
   ).toBeVisible()
 
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('open creator')
+  await page.keyboard.type('creator')
   await page.keyboard.press('Enter')
   await expect(page.getByText('No measures yet.')).toBeVisible()
 })

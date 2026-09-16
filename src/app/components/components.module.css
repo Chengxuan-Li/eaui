@@ -68,6 +68,7 @@
   background: var(--color-surface);
 }
 
+/* Pages scroll themselves; the overlay thumb in global.css reserves no width. */
 .page {
   box-sizing: border-box;
   height: 100%;

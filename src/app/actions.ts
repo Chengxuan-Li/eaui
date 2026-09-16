@@ -11,7 +11,10 @@ import {
   MessageSquare,
   Monitor,
   Moon,
+  PanelLeft,
+  PanelLeftClose,
   PanelRight,
+  PanelRightClose,
   Play,
   Redo2,
   RotateCcw,
@@ -41,8 +44,12 @@ import { saveProject } from './persistence.ts'
 
 export type ActionGroup = 'File' | 'Edit' | 'View' | 'Run' | 'Help'
 
-/** Menu actions gathered behind one submenu, as desktop menus do. */
-export type ActionSubmenu = 'Panels' | 'Appearance'
+/**
+ * Where a menu action sits inside its menu, as desktop menus do: an empty path
+ * is the top level, ['Panels'] a submenu, ['Appearance', 'Theme'] a submenu of
+ * a submenu. The command palette ignores this and stays flat.
+ */
+export type MenuPath = string[]
 
 export const ACTION_GROUPS: ActionGroup[] = [
   'File',
@@ -57,7 +64,7 @@ export type AppAction = {
   label: string
   group: ActionGroup
   /** Groups this action into a submenu of its menu; the palette stays flat. */
-  submenu?: ActionSubmenu
+  menuPath?: MenuPath
   icon?: LucideIcon
   shortcut?: string
   alternateShortcuts?: string[]
@@ -193,17 +200,18 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       ...(Object.keys(PAGES) as PageId[]).map((page): AppAction => ({
         id: `view.open.${page}`,
-        label: `Open ${PAGES[page].name}`,
+        label: PAGES[page].name,
         group: 'View',
+        menuPath: ['Panels'],
         shortcut: PAGE_SHORTCUTS[page],
         disabledReason: null,
         perform: () => layout.openPage(page),
       })),
       {
         id: 'view.toggleAssets',
-        label: 'Show or hide Assets',
+        label: 'Assets',
         group: 'View',
-        submenu: 'Panels',
+        menuPath: ['Panels'],
         icon: FolderTree,
         shortcut: 'Ctrl+B',
         pressed: layout.isPanelOpen('assets'),
@@ -212,9 +220,9 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       {
         id: 'view.toggleWorkflow',
-        label: 'Show or hide Workflow',
+        label: 'Workflow',
         group: 'View',
-        submenu: 'Panels',
+        menuPath: ['Panels'],
         icon: Workflow,
         shortcut: 'Ctrl+Shift+E',
         pressed: layout.isPanelOpen('workflow'),
@@ -223,14 +231,32 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       {
         id: 'view.toggleReasoning',
-        label: 'Show or hide Context',
+        label: 'Context',
         group: 'View',
-        submenu: 'Panels',
+        menuPath: ['Panels'],
         icon: PanelRight,
         shortcut: 'Ctrl+Alt+B',
         pressed: layout.isPanelOpen('reasoning'),
         disabledReason: null,
         perform: () => layout.togglePanel('reasoning'),
+      },
+      {
+        id: 'view.toggleLeftSide',
+        label: 'Collapse or expand the left side container',
+        group: 'View',
+        icon: layout.isSideOpen('left') ? PanelLeftClose : PanelLeft,
+        pressed: layout.isSideOpen('left'),
+        disabledReason: null,
+        perform: () => layout.toggleSide('left'),
+      },
+      {
+        id: 'view.toggleRightSide',
+        label: 'Collapse or expand the right side container',
+        group: 'View',
+        icon: layout.isSideOpen('right') ? PanelRightClose : PanelRight,
+        pressed: layout.isSideOpen('right'),
+        disabledReason: null,
+        perform: () => layout.toggleSide('right'),
       },
       {
         id: 'view.inspectSelection',
@@ -256,6 +282,7 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         id: 'view.resetLayout',
         label: 'Reset layout',
         group: 'View',
+        menuPath: ['Appearance'],
         icon: RotateCcw,
         disabledReason: null,
         perform: () => layout.reset(),
@@ -313,9 +340,9 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       {
         id: 'view.appearance.system',
-        label: 'Follow system appearance',
+        label: 'System',
         group: 'View',
-        submenu: 'Appearance',
+        menuPath: ['Appearance', 'Theme'],
         icon: Monitor,
         pressed: appearancePreference === 'system',
         disabledReason: null,
@@ -323,9 +350,9 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
       },
       ...APPEARANCE_LIST.map((appearance): AppAction => ({
         id: `view.appearance.${appearance.id}`,
-        label: `Use ${appearance.label} appearance`,
+        label: appearance.label,
         group: 'View',
-        submenu: 'Appearance',
+        menuPath: ['Appearance', 'Theme'],
         icon: appearance.scheme === 'dark' ? Moon : Sun,
         pressed: appearancePreference === appearance.id,
         disabledReason: null,

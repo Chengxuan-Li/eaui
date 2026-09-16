@@ -1,3 +1,7 @@
+/* The panel scrolls itself: FlexLayout's hovering scrollbars only wrap border
+   strips and tab bars, never tab content, so handing scrolling to the docked
+   tab would leave no indicator at all. The overlay thumb in global.css
+   reserves no width. */
 .panel {
   box-sizing: border-box;
   height: 100%;

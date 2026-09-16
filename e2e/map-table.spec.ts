@@ -287,7 +287,7 @@ test('settings turns the basemap off and keeps the choice across reloads', async
 }) => {
   // Settings can sit in the tab overflow menu at 1280 px; open it by command.
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('open settings')
+  await page.keyboard.type('settings')
   await page.keyboard.press('Enter')
 
   const toggle = page.getByRole('checkbox', {

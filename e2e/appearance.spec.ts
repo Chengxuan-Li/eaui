@@ -53,7 +53,7 @@ test('switches appearance from Settings and keeps it across reloads', async ({
   await openWorkbench(page)
   // Settings can sit in the tab overflow menu at 1280 px; open it by command.
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('open settings')
+  await page.keyboard.type('settings')
   await page.keyboard.press('Enter')
 
   // React Aria keeps the native radio visually hidden; use the keyboard.

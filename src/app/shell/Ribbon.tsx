@@ -13,11 +13,7 @@ import {
   Toolbar,
 } from 'react-aria-components'
 import { useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
-import {
-  ACTION_GROUPS,
-  type ActionSubmenu,
-  type AppAction,
-} from '../actions.ts'
+import { ACTION_GROUPS, type AppAction } from '../actions.ts'
 import { cx } from '../cx.ts'
 import { toAriaKeyShortcut } from '../shortcuts.ts'
 import styles from './shell.module.css'
@@ -30,8 +26,8 @@ const QUICK_ACTION_IDS = [
   'edit.undo',
   'edit.redo',
   RUN_SPLIT,
-  'view.toggleAssets',
-  'view.toggleReasoning',
+  'view.toggleLeftSide',
+  'view.toggleRightSide',
   'view.toggleMaximize',
   'view.resetLayout',
   'view.fullScreen',
@@ -210,11 +206,6 @@ function ActionMenu({
     const action = actions.find((candidate) => candidate.id === key)
     if (action) invoke(action)
   }
-  const topLevel = actions.filter((action) => !action.submenu)
-  // Panel visibility and appearance live in submenus, as desktop menus do.
-  const submenus = [
-    ...new Set(actions.flatMap((a) => (a.submenu ? [a.submenu] : []))),
-  ]
 
   return (
     <MenuTrigger>
@@ -222,47 +213,79 @@ function ActionMenu({
         {trigger}
       </Button>
       <Popover className={styles.popover} placement="bottom start">
-        <Menu
-          aria-label={`${label} menu`}
-          className={styles.menu}
-          disabledKeys={disabledIds(topLevel)}
+        <MenuLevel
+          label={label}
+          actions={actions}
+          depth={0}
           onAction={onAction}
-        >
-          {topLevel.map((action) => (
-            <ActionItem key={action.id} action={action} />
-          ))}
-          {submenus.map((submenu: ActionSubmenu) => {
-            const items = actions.filter((action) => action.submenu === submenu)
-            return (
-              <SubmenuTrigger key={submenu}>
-                <MenuItem textValue={submenu} className={styles.menuItem}>
-                  <span className={styles.menuCheck} aria-hidden="true" />
-                  <Text slot="label" className={styles.menuLabel}>
-                    {submenu}
-                  </Text>
-                  <ChevronRight
-                    size={14}
-                    aria-hidden="true"
-                    className={styles.submenuChevron}
-                  />
-                </MenuItem>
-                <Popover className={styles.popover} placement="right top">
-                  <Menu
-                    aria-label={`${submenu} menu`}
-                    className={styles.menu}
-                    disabledKeys={disabledIds(items)}
-                    onAction={onAction}
-                  >
-                    {items.map((action) => (
-                      <ActionItem key={action.id} action={action} />
-                    ))}
-                  </Menu>
-                </Popover>
-              </SubmenuTrigger>
-            )
-          })}
-        </Menu>
+        />
       </Popover>
     </MenuTrigger>
+  )
+}
+
+/**
+ * One menu level: actions whose path ends here, then a submenu per next path
+ * segment, so ['Appearance', 'Theme'] nests two deep like a desktop menu.
+ */
+function MenuLevel({
+  label,
+  actions,
+  depth,
+  onAction,
+}: {
+  label: string
+  actions: AppAction[]
+  depth: number
+  onAction: (key: React.Key) => void
+}) {
+  const here = actions.filter(
+    (action) => (action.menuPath ?? []).length === depth,
+  )
+  const submenus = [
+    ...new Set(
+      actions.flatMap((action) => {
+        const segment = (action.menuPath ?? [])[depth]
+        return segment ? [segment] : []
+      }),
+    ),
+  ]
+
+  return (
+    <Menu
+      aria-label={`${label} menu`}
+      className={styles.menu}
+      disabledKeys={disabledIds(here)}
+      onAction={onAction}
+    >
+      {here.map((action) => (
+        <ActionItem key={action.id} action={action} />
+      ))}
+      {submenus.map((submenu) => (
+        <SubmenuTrigger key={submenu}>
+          <MenuItem textValue={submenu} className={styles.menuItem}>
+            <span className={styles.menuCheck} aria-hidden="true" />
+            <Text slot="label" className={styles.menuLabel}>
+              {submenu}
+            </Text>
+            <ChevronRight
+              size={14}
+              aria-hidden="true"
+              className={styles.submenuChevron}
+            />
+          </MenuItem>
+          <Popover className={styles.popover} placement="right top">
+            <MenuLevel
+              label={submenu}
+              actions={actions.filter(
+                (action) => (action.menuPath ?? [])[depth] === submenu,
+              )}
+              depth={depth + 1}
+              onAction={onAction}
+            />
+          </Popover>
+        </SubmenuTrigger>
+      ))}
+    </Menu>
   )
 }

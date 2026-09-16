@@ -128,7 +128,7 @@ test.describe('workbench shell', () => {
     await page.keyboard.press('Control+k')
     const palette = page.getByRole('dialog', { name: 'Command palette' })
     await expect(palette).toBeVisible()
-    await page.keyboard.type('open tasks')
+    await page.keyboard.type('tasks')
     await page.keyboard.press('Enter')
     await expect(palette).toBeHidden()
     await expect(

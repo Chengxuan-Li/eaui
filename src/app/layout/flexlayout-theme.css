@@ -58,6 +58,57 @@
   --flexlayout-color-toolbar-button-hover: var(--color-surface-raised);
 }
 
+/* Resizing affordance: the seam stays a hairline until pointed at, then a
+   filled circle with a two-way arrow marks where to drag. */
+.flexlayout__splitter:hover .flexlayout__splitter_handle,
+.flexlayout__splitter_drag .flexlayout__splitter_handle {
+  visibility: visible;
+}
+
+.flexlayout__splitter:hover,
+.flexlayout__splitter_drag {
+  background-color: var(--color-accent);
+}
+
+.flexlayout__splitter_handle {
+  position: relative;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-accent);
+}
+
+/* The circle, with a bar drawn by ::before and arrows by ::after. */
+.flexlayout__splitter_handle::before,
+.flexlayout__splitter_handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.flexlayout__splitter_handle::before {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+/* A two-way arrow: geometry from a mask, color from the appearance token. */
+.flexlayout__splitter_handle::after {
+  width: 0.875rem;
+  height: 0.875rem;
+  background: var(--color-on-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6 4 12l5 6'/%3E%3Cpath d='M15 6l5 6-5 6'/%3E%3Cpath d='M12 4v16'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6 4 12l5 6'/%3E%3Cpath d='M15 6l5 6-5 6'/%3E%3Cpath d='M12 4v16'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Horizontal seams move up and down, so the arrow turns with them. */
+.flexlayout__splitter_handle_vert::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
 /* Side ribbons read like center tabs, rotated: icon, name, and close. */
 .flexlayout__border_button {
   gap: 0.375rem;

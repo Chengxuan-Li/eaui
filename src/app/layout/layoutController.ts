@@ -156,6 +156,9 @@ export type LayoutController = {
   openPage: (page: PageId, source?: CommandSource) => void
   togglePanel: (panel: PanelId, source?: CommandSource) => void
   isPanelOpen: (panel: PanelId) => boolean
+  /** Collapses or expands a whole side container, whatever it holds. */
+  toggleSide: (side: 'left' | 'right', source?: CommandSource) => void
+  isSideOpen: (side: 'left' | 'right') => boolean
   toggleMaximize: (source?: CommandSource) => void
   /** Narrow windows open side panels as overlays so pages keep their width. */
   setCompact: (compact: boolean, source?: CommandSource) => void
@@ -182,6 +185,9 @@ type BorderLike = {
   getId: () => string
   getBorderType: () => 'split' | 'overlay'
   getSelectedNode: () => TabNode | undefined
+  getSelected: () => number
+  getTabNodes: () => TabNode[]
+  getLocation: () => { getName: () => string }
 }
 
 /** Saved layouts store tab names; renamed panels take their current name. */
@@ -267,21 +273,23 @@ export function createLayoutController(
     return [...borders.values()]
   }
 
-  /** Id of the border on a side, so closed panels can be docked back. */
-  const borderByLocation = (location: 'left' | 'right'): string | undefined => {
-    let found: string | undefined
+  /** The border on a side, for docking panels back and collapsing the container. */
+  const sideBorder = (location: 'left' | 'right'): BorderLike | undefined => {
+    let found: BorderLike | undefined
     model.visitNodes((node) => {
+      const candidate = node as unknown as BorderLike
       if (
         node.getType() === 'border' &&
-        (node as unknown as { getLocation: () => { getName: () => string } })
-          .getLocation()
-          .getName() === location
+        candidate.getLocation().getName() === location
       ) {
-        found = node.getId()
+        found = candidate
       }
     })
     return found
   }
+
+  const borderByLocation = (location: 'left' | 'right'): string | undefined =>
+    sideBorder(location)?.getId()
 
   const ensurePageTab = (page: PageId): TabNode | null => {
     const existing = model.getNodeById(pageTabId(page))
@@ -436,6 +444,36 @@ export function createLayoutController(
     isPanelOpen: (panel) => {
       const node = model.getNodeById(panelTabId(panel))
       return node instanceof TabNode && node.isSelected()
+    },
+
+    isSideOpen: (side) => (sideBorder(side)?.getSelected() ?? -1) >= 0,
+
+    toggleSide: (side, source = 'manual') => {
+      const border = sideBorder(side)
+      const tabs = border?.getTabNodes() ?? []
+      const selected = border?.getSelected() ?? -1
+      // Collapsing selects nothing; expanding brings back the last tab shown.
+      const target = selected >= 0 ? tabs[selected] : (tabs[0] ?? null)
+      if (!border || !target) {
+        reject(
+          'layout.toggleSide',
+          'Collapse or expand side container',
+          { side },
+          `The ${side} side container is empty. Drag a tab onto it first.`,
+          source,
+        )
+        return
+      }
+      model.doAction(Actions.selectTab(target.getId()))
+      log(
+        'layout.toggleSide',
+        'Collapse or expand side container',
+        { side },
+        selected >= 0
+          ? `Collapsed the ${side} side container.`
+          : `Expanded the ${side} side container.`,
+        source,
+      )
     },
 
     toggleMaximize: (source = 'manual') => {
