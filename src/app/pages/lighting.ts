@@ -68,6 +68,45 @@ export type SkyPaint = {
   'atmosphere-blend': number
 }
 
+/**
+ * What MapLibre's fill-extrusion shader does to a face colour:
+ *
+ *   directional = mix(1 - intensity, max(0.5 + intensity, 1), dot(normal, sun))
+ *
+ * so an intensity above 0.5 multiplies a lit face past its own colour. On a
+ * pale palette that saturates to white, which is why light appearances keep
+ * their intensity at or below the point where a lit face is left alone and
+ * take their contrast from a darker light colour instead.
+ */
+export function faceShading(intensity: number): { lit: number; unlit: number } {
+  return { lit: Math.max(0.5 + intensity, 1), unlit: 1 - intensity }
+}
+
+/** How hard the sun drives the shading; higher means deeper shaded faces. */
+export function intensityHeadroom(scheme: 'light' | 'dark'): number {
+  return scheme === 'light' ? 0.85 : 0.9
+}
+
+/**
+ * The most of its own colour a lit face may show. A pale palette saturates to
+ * white when the shader multiplies past 1, so a light appearance is held below
+ * its own colour and takes the contrast from the deep shaded side instead. A
+ * dark appearance keeps the lift that gives it its relief.
+ */
+export function litCeiling(scheme: 'light' | 'dark'): number {
+  return scheme === 'light' ? 0.92 : 1.4
+}
+
+/** Scales a #rrggbb colour's channels, keeping its hue. */
+export function scaleHex(hex: string, factor: number): string {
+  const [r, g, b] = parseHex(hex)
+  const channel = (value: number) =>
+    Math.round(clamp(value * factor, 0, 255))
+      .toString(16)
+      .padStart(2, '0')
+  return `#${channel(r)}${channel(g)}${channel(b)}`
+}
+
 export type LightingScene = {
   /** The globe's solar state, from which the scene's sun follows. */
   subsolar: SubsolarPoint
@@ -147,21 +186,32 @@ export function buildLightingScene(
   // Dust lifts the horizon colour toward a pale, flat veil.
   const fogColor = mixHex(horizonColor, tokens.haze, 0.25 + 0.35 * haze)
 
-  const lightColor = mixHex(
-    mixHex(tokens.moonlight, tokens.sunlight, daylight),
-    tokens.golden,
-    golden * 0.55,
-  )
-
   // Haze costs brightness, and a diffuse sun flattens the light a little.
   const nominal = 0.2 + 0.75 * daylight
-  const intensity = clamp(
+  const strength = clamp(
     nominal *
       (state.intensityPercent / 100) *
       (1 - 0.35 * haze) *
       (1 - 0.15 * softness),
     0,
     1,
+  )
+  // Scaled into the appearance's headroom rather than clamped, so the controls
+  // keep working across their whole range.
+  const intensity = strength * intensityHeadroom(appearance.scheme)
+
+  // The shader multiplies a lit face by this much, so the light itself is
+  // dimmed until a lit face lands at or under the appearance's ceiling. That
+  // darkens the lit side and the shaded side together while the deep shaded
+  // side keeps the contrast.
+  const litGain = faceShading(intensity).lit
+  const lightColor = scaleHex(
+    mixHex(
+      mixHex(tokens.moonlight, tokens.sunlight, daylight),
+      tokens.golden,
+      golden * 0.55,
+    ),
+    Math.min(1, litCeiling(appearance.scheme) / litGain),
   )
 
   const light: LightPaint = {

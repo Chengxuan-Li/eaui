@@ -3,6 +3,7 @@ import { APPEARANCES } from '../appearance/appearances.ts'
 import {
   buildLightingScene,
   createInitialLighting,
+  faceShading,
   lightingSummary,
   mixHex,
   type LightingState,
@@ -139,5 +140,63 @@ describe('buildLightingScene', () => {
     expect(boston.subsolar).toEqual(antipode.subsolar)
     expect(boston.daylight).toBeGreaterThan(0.9)
     expect(antipode.daylight).toBeLessThan(0.05)
+  })
+})
+
+// MapLibre shades a face by max(0.5 + intensity, 1), which multiplies a lit
+// face past its own colour and saturates a pale palette to white. Light
+// appearances dim the light until a lit face lands under its own colour, and
+// take the contrast from a deep shaded side.
+describe('face contrast', () => {
+  const brightest = (hex: string) =>
+    Math.max(
+      Number.parseInt(hex.slice(1, 3), 16),
+      Number.parseInt(hex.slice(3, 5), 16),
+      Number.parseInt(hex.slice(5, 7), 16),
+    ) / 255
+
+  const noon = (candidate: (typeof APPEARANCES)[keyof typeof APPEARANCES]) =>
+    buildLightingScene(
+      { ...createInitialLighting(), minutesUtc: NOON },
+      candidate,
+      LAT,
+      LON,
+    )
+
+  const lightAppearances = Object.values(APPEARANCES).filter(
+    (candidate) => candidate.scheme === 'light',
+  )
+
+  it('never lets a lit face reach its own colour in a light appearance', () => {
+    for (const candidate of lightAppearances) {
+      const scene = noon(candidate)
+      const { lit } = faceShading(scene.light.intensity)
+      expect(lit * brightest(scene.light.color)).toBeLessThanOrEqual(0.95)
+    }
+  })
+
+  it('keeps a deep shaded side in a light appearance', () => {
+    for (const candidate of lightAppearances) {
+      const { lit, unlit } = faceShading(noon(candidate).light.intensity)
+      expect(lit / unlit).toBeGreaterThan(4)
+    }
+  })
+
+  it('darkens the shaded side well below the lit side', () => {
+    for (const candidate of lightAppearances) {
+      const scene = noon(candidate)
+      const level = brightest(scene.light.color)
+      const { unlit } = faceShading(scene.light.intensity)
+      expect(unlit * level).toBeLessThan(0.25)
+    }
+  })
+
+  it('leaves the dark appearances lifting their lit faces as before', () => {
+    for (const candidate of Object.values(APPEARANCES)) {
+      if (candidate.scheme !== 'dark') continue
+      expect(faceShading(noon(candidate).light.intensity).lit).toBeGreaterThan(
+        1,
+      )
+    }
   })
 })
