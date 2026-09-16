@@ -264,3 +264,13 @@ Behavior promised by the plan or decisions but not built yet:
 - **Terrain** ([decision 0015](decisions/0015-terrain.md)): display only, never project data. Mapterhorn states no usage terms or service level and serves Back Bay to zoom 16. Back Bay is nearly flat, so relief needs exaggeration and a tilted camera to be visible; tests use a flat stand-in tile, so real relief is checked by screenshot review only.
 - **Basemap:** the public OpenFreeMap instance has no SLA, and one failed tile drops the whole basemap until Retry basemap. Basemap labels use OpenFreeMap's Noto Sans glyphs, not Geist. Tests exercise a stand-in style, so the recolored real style is checked by screenshot review only.
 - **Hosting:** only the Vite dev server and `npm run preview` are verified; loading the bundle inside the reference ASP.NET or Eto host is not, and that host would also need network access for the basemap.
+
+## Deployment
+
+`master` publishes to GitHub Pages through `.github/workflows/pages.yml` ([decision 0017](decisions/0017-github-pages-deployment.md)). The workflow runs the same checks used locally (`typecheck`, `lint`, `format:check`, `npm test`, `npm run build`) plus the browser specs on Playwright's Chromium, and deploys only when both jobs pass. Pull requests run the checks and publish nothing.
+
+- **Base path.** A project site is served from `/<repository>/`, so `vite.config.ts` sets `base` only when `command === 'build'`. The dev server stays at `/`, which the Playwright specs depend on, since they visit `/` against `http://127.0.0.1:5173`. `EAUI_BASE_PATH` overrides the default, and the workflow sets it from the repository name.
+- **Check a production bundle locally** with `npm run build` then `npm run preview`: `/eaui/` is already the default, so no environment variable is needed. Do not set `EAUI_BASE_PATH` from Git Bash on Windows without `MSYS_NO_PATHCONV=1`, because MSYS path conversion rewrites a value like `/eaui/` into `C:/Program Files/Git/eaui/`.
+- **`vite preview` reports `command: "serve"`**, like the dev server, so the base path test also needs `isPreview`. Without it preview serves the built bundle at `/` while its asset URLs carry the prefix, and the page renders blank.
+- **`vitest.config.ts` merges the Vite config**, so it calls the exported function (`viteConfig({ command: 'serve', mode: 'test' })`) rather than passing it.
+- **No secrets.** The build reads no environment variable except the base path. Never give a credential a `VITE_` prefix; Vite would put it in the browser bundle, and a static deployment cannot hold one safely.

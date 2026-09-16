@@ -18,3 +18,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0014: LF line endings through Git attributes](0014-lf-line-endings.md)
 - [0015: Live 3D terrain for map display](0015-terrain.md)
 - [0016: Independent Reasoning and Inspection panels, with agent send and permission modes](0016-reasoning-and-inspection-panels.md)
+- [0017: Publish the prototype to GitHub Pages through GitHub Actions](0017-github-pages-deployment.md)
