@@ -52,6 +52,12 @@ export const capabilities = {
     explanation:
       'Extrudes footprints to their synthetic heights (floors × 3.2 m) with tilt and rotation; selected buildings are outlined along their visible 3D silhouette.',
   },
+  'map.lighting': {
+    label: 'Map lighting',
+    status: 'simulated',
+    explanation:
+      'The sun is computed for the district from the season and the UTC time, but the lighting is for display: it feeds no shading or PV result, MapLibre casts no shadows, and night lights come from synthetic building attributes.',
+  },
   'map.terrain': {
     label: 'Terrain',
     status: 'working',

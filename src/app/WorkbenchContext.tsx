@@ -53,6 +53,13 @@ type CoreServices = {
   agent: AgentAdapter
 }
 
+/**
+ * The surface the user is working in, used by Inspection when nothing is
+ * selected. Deliberately ephemeral: focus changes on every click, and logging
+ * them would bury the operation log (decision 0018).
+ */
+export type WorkedSurface = 'map' | null
+
 export type Services = CoreServices & {
   /** The stored choice, which may be "system". */
   appearancePreference: AppearancePreference
@@ -64,6 +71,9 @@ export type Services = CoreServices & {
   setBasemapEnabled: (enabled: boolean) => void
   /** Opens the Inspection panel, which follows the shared selection. */
   showInspection: (source?: CommandSource) => void
+  /** The surface being worked in; Inspection shows its properties when nothing is selected. */
+  workedSurface: WorkedSurface
+  claimWorked: (surface: 'map') => void
 }
 
 const ServicesContext = createContext<Services | null>(null)
@@ -123,6 +133,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     readBasemapPreference(core.storage),
   )
   const appearance = resolveAppearance(appearancePreference, systemDark)
+  const [workedSurface, setWorkedSurface] = useState<WorkedSurface>(null)
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -178,8 +189,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
           core.layout.togglePanel('inspection', source)
         }
       },
+      workedSurface,
+      claimWorked: (surface) => setWorkedSurface(surface),
     }
-  }, [core, appearancePreference, appearance, basemapEnabled])
+  }, [core, appearancePreference, appearance, basemapEnabled, workedSurface])
 
   return (
     <ServicesContext.Provider value={services}>

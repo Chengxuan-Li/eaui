@@ -169,12 +169,58 @@ describe('view store', () => {
     ).toBe('rejected')
   })
 
+  it('sets the scene lighting and validates its ranges', () => {
+    const { view } = setup()
+    expect(
+      view.execute({
+        type: 'map.setTimeOfDay',
+        input: { minutesUtc: 9 * 60 },
+      }).outcome,
+    ).toEqual({
+      status: 'applied',
+      summary: 'Map lighting is set to 09:00 UTC.',
+    })
+    expect(view.getState().map.lighting.minutesUtc).toBe(9 * 60)
+
+    expect(
+      view.execute({ type: 'map.setSeason', input: { dayOfYear: 172 } })
+        .outcome,
+    ).toEqual({
+      status: 'applied',
+      summary: 'Map lighting is set to 21 June.',
+    })
+
+    expect(
+      view.execute({ type: 'map.setNightLights', input: { percent: 30 } })
+        .outcome.status,
+    ).toBe('applied')
+    expect(view.getState().map.lighting.nightLightsPercent).toBe(30)
+
+    // Out of range, and fractions, are refused rather than clamped.
+    for (const operation of [
+      { type: 'map.setSeason' as const, input: { dayOfYear: 400 } },
+      { type: 'map.setTimeOfDay' as const, input: { minutesUtc: 1440 } },
+      { type: 'map.setHaze' as const, input: { percent: 101 } },
+      { type: 'map.setSunDiffusion' as const, input: { percent: 2.5 } },
+    ]) {
+      expect(view.execute(operation).outcome.status).toBe('rejected')
+    }
+  })
+
   it('shows terrain at true scale by default and validates exaggeration', () => {
     const { view } = setup(modeled)
     expect(view.getState().map).toMatchObject({
       terrain: false,
       terrainExaggeration: 1,
     })
+    // Terrain belongs to the 3D scene, so a flat map refuses it.
+    expect(
+      view.execute({ type: 'map.setTerrain', input: { enabled: true } })
+        .outcome,
+    ).toMatchObject({ status: 'rejected' })
+    expect(view.getState().map.terrain).toBe(false)
+
+    view.execute({ type: 'map.set3d', input: { enabled: true } })
     const on = view.execute({
       type: 'map.setTerrain',
       input: { enabled: true },

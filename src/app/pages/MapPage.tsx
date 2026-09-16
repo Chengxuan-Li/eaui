@@ -43,6 +43,8 @@ import {
   SelectionSilhouette,
   type SilhouettePrism,
 } from './SelectionSilhouette.tsx'
+import { buildLightingScene, litWindowFactor } from './lighting.ts'
+import { useSceneLighting } from './useSceneLighting.ts'
 import {
   exaggerationLabel,
   firstSymbolLayerId,
@@ -118,7 +120,8 @@ function formatValue(value: number | null, unit: string): string {
 
 export function MapPage() {
   const headingId = useId()
-  const { workbench, layout, showInspection, basemapEnabled } = useServices()
+  const { workbench, layout, showInspection, basemapEnabled, claimWorked } =
+    useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const appearance = useAppearance()
   const palette = appearance.data
@@ -151,8 +154,54 @@ export function MapPage() {
   const [exaggerationDraft, setExaggerationDraft] = useState<number | null>(
     null,
   )
-  const terrain = useTerrain(mapRef, loaded, terrainEnabled, exaggeration)
+  // Terrain belongs to the 3D scene, so a flat map never loads it.
+  const terrain = useTerrain(
+    mapRef,
+    loaded,
+    terrainEnabled && view3d,
+    exaggeration,
+  )
+  const scene = useMemo(
+    () =>
+      buildLightingScene(
+        mapView.lighting,
+        appearance,
+        DISTRICT_CENTER[1],
+        DISTRICT_CENTER[0],
+      ),
+    [mapView.lighting, appearance],
+  )
+  useSceneLighting(mapRef, loaded, view3d, scene)
+
+  // Working in the map makes it the surface Inspection describes. Docked tabs
+  // stay mounted while hidden, so becoming visible is the signal for "switched
+  // to this tab"; the first observation is the app's own startup, which should
+  // leave Inspection saying nothing is selected.
+  const pageRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const node = pageRef.current
+    if (!node || typeof IntersectionObserver !== 'function') return
+    let startup = true
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting)
+      if (!visible) return
+      if (startup) {
+        startup = false
+        return
+      }
+      claimWorked('map')
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [claimWorked])
   const labelLayerId = useMemo(() => firstSymbolLayerId(mapStyle), [mapStyle])
+  const vectorSourceId = useMemo(
+    () =>
+      Object.entries(mapStyle.sources ?? {}).find(
+        ([, source]) => source.type === 'vector',
+      )?.[0],
+    [mapStyle],
+  )
   const handledFocusRequest = useRef(0)
   const [hover, setHover] = useState<Hover | null>(null)
 
@@ -187,6 +236,7 @@ export function MapPage() {
               name: building.name,
               value: values.values[id] ?? -1,
               height: building.heightM ?? 0,
+              lit: litWindowFactor(building.use, building.floors),
             },
             geometry: {
               type: 'Polygon' as const,
@@ -368,7 +418,11 @@ export function MapPage() {
 
   if (state.buildingIds.length === 0) {
     return (
-      <section className={styles.page} aria-labelledby={headingId}>
+      <section
+        className={styles.page}
+        aria-labelledby={headingId}
+        onPointerDown={() => claimWorked('map')}
+      >
         <header className={styles.header}>
           <h2 id={headingId}>Map</h2>
           <CapabilityBadge id="map.view" />
@@ -390,7 +444,12 @@ export function MapPage() {
   const ramp = palette.sequential
 
   return (
-    <section className={styles.page} aria-labelledby={headingId}>
+    <section
+      ref={pageRef}
+      className={styles.page}
+      aria-labelledby={headingId}
+      onPointerDown={() => claimWorked('map')}
+    >
       <header className={styles.header}>
         <h2 id={headingId}>Map</h2>
         <CapabilityBadge id="map.view" />
@@ -444,13 +503,14 @@ export function MapPage() {
         <Checkbox
           className={formStyles.checkbox}
           isSelected={terrainEnabled}
+          isDisabled={!view3d && !terrainEnabled}
           onChange={(enabled) =>
             view.execute({ type: 'map.setTerrain', input: { enabled } })
           }
         >
-          Terrain
+          {view3d ? 'Terrain' : 'Terrain (3D only)'}
         </Checkbox>
-        {terrainEnabled ? (
+        {terrainEnabled && view3d ? (
           <Slider
             className={`${formStyles.slider} ${styles.terrainSlider}`}
             value={exaggerationDraft ?? exaggeration}
@@ -508,8 +568,8 @@ export function MapPage() {
 
       {terrainEnabled && !view3d ? (
         <p className={styles.note} data-testid="map-terrain-note">
-          Terrain relief shows when the map is tilted; turn on &ldquo;3D
-          buildings&rdquo; to tilt it.
+          Terrain is on but paused: a flat map shows no relief. Turn on
+          &ldquo;3D buildings&rdquo; to see it again.
         </p>
       ) : null}
 
@@ -618,6 +678,33 @@ export function MapPage() {
               paint={hillshadePaint(appearance)}
             />
           </Source>
+          {/* Night lights over land use. Needs the basemap's vector source, so
+              it is absent with the basemap off and empty offline. */}
+          {view3d && scene.glow > 0 && vectorSourceId ? (
+            <Layer
+              id="night-landuse-glow"
+              type="fill"
+              source={vectorSourceId}
+              source-layer="landuse"
+              beforeId={labelLayerId}
+              paint={{
+                'fill-color': scene.glowColor,
+                'fill-opacity': [
+                  'match',
+                  ['get', 'class'],
+                  'retail',
+                  0.5 * scene.glow,
+                  'commercial',
+                  0.45 * scene.glow,
+                  'industrial',
+                  0.3 * scene.glow,
+                  'residential',
+                  0.22 * scene.glow,
+                  0.12 * scene.glow,
+                ] as ExpressionSpecification,
+              }}
+            />
+          ) : null}
           <Source
             id="buildings"
             type="geojson"
@@ -674,11 +761,17 @@ export function MapPage() {
               paint={{
                 // Selection never changes a building's color; in 3D it is
                 // outlined by SelectionSilhouette.
-                'fill-extrusion-color': fillExpression(
-                  values.min,
-                  values.max,
-                  palette,
-                ),
+                // After dark the lit-window factor blends the metric color
+                // toward the night-light color; by day the glow is 0.
+                'fill-extrusion-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['*', ['get', 'lit'], scene.glow],
+                  0,
+                  fillExpression(values.min, values.max, palette),
+                  1,
+                  scene.glowColor,
+                ] as ExpressionSpecification,
                 'fill-extrusion-height': ['get', 'height'],
                 'fill-extrusion-opacity': 0.9,
               }}

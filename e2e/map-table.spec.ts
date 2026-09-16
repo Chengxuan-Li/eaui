@@ -228,15 +228,21 @@ test('map shows terrain at true scale and sets exaggeration from the keyboard', 
   await runStages(page, ['Location setup / footprint capturing'])
   await page.getByRole('tab', { name: 'Map', exact: true }).click()
 
+  // Terrain belongs to the 3D scene (decision 0018), so it is offered there.
+  const flat = page.getByRole('checkbox', { name: 'Terrain (3D only)' })
+  await expect(flat).toBeDisabled()
+  const view3d = page.getByRole('checkbox', { name: '3D buildings' })
+  await view3d.focus()
+  await page.keyboard.press('Space')
+
   const toggle = page.getByRole('checkbox', { name: 'Terrain', exact: true })
   await expect(toggle).not.toBeChecked()
   await toggle.focus()
   await page.keyboard.press('Space')
   await expect(toggle).toBeChecked()
   await expect(page.getByTestId('status-notice')).toContainText(
-    'turn on 3D buildings to tilt the map and see the relief',
+    'The map shows terrain at true scale.',
   )
-  await expect(page.getByTestId('map-terrain-note')).toBeVisible()
   const legend = page.getByRole('group', { name: 'Map legend' })
   await expect(legend).toContainText(
     'Terrain: true scale (Mapterhorn, USGS 3DEP)',
@@ -256,6 +262,14 @@ test('map shows terrain at true scale and sets exaggeration from the keyboard', 
   await expect(legend).toContainText('Terrain: 3× exaggerated')
   expect(await seriousViolations(page)).toEqual([])
 
+  // Going flat pauses terrain and keeps the choice.
+  await view3d.focus()
+  await page.keyboard.press('Space')
+  await expect(page.getByTestId('map-terrain-note')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Terrain' })).toBeChecked()
+
+  await view3d.focus()
+  await page.keyboard.press('Space')
   await toggle.focus()
   await page.keyboard.press('Space')
   await expect(toggle).not.toBeChecked()
@@ -268,6 +282,9 @@ test('map falls back to a flat map when terrain cannot load, then retries', asyn
   await blockTerrain(page)
   await runStages(page, ['Location setup / footprint capturing'])
   await page.getByRole('tab', { name: 'Map', exact: true }).click()
+  const view3d = page.getByRole('checkbox', { name: '3D buildings' })
+  await view3d.focus()
+  await page.keyboard.press('Space')
   const toggle = page.getByRole('checkbox', { name: 'Terrain', exact: true })
   await toggle.focus()
   await page.keyboard.press('Space')
@@ -313,4 +330,41 @@ test('settings turns the basemap off and keeps the choice across reloads', async
   await expect(attribution).toContainText('OpenStreetMap contributors')
   await expect(attribution).not.toContainText('OpenFreeMap')
   await expect(page.getByTestId('basemap-status')).toHaveText('')
+})
+
+// Decision 0018: the map's own properties, shown in Inspection while the map is
+// the surface being worked in and nothing is selected.
+test('the map offers its lighting in Inspection when nothing is selected', async ({
+  page,
+}) => {
+  await runStages(page, ['Location setup / footprint capturing'])
+  await page.getByRole('tab', { name: 'Inspection', exact: true }).click()
+  const inspection = page.getByRole('region', { name: 'Inspection' })
+  await expect(inspection.getByText('Nothing selected')).toBeVisible()
+
+  // Working in the map hands Inspection to it.
+  await page.getByRole('heading', { name: 'Map', exact: true }).click()
+  await expect(inspection.getByText('Scene lighting')).toBeVisible()
+  // The lighting is disclosed as display only.
+  await expect(inspection).toContainText('Simulated')
+  await expect(inspection).toContainText('Elevation')
+
+  const nightLights = inspection.getByRole('slider', { name: 'Night lights' })
+  await nightLights.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'Night lights are 65%.',
+  )
+
+  const season = inspection.getByRole('slider', { name: 'Season' })
+  await season.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('status-notice')).toContainText(
+    'Map lighting is set to 22 June.',
+  )
+
+  // A selection takes Inspection back.
+  await page.getByRole('tab', { name: 'Table', exact: true }).click()
+  await page.locator('[row-index="0"] [col-id="name"]').click()
+  await expect(inspection.locator('header').first()).toContainText('B0001')
 })

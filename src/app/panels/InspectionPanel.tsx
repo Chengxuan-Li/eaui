@@ -3,6 +3,7 @@ import { useId, useMemo, type ReactNode } from 'react'
 import { useServices, useWorkbenchSnapshot } from '../WorkbenchContext.tsx'
 import { ActionButton } from '../components/ActionButton.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
+import { MapProperties } from './MapProperties.tsx'
 import styles from './inspection.module.css'
 import {
   buildInspection,
@@ -162,7 +163,7 @@ function MultipleView({
  * instead of taking turns with it.
  */
 export function InspectionPanel() {
-  const { workbench, layout } = useServices()
+  const { workbench, layout, workedSurface } = useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
   const inspection = useMemo(() => buildInspection(state), [state])
 
@@ -191,6 +192,12 @@ export function InspectionPanel() {
       </ActionButton>
     </>
   )
+
+  // With nothing selected, Inspection shows the properties of whatever the
+  // user is working in (decision 0018).
+  if (inspection.kind === 'empty' && workedSurface === 'map') {
+    return <MapProperties />
+  }
 
   if (inspection.kind === 'empty') {
     return (

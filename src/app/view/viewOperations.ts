@@ -3,6 +3,12 @@ import type { ValidationIssue } from '../../domain/commands.ts'
 import type { WorkbenchState } from '../../domain/types.ts'
 import { computeMetric, METRICS, type MetricId } from '../pages/mapMetrics.ts'
 import {
+  createInitialLighting,
+  LIGHTING_LIMITS,
+  type LightingState,
+} from '../pages/lighting.ts'
+import { dayOfYearLabel, timeOfDayLabel } from '../pages/sunPosition.ts'
+import {
   exaggerationLabel,
   MAX_EXAGGERATION,
   MIN_EXAGGERATION,
@@ -33,6 +39,8 @@ export type ViewState = {
     terrain: boolean
     /** Vertical exaggeration of the terrain; 1 is true scale. */
     terrainExaggeration: number
+    /** Contextual lighting for the 3D scene, display only (decision 0018). */
+    lighting: LightingState
   }
   table: { view: TableView; quickFilter: string }
   dashboard: { hiddenScenarioIds: string[]; charts: ChartSpec[] }
@@ -48,6 +56,7 @@ export function createInitialViewState(): ViewState {
       view3d: false,
       terrain: false,
       terrainExaggeration: MIN_EXAGGERATION,
+      lighting: createInitialLighting(),
     },
     table: { view: 'buildings', quickFilter: '' },
     dashboard: { hiddenScenarioIds: [], charts: [] },
@@ -177,14 +186,17 @@ export const viewOperationDefinitions = {
       'Show live 3D terrain with hillshade under the Map, for display only; it never changes project data. Relief is visible when the map is tilted in 3D.',
     input: z.object({ enabled: z.boolean() }),
     run(view, { enabled }) {
+      // Terrain belongs to the 3D scene; a flat map never shows relief.
+      if (enabled && !view.map.view3d) {
+        return rejected(
+          'Terrain needs the 3D view. Turn on 3D buildings first.',
+          'enabled',
+        )
+      }
       view.map.terrain = enabled
       if (!enabled) return applied('The map hides terrain.')
       const scale = exaggerationLabel(view.map.terrainExaggeration)
-      return applied(
-        view.map.view3d
-          ? `The map shows terrain at ${scale}.`
-          : `The map shows terrain at ${scale}; turn on 3D buildings to tilt the map and see the relief.`,
-      )
+      return applied(`The map shows terrain at ${scale}.`)
     },
   }),
 
@@ -201,6 +213,102 @@ export const viewOperationDefinitions = {
     run(view, { exaggeration }) {
       view.map.terrainExaggeration = exaggeration
       return applied(`Terrain is shown at ${exaggerationLabel(exaggeration)}.`)
+    },
+  }),
+
+  'map.setSeason': defineViewOperation({
+    title: 'Set the season on the map',
+    description: `Set the day of the year that lights the 3D map scene, from ${LIGHTING_LIMITS.dayOfYear.min} to ${LIGHTING_LIMITS.dayOfYear.max}. Lighting is display only and changes no result.`,
+    input: z.object({
+      dayOfYear: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.dayOfYear.min)
+        .max(LIGHTING_LIMITS.dayOfYear.max),
+    }),
+    run(view, { dayOfYear }) {
+      view.map.lighting.dayOfYear = dayOfYear
+      return applied(`Map lighting is set to ${dayOfYearLabel(dayOfYear)}.`)
+    },
+  }),
+
+  'map.setTimeOfDay': defineViewOperation({
+    title: 'Set the time of day on the map',
+    description: `Set the time that lights the 3D map scene, as minutes past midnight UTC from ${LIGHTING_LIMITS.minutesUtc.min} to ${LIGHTING_LIMITS.minutesUtc.max}. Display only.`,
+    input: z.object({
+      minutesUtc: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.minutesUtc.min)
+        .max(LIGHTING_LIMITS.minutesUtc.max),
+    }),
+    run(view, { minutesUtc }) {
+      view.map.lighting.minutesUtc = minutesUtc
+      return applied(`Map lighting is set to ${timeOfDayLabel(minutesUtc)}.`)
+    },
+  }),
+
+  'map.setLightIntensity': defineViewOperation({
+    title: 'Set the map light intensity',
+    description: `Set how bright the scene light is, as a percentage from ${LIGHTING_LIMITS.intensityPercent.min} to ${LIGHTING_LIMITS.intensityPercent.max}.`,
+    input: z.object({
+      percent: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.intensityPercent.min)
+        .max(LIGHTING_LIMITS.intensityPercent.max),
+    }),
+    run(view, { percent }) {
+      view.map.lighting.intensityPercent = percent
+      return applied(`Scene light intensity is ${percent}%.`)
+    },
+  }),
+
+  'map.setSunDiffusion': defineViewOperation({
+    title: 'Set the sun diffusion on the map',
+    description: `Set how soft the sun is, as a percentage from ${LIGHTING_LIMITS.diffusionPercent.min} to ${LIGHTING_LIMITS.diffusionPercent.max}. A softer sun widens the day-to-night transition and spreads the glow around the horizon.`,
+    input: z.object({
+      percent: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.diffusionPercent.min)
+        .max(LIGHTING_LIMITS.diffusionPercent.max),
+    }),
+    run(view, { percent }) {
+      view.map.lighting.diffusionPercent = percent
+      return applied(`Sun diffusion is ${percent}%.`)
+    },
+  }),
+
+  'map.setHaze': defineViewOperation({
+    title: 'Set the haze on the map',
+    description: `Set horizon occlusion and dustiness, as a percentage from ${LIGHTING_LIMITS.hazePercent.min} to ${LIGHTING_LIMITS.hazePercent.max}. Haze thickens the fog and dims the light.`,
+    input: z.object({
+      percent: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.hazePercent.min)
+        .max(LIGHTING_LIMITS.hazePercent.max),
+    }),
+    run(view, { percent }) {
+      view.map.lighting.hazePercent = percent
+      return applied(`Horizon haze is ${percent}%.`)
+    },
+  }),
+
+  'map.setNightLights': defineViewOperation({
+    title: 'Set the night lights on the map',
+    description: `Set how brightly human activity lights the district after dark, as a percentage from ${LIGHTING_LIMITS.nightLightsPercent.min} to ${LIGHTING_LIMITS.nightLightsPercent.max}.`,
+    input: z.object({
+      percent: z
+        .number()
+        .int()
+        .min(LIGHTING_LIMITS.nightLightsPercent.min)
+        .max(LIGHTING_LIMITS.nightLightsPercent.max),
+    }),
+    run(view, { percent }) {
+      view.map.lighting.nightLightsPercent = percent
+      return applied(`Night lights are ${percent}%.`)
     },
   }),
 
