@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { startTaskSimulator } from '../../domain/simulator.ts'
 import { createWorkbench } from '../../domain/workbench.ts'
 import { manualScheduler } from '../../testing/manualScheduler.ts'
+import { createAppearanceController } from '../appearance/appearanceController.ts'
 import { createLayoutController } from '../layout/layoutController.ts'
 import { createViewStore } from '../view/viewStore.ts'
 import { createScriptedAgent } from './scriptedAgent.ts'
 import { matchSession } from './sessions.ts'
-import { command, describeAgentTools, requiresApproval } from './tools.ts'
 import type { TranscriptItem } from './types.ts'
 
 function setup() {
@@ -15,10 +15,12 @@ function setup() {
   startTaskSimulator(workbench, { scheduler: manual.scheduler })
   const layout = createLayoutController(workbench, null)
   const view = createViewStore(workbench)
+  const appearance = createAppearanceController(workbench, null)
   const agent = createScriptedAgent({
     workbench,
     layout,
     view,
+    appearance,
     scheduler: manual.scheduler,
   })
   const transcript = () => agent.store.getState().transcript
@@ -204,6 +206,11 @@ describe('agent send modes', () => {
     manual.runAll(20000)
     expect(agent.store.getState().queued).toEqual([])
     expect(agent.store.getState().ranSessionIds).toEqual(['layout', 'restore'])
+
+    // Resetting the layout discards an arrangement nothing undoes, so the
+    // queued session stops for its own approval before it finishes.
+    agent.approve(lastApproval().id)
+    manual.runAll(200)
     expect(JSON.stringify(transcript())).toContain('default layout is back')
   })
 
@@ -237,38 +244,4 @@ describe('agent send modes', () => {
   })
 })
 
-describe('agent tools', () => {
-  it('requires approval for stage runs and project model changes only', () => {
-    expect(
-      requiresApproval(
-        command({ type: 'workflow.runStage', input: { stageId: 'stage' } }),
-      ),
-    ).toBe(true)
-    expect(
-      requiresApproval(
-        command({
-          type: 'scenario.setAdoption',
-          input: { scenarioId: 'scenario', adoptionPercent: 10 },
-        }),
-      ),
-    ).toBe(true)
-    expect(
-      requiresApproval(command({ type: 'selection.clear', input: {} })),
-    ).toBe(false)
-  })
-
-  it('describes command, view, and layout tools without simulator internals', () => {
-    const tools = describeAgentTools()
-    expect(
-      tools.find((item) => item.name === 'layout.placePage'),
-    ).toMatchObject({ kind: 'layout', requiresApproval: false })
-    expect(
-      tools.find((item) => item.name === 'dashboard.addChart'),
-    ).toMatchObject({ kind: 'view', requiresApproval: false })
-    expect(tools.find((item) => item.name === 'measure.create')).toMatchObject({
-      kind: 'command',
-      requiresApproval: true,
-    })
-    expect(tools.some((item) => item.name.startsWith('task.'))).toBe(false)
-  })
-})
+// The tool catalog and the approval boundary are covered in tools.test.ts.

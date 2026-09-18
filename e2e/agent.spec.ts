@@ -62,6 +62,17 @@ test('layout session runs missing stages after approval, then arranges the workb
   await panel
     .getByRole('button', { name: 'Start session: Restore the default layout' })
     .click()
+
+  // Resetting discards the arrangement the session just built, and nothing
+  // undoes a layout, so this one presentation call waits (decision 0020).
+  const resetApproval = panel.getByRole('listitem', {
+    name: 'Restore the default layout',
+  })
+  await expect(resetApproval).toContainText('Waiting for your approval')
+  await resetApproval
+    .getByRole('button', { name: 'Approve: Restore the default layout' })
+    .click()
+
   await expect(page.getByTestId('status-notice')).toContainText(
     'Restored the default workbench layout.',
     { timeout: 10_000 },

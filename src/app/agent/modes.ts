@@ -63,7 +63,8 @@ export const PERMISSION_MODES: ModeOption<PermissionMode>[] = [
   {
     id: 'automatic',
     label: 'Automatic',
-    description: 'Stage runs are approved for you; model changes still wait.',
+    description:
+      'Stage runs are approved for you; model changes and layout resets still wait.',
   },
   {
     id: 'bypass',

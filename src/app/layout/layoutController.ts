@@ -152,6 +152,17 @@ export function createDefaultLayout(): IJsonModel {
   }
 }
 
+/** A bounded description of the layout, for the agent's context digest. */
+export type LayoutSummary = {
+  /** Pages present in the layout, whether or not their tab is selected. */
+  openPages: PageId[]
+  activePage: PageId | null
+  panels: Record<PanelId, boolean>
+  sides: { left: boolean; right: boolean }
+  maximized: boolean
+  tabGroups: number
+}
+
 export type LayoutController = {
   getModel: () => Model
   /** Increments on every layout change, for useSyncExternalStore. */
@@ -160,6 +171,8 @@ export type LayoutController = {
   openPage: (page: PageId, source?: CommandSource) => void
   togglePanel: (panel: PanelId, source?: CommandSource) => void
   isPanelOpen: (panel: PanelId) => boolean
+  /** What the layout holds right now, for the agent to read before it acts. */
+  describeLayout: () => LayoutSummary
   /** Collapses or expands a whole side container, whatever it holds. */
   toggleSide: (side: 'left' | 'right', source?: CommandSource) => void
   isSideOpen: (side: 'left' | 'right') => boolean
@@ -451,6 +464,31 @@ export function createLayoutController(
     },
 
     isSideOpen: (side) => (sideBorder(side)?.getSelected() ?? -1) >= 0,
+
+    describeLayout: () => {
+      const pageIds = Object.keys(PAGES) as PageId[]
+      const active = activeTab()
+      const activeId = active?.tab.getId()
+      return {
+        openPages: pageIds.filter(
+          (page) => model.getNodeById(pageTabId(page)) instanceof TabNode,
+        ),
+        activePage:
+          pageIds.find((page) => pageTabId(page) === activeId) ?? null,
+        panels: Object.fromEntries(
+          (Object.keys(PANELS) as PanelId[]).map((panel) => {
+            const node = model.getNodeById(panelTabId(panel))
+            return [panel, node instanceof TabNode && node.isSelected()]
+          }),
+        ) as Record<PanelId, boolean>,
+        sides: {
+          left: (sideBorder('left')?.getSelected() ?? -1) >= 0,
+          right: (sideBorder('right')?.getSelected() ?? -1) >= 0,
+        },
+        maximized: model.getMaximizedTabset() !== undefined,
+        tabGroups: tabsets().length,
+      }
+    },
 
     toggleSide: (side, source = 'manual') => {
       const border = sideBorder(side)

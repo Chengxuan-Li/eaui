@@ -20,7 +20,10 @@ import { deriveStageStates } from '../domain/workflow.ts'
 import { createScriptedAgent } from './agent/scriptedAgent.ts'
 import type { AgentAdapter, AgentSnapshot } from './agent/types.ts'
 import {
-  APPEARANCES,
+  createAppearanceController,
+  type AppearanceController,
+} from './appearance/appearanceController.ts'
+import {
   resolveAppearance,
   type Appearance,
   type AppearancePreference,
@@ -35,11 +38,7 @@ import {
   storeBasemapPreference,
 } from './basemapPreference.ts'
 import { getBrowserStorage } from './storage.ts'
-import {
-  applyAppearance,
-  readAppearancePreference,
-  storeAppearancePreference,
-} from './theme.ts'
+import { applyAppearance } from './theme.ts'
 import type { ViewState } from './view/viewOperations.ts'
 import { createViewStore, type ViewStore } from './view/viewStore.ts'
 
@@ -49,6 +48,8 @@ type CoreServices = {
   layout: LayoutController
   /** Logged view state shared by manual controls and the agent. */
   view: ViewStore
+  /** Appearance as a logged store, so the agent drives it like layout. */
+  appearanceController: AppearanceController
   /** The scripted agent behind the adapter a model provider can replace. */
   agent: AgentAdapter
 }
@@ -109,15 +110,18 @@ function createCoreServices(): CoreServices {
   }
   const layout = createLayoutController(workbench, storage)
   const view = createViewStore(workbench)
+  const appearance = createAppearanceController(workbench, storage)
   return {
     storage,
     workbench,
     layout,
     view,
+    appearanceController: appearance,
     agent: createScriptedAgent({
       workbench,
       layout,
       view,
+      appearance,
       scheduler: browserScheduler,
     }),
   }
@@ -125,8 +129,9 @@ function createCoreServices(): CoreServices {
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [core] = useState(createCoreServices)
-  const [appearancePreference, setAppearancePreference] = useState(() =>
-    readAppearancePreference(core.storage),
+  const appearancePreference = useSyncExternalStore(
+    core.appearanceController.subscribe,
+    core.appearanceController.getPreference,
   )
   const [systemDark, setSystemDark] = useState(systemPrefersDark)
   const [basemapEnabled, setBasemapEnabledState] = useState(() =>
@@ -158,19 +163,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       ...core,
       appearancePreference,
       appearance,
-      setAppearance: (next) => {
-        setAppearancePreference(next)
-        storeAppearancePreference(core.storage, next)
-        core.workbench.record({
-          type: 'view.setAppearance',
-          title: 'Set appearance',
-          input: { appearance: next },
-          summary:
-            next === 'system'
-              ? 'Appearance follows the system light or dark setting.'
-              : `Appearance set to ${APPEARANCES[next].label}.`,
-        })
-      },
+      setAppearance: (next) => core.appearanceController.set(next),
       basemapEnabled,
       setBasemapEnabled: (enabled) => {
         setBasemapEnabledState(enabled)

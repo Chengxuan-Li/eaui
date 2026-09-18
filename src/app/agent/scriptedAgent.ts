@@ -49,6 +49,7 @@ export function createScriptedAgent(
     workbench: options.workbench,
     view: options.view,
     layout: options.layout,
+    appearance: options.appearance,
   }
   const store = createStore<AgentSnapshot>()(() => ({
     status: 'idle',
