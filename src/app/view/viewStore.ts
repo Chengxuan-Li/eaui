@@ -3,6 +3,7 @@ import type { z } from 'zod'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 import type { CommandSource, WorkbenchState } from '../../domain/types.ts'
 import type { Workbench } from '../../domain/workbench.ts'
+import { loadViewState, saveViewState } from '../viewPersistence.ts'
 import {
   createInitialViewState,
   viewOperationDefinitions,
@@ -18,6 +19,8 @@ export type ViewStore = {
   getState: () => ViewState
   /** Validates and applies a view operation, and records it in the operation log. */
   execute: (operation: ViewOperation, source?: CommandSource) => ViewResult
+  /** Returns to the default view, for a new project or another dataset. */
+  reset: () => void
 }
 
 // Definitions differ per operation, so the registry entry is used through this
@@ -28,8 +31,14 @@ type RegistryEntry = {
   run: (view: ViewState, input: unknown, project: WorkbenchState) => ViewOutcome
 }
 
-export function createViewStore(workbench: Workbench): ViewStore {
-  const store = createStore<ViewState>()(() => createInitialViewState())
+export function createViewStore(
+  workbench: Workbench,
+  storage: Storage | null = null,
+): ViewStore {
+  const store = createStore<ViewState>()(
+    () =>
+      loadViewState(storage, workbench.getState()) ?? createInitialViewState(),
+  )
 
   function execute(
     operation: ViewOperation,
@@ -56,7 +65,10 @@ export function createViewStore(workbench: Workbench): ViewStore {
           workbench.getState(),
         )
       })
-      if (result.outcome.status === 'applied') store.setState(next, true)
+      if (result.outcome.status === 'applied') {
+        store.setState(next, true)
+        saveViewState(storage, next)
+      }
     } else {
       result.outcome = {
         status: 'rejected',
@@ -80,5 +92,14 @@ export function createViewStore(workbench: Workbench): ViewStore {
     return { operationId, outcome }
   }
 
-  return { store, getState: () => store.getState(), execute }
+  return {
+    store,
+    getState: () => store.getState(),
+    execute,
+    reset: () => {
+      const fresh = createInitialViewState()
+      store.setState(fresh, true)
+      saveViewState(storage, fresh)
+    },
+  }
 }

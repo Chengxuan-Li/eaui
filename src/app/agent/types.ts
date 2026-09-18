@@ -29,7 +29,12 @@ export type TranscriptItem =
       title: string
       description: string
       callTitles: string[]
-      status: 'pending' | 'approved' | 'declined'
+      /**
+       * "expired" is what a pending approval becomes when a transcript is
+       * restored: the turn that raised it is gone, so it can no longer be
+       * answered, and showing live buttons would be a lie.
+       */
+      status: 'pending' | 'approved' | 'declined' | 'expired'
       /** Set when a permission mode answered the approval instead of the user. */
       decidedBy: PermissionMode | null
     }
@@ -95,4 +100,6 @@ export type AgentAdapter = {
   decline: (itemId: string) => void
   /** Stops the active session; applied changes stay in the project. */
   stop: () => void
+  /** Forgets the conversation, for a new project or another dataset. */
+  clear: () => void
 }

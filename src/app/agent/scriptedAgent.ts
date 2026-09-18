@@ -448,6 +448,11 @@ export function createScriptedAgent(
     setPresets() {
       // Scripted sessions are the only prompts this player can answer.
     },
+
+    clear() {
+      itemCount = 0
+      store.setState({ transcript: [], queued: [], ranSessionIds: [] })
+    },
     setPermissionMode(mode) {
       if (store.getState().permissionMode === mode) return
       store.setState({ permissionMode: mode })

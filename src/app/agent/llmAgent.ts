@@ -1,4 +1,9 @@
 import { createStore } from 'zustand/vanilla'
+import {
+  clearConversation,
+  loadConversation,
+  saveConversation,
+} from './agentPersistence.ts'
 import { buildContextDigest } from './context.ts'
 import {
   buildInstructions,
@@ -72,6 +77,10 @@ export const LLM_PRESETS: AgentPreset[] = [
 export type LlmAgentOptions = ToolDeps & {
   transport: LlmTransport
   modelLabel: string
+  /** Where the conversation is kept between reloads; null keeps it in memory. */
+  storage?: Storage | null
+  /** Distinguishes this agent's stored conversation from the other's. */
+  agentId?: string
 }
 
 type Pending = {
@@ -82,7 +91,8 @@ type Pending = {
 }
 
 export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
-  const { transport, modelLabel } = options
+  const { transport, modelLabel, storage = null, agentId = 'live' } = options
+  const restored = loadConversation(storage, agentId)
   const deps: ToolDeps = {
     workbench: options.workbench,
     view: options.view,
@@ -92,7 +102,7 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
 
   const store = createStore<AgentSnapshot>()(() => ({
     status: 'idle',
-    transcript: [],
+    transcript: restored?.transcript ?? [],
     activeSessionId: null,
     presets: LLM_PRESETS,
     permissionMode: 'ask',
@@ -100,8 +110,9 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
     ranSessionIds: [],
   }))
 
-  let itemCount = 0
-  let conversation: InputItem[] = []
+  // Ids continue past the restored items so a new one cannot collide.
+  let itemCount = restored?.transcript.length ?? 0
+  let conversation: InputItem[] = restored?.conversation ?? []
   let pending: Pending | null = null
   let controller: AbortController | null = null
   let turns = 0
@@ -111,8 +122,16 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
     return `llm-item-${itemCount}`
   }
 
+  function persist() {
+    saveConversation(storage, agentId, {
+      transcript: store.getState().transcript,
+      conversation,
+    })
+  }
+
   function push(item: TranscriptItem) {
     store.setState({ transcript: [...store.getState().transcript, item] })
+    persist()
   }
 
   function setApprovalStatus(
@@ -129,6 +148,7 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
             : item,
         ),
     })
+    persist()
   }
 
   function finish() {
@@ -472,6 +492,13 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
       // Tell the model it was refused, so it can answer rather than retry.
       refuse(callId, `The user declined "${title}". Do not try it again.`)
       void turn()
+    },
+
+    clear() {
+      conversation = []
+      itemCount = 0
+      store.setState({ transcript: [], queued: [], ranSessionIds: [] })
+      clearConversation(storage, agentId)
     },
 
     stop() {

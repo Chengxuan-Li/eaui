@@ -65,6 +65,7 @@ function approvalLabel(
 ): string {
   if (item.status === 'pending') return 'Waiting for your approval'
   if (item.status === 'declined') return 'Rejected'
+  if (item.status === 'expired') return 'Expired when the page was reloaded'
   return item.decidedBy
     ? `Approved by ${permissionModeOption(item.decidedBy).label} mode`
     : 'Approved'

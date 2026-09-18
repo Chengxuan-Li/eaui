@@ -145,3 +145,48 @@ test('the model cannot be chosen when the app has no route to one', async ({
   await expect(live).toHaveAttribute('aria-disabled', 'true')
   await expect(live).toContainText('No model is configured')
 })
+
+test('the conversation and the view survive a reload', async ({ page }) => {
+  await serveModelStub(page, [
+    [call('appearance__set', { appearance: 'lieflat' })],
+    [message('Switched to **Lieflat-inspired**.')],
+  ])
+  await page.goto('/')
+  await chooseModel(page)
+  await ask(page, 'use the lieflat appearance')
+
+  const panel = panelOf(page)
+  await expect(panel.getByText(/Lieflat-inspired/).first()).toBeVisible()
+
+  await page.reload()
+  // The transcript is what a backend would otherwise hold, so it comes back.
+  await expect(
+    panelOf(page)
+      .getByText(/Switched to/)
+      .first(),
+  ).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-appearance',
+    'lieflat',
+  )
+})
+
+test('an approval left waiting comes back expired, not clickable', async ({
+  page,
+}) => {
+  await serveModelStub(page, [[call('layout__reset', {})]])
+  await page.goto('/')
+  await chooseModel(page)
+  await ask(page, 'reset the layout')
+
+  const approval = panelOf(page).getByRole('listitem', { name: 'Reset layout' })
+  await expect(approval).toContainText('Waiting for your approval')
+
+  await page.reload()
+  const restored = panelOf(page).getByRole('listitem', { name: 'Reset layout' })
+  // The turn that raised it is gone, so a live button would do nothing.
+  await expect(restored).toContainText('Expired when the page was reloaded')
+  await expect(restored.getByRole('button', { name: /^Approve/ })).toHaveCount(
+    0,
+  )
+})

@@ -27,6 +27,7 @@ import {
 } from '../domain/datasets.ts'
 import { createScriptedAgent } from './agent/scriptedAgent.ts'
 import { createLlmAgent } from './agent/llmAgent.ts'
+import { loadAgentModel, saveAgentModel } from './agent/agentPersistence.ts'
 import { createHttpTransport, type LlmHealth } from './agent/llm/transport.ts'
 import {
   modelOptions,
@@ -137,7 +138,7 @@ function createCoreServices(): CoreServices {
     })
   }
   const layout = createLayoutController(workbench, storage)
-  const view = createViewStore(workbench)
+  const view = createViewStore(workbench, storage)
   const appearance = createAppearanceController(workbench, storage)
   return {
     storage,
@@ -160,6 +161,7 @@ function createCoreServices(): CoreServices {
         appearance,
         transport: createHttpTransport(),
         modelLabel: 'Language model',
+        storage,
       }),
     },
   }
@@ -179,7 +181,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [workedSurface, setWorkedSurface] = useState<WorkedSurface>(null)
   const [datasetId, setDatasetId] = useState<DatasetId>(DEFAULT_DATASET_ID)
   const [datasetLoading, setDatasetLoading] = useState(false)
-  const [agentModel, setAgentModelState] = useState(SCRIPTED_MODEL)
+  const [agentModel, setAgentModelState] = useState(
+    () => loadAgentModel(core.storage) ?? SCRIPTED_MODEL,
+  )
   const [llmHealth, setLlmHealth] = useState<LlmHealth>({
     available: false,
     model: null,
@@ -250,6 +254,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
             input: { dataset: id },
             summary: `Opened "${dataset.name}". ${dataset.stateLabel}.`,
           })
+          // A different district is a different project, so a view of the old
+          // one and a conversation about it would both be stale.
+          core.view.reset()
+          for (const agent of Object.values(core.agents)) agent.clear()
           setDatasetId(id)
         } finally {
           setDatasetLoading(false)
@@ -262,6 +270,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         const option = agentModels.find((candidate) => candidate.id === id)
         if (!option || option.unavailableReason !== null) return
         setAgentModelState(id)
+        saveAgentModel(core.storage, id)
         core.workbench.record({
           type: 'agent.setModel',
           title: 'Set the agent model',
