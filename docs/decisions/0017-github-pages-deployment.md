@@ -78,3 +78,44 @@ The fix emits the worker and the shared chunk it imports. `require.resolve('mapl
 - `npm run typecheck`, `npm run lint`, `npm run format:check` pass; `npm test` runs 137 tests; `npm run test:e2e` runs 49; `npm run test:e2e:preview` runs 1 against the built bundle in about 5 seconds including the build.
 - `dist/assets/` contains `maplibre-gl-worker.mjs` (19 kB) and `maplibre-gl-shared.mjs` (514 kB) beside the MapLibre chunk.
 - Still unverified: the published page itself, since the workflow has not run and the deployment host is unreachable from here.
+
+## Revision (2026-09-18): the rename blanked the published page
+
+The repository was transferred to the `Energy-Atlas` organization and renamed from `eaui` to `energyatlas-ui`. Pages moved with it and served `https://energy-atlas.github.io/energyatlas-ui/`, but the artifact already published was the 2026-09-16 build, whose `index.html` still asked for `/eaui/assets/index-*.js`. Renaming a repository does not rebuild the artifact. The HTML loaded with a 200, the module script 404ed, React never mounted, and the page was a blank white `<div id="root">` with nothing visible to explain it.
+
+Probing the host separated the two prefixes and made the cause unambiguous: `/energyatlas-ui/assets/index-BR7pvUgE.js` answered 200 while `/eaui/assets/index-BR7pvUgE.js` answered 404. The files were in the right place; only the references were stale.
+
+Deriving `EAUI_BASE_PATH` from `github.event.repository.name` was supposed to prevent exactly this, and would have, had anything been pushed after the rename. But a re-run alone would not have deployed either, because the prefix was really three values that only looked like one:
+
+- `vite.config.ts` fell back to a hardcoded `'/eaui/'`;
+- `playwright.preview.config.ts` waited on `${baseURL}/eaui/`;
+- `e2e/production.spec.ts` visited `/eaui/` and fetched `/eaui/assets/maplibre-gl-worker.mjs`.
+
+The workflow set `EAUI_BASE_PATH` on the build step only. So the rebuilt bundle would carry `/energyatlas-ui/`, `vite preview` would serve it at `/eaui/`, the production spec would fail, and `verify` would block the deploy. The three agreed before only because the repository name and the hardcoded default happened to be the same string, which is not a property worth relying on.
+
+The fix removes the coincidence:
+
+- **`basePath.ts` is the single source.** It exports `BASE_PATH`, defaulting to `/energyatlas-ui/` and overridden by `EAUI_BASE_PATH`. `vite.config.ts`, `playwright.preview.config.ts`, and `e2e/production.spec.ts` import it; no file spells the prefix out. It sits in `tsconfig.node.json`, beside the configs that use it.
+- **`EAUI_BASE_PATH` moves to the job's `env`** in `pages.yml`, so the build, `vite preview`, and the production spec all read the value derived from the repository name. It does not disturb the dev-server specs, because `base` still applies only when `command === 'build' || isPreview`.
+- **The npm package is renamed** from `eaui` to `energyatlas-ui` in `package.json` and `package-lock.json`, matching the repository. Nothing reads the name; it is private and unpublished.
+
+### Rationale
+
+- A default that has to match the repository name is a hazard, not a safeguard: it is silent while correct and silent when it stops being correct. One imported constant cannot drift from itself.
+- Setting the environment variable per step made the build and the check that guards the build disagree. The job is the right scope, because every step in it works on the same bundle.
+
+### Alternatives
+
+- **Re-pointing the default at `/energyatlas-ui/` and leaving the three literals in place:** rejected. It would have deployed, and the next rename would have reproduced the failure exactly.
+- **A CNAME and a custom domain,** which would serve from `/` and make the prefix moot: deferred. It needs a domain and a DNS decision, neither of which exists yet.
+
+### Verification (2026-09-18)
+
+Node.js 24 and Microsoft Edge on the `C:/github/eaui` checkout, `master` at `6586202`.
+
+- The failure was confirmed against the live host before any change: `https://energy-atlas.github.io/energyatlas-ui/` returned 200 with `src="/eaui/assets/index-BR7pvUgE.js"`, that URL returned 404, and the same file under `/energyatlas-ui/` returned 200.
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` pass; `npm test` runs 169 tests in 20 files; `npm run test:e2e` runs 50 tests, which confirms the dev server still serves at `/`.
+- `npm run test:e2e:preview` passes with no override, and `dist/index.html` references `/energyatlas-ui/assets/index-*.js` and `/energyatlas-ui/assets/index-*.css`.
+- The override was checked by using a value that matches nothing: with `EAUI_BASE_PATH=/rename-probe/`, the same command passes and `dist/index.html` references `/rename-probe/assets/index-*.js`. Under the old arrangement that combination is the one that fails, so this is the case the change is for.
+
+**Not verified until the workflow runs:** the published page itself. The deploy has to rebuild before the fix is visible, so the blank page stays blank until `master` is pushed.

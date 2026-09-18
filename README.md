@@ -1,6 +1,6 @@
 # Product UI Experiment
 
-A standalone experiment for a coherent EnergyAtlas urban/building energy-modeling product UI. The working repository folder is `eaui`; the final product/repository name is not yet decided. This is separate from `json-render-playground`.
+A standalone experiment for a coherent EnergyAtlas urban/building energy-modeling product UI. The repository is [Energy-Atlas/energyatlas-ui](https://github.com/Energy-Atlas/energyatlas-ui) and publishes to <https://energy-atlas.github.io/energyatlas-ui/> ([decision 0017](docs/decisions/0017-github-pages-deployment.md)); the local working folder is still `eaui`, and the final product name is not yet decided. This is separate from `json-render-playground`.
 
 ## Status
 
