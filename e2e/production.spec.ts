@@ -1,3 +1,4 @@
+import { BASE_PATH } from '../basePath.ts'
 import { expect, test } from './test.ts'
 
 // One spec against the built bundle (decision 0017). The dev server resolves
@@ -18,14 +19,16 @@ test('the built bundle serves its assets and renders the map', async ({
     }
   })
 
-  await page.goto('/eaui/')
+  await page.goto(BASE_PATH)
   await expect(
     page.getByRole('toolbar', { name: 'Workbench commands' }),
   ).toBeVisible()
 
   // MapLibre derives this URL from import.meta.url at run time, so the bundler
   // never sees it and the build has to emit the file next to its chunk.
-  const worker = await page.request.get('/eaui/assets/maplibre-gl-worker.mjs')
+  const worker = await page.request.get(
+    `${BASE_PATH}assets/maplibre-gl-worker.mjs`,
+  )
   expect(worker.status()).toBe(200)
   expect(worker.headers()['content-type'] ?? '').toContain('javascript')
 

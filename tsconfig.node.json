@@ -23,6 +23,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
+    "basePath.ts",
     "vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",

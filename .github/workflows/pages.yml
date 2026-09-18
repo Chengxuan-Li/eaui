@@ -27,6 +27,10 @@ jobs:
     env:
       # Microsoft Edge is the local default; CI uses Playwright's own Chromium.
       PLAYWRIGHT_CHANNEL: chromium
+      # A project site lives under /<repository>/; a rename follows along. Set
+      # for the whole job, not just the build, so `vite preview` and the
+      # production spec use the prefix the bundle was built with.
+      EAUI_BASE_PATH: /${{ github.event.repository.name }}/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,9 +47,6 @@ jobs:
       - run: npm run test:e2e
 
       - run: npm run build
-        env:
-          # A project site lives under /<repository>/; a rename follows along.
-          EAUI_BASE_PATH: /${{ github.event.repository.name }}/
       # Checks the bundle just built, rather than building a second time.
       - run: npx playwright test -c playwright.preview.config.ts
 

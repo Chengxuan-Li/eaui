@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BASE_PATH } from './basePath.ts'
 
 // Checks the production bundle, which the dev-server specs cannot: the base
 // path, and files that only a build emits, such as MapLibre's worker
@@ -28,8 +29,11 @@ export default defineConfig({
   ],
   webServer: {
     // Serves whatever is in dist; the script builds before calling Playwright.
+    // The prefix comes from basePath.ts, the same source the build used, so a
+    // repository rename cannot leave preview serving one path and the bundle
+    // asking for another.
     command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
-    url: `${baseURL}/eaui/`,
+    url: `${baseURL}${BASE_PATH}`,
     reuseExistingServer: !process.env.CI,
   },
 })
