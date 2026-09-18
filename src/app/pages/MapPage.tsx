@@ -18,7 +18,7 @@ import {
   SliderThumb,
   SliderTrack,
 } from 'react-aria-components'
-import { DISTRICT_CENTER } from '../../domain/simulation.ts'
+import { currentDistrict } from '../../domain/districts.ts'
 import type { LngLat } from '../../domain/types.ts'
 import { STAGE_IDS } from '../../domain/workflow.ts'
 import {
@@ -127,6 +127,9 @@ export function MapPage() {
   const { workbench, layout, showInspection, basemapEnabled, claimWorked } =
     useServices()
   const state = useWorkbenchSnapshot((snapshot) => snapshot.state)
+  // The sun and the first view follow the project's own place, so a dataset
+  // in another city is lit for that city (decision 0020).
+  const center = state.project.location?.center ?? currentDistrict().center
   const appearance = useAppearance()
   const palette = appearance.data
   const basemap = useBasemap(basemapEnabled)
@@ -167,13 +170,8 @@ export function MapPage() {
   )
   const scene = useMemo(
     () =>
-      buildLightingScene(
-        mapView.lighting,
-        appearance,
-        DISTRICT_CENTER[1],
-        DISTRICT_CENTER[0],
-      ),
-    [mapView.lighting, appearance],
+      buildLightingScene(mapView.lighting, appearance, center[1], center[0]),
+    [mapView.lighting, appearance, center],
   )
   useSceneLighting(mapRef, loaded, view3d, scene)
   const globeDim = globeDimOpacity(appearance.scheme)
@@ -594,8 +592,8 @@ export function MapPage() {
           ref={mapRef}
           mapStyle={mapStyle}
           initialViewState={{
-            longitude: DISTRICT_CENTER[0],
-            latitude: DISTRICT_CENTER[1],
+            longitude: center[0],
+            latitude: center[1],
             zoom: 15,
           }}
           style={{ width: '100%', height: '100%' }}

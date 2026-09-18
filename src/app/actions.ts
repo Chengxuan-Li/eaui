@@ -5,6 +5,7 @@ import {
   Command,
   FilePlus,
   FolderTree,
+  Globe,
   Info,
   ListChecks,
   Maximize,
@@ -93,6 +94,10 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
     workbench,
     layout,
     storage,
+    dataset,
+    datasets,
+    datasetLoading,
+    openDataset,
     appearancePreference,
     setAppearance,
     showInspection,
@@ -157,6 +162,21 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
         disabledReason: null,
         perform: dialogs.openNewProject,
       },
+      // Each dataset is a different place at a different point in the
+      // workflow, so the agent can be shown against more than one situation
+      // (decision 0020).
+      ...datasets.map((entry) => ({
+        id: `file.dataset.${entry.id}`,
+        label: `${entry.name} — ${entry.stateLabel}`,
+        group: 'File' as const,
+        menuPath: ['Open district'],
+        icon: Globe,
+        pressed: entry.id === dataset.id,
+        disabledReason: datasetLoading ? 'A district is still loading.' : null,
+        perform: () => {
+          void openDataset(entry.id)
+        },
+      })),
       {
         id: 'edit.undo',
         label: 'Undo',
@@ -459,6 +479,10 @@ export function useAppActions(dialogs: ShellDialogs): AppAction[] {
     setAppearance,
     showInspection,
     dialogs,
+    dataset,
+    datasets,
+    datasetLoading,
+    openDataset,
   ])
 }
 

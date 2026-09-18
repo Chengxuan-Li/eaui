@@ -6,11 +6,12 @@ import {
   SliderThumb,
   SliderTrack,
 } from 'react-aria-components'
-import { DISTRICT_CENTER } from '../../domain/simulation.ts'
+import { currentDistrict } from '../../domain/districts.ts'
 import {
   useAppearance,
   useServices,
   useViewState,
+  useWorkbenchSnapshot,
 } from '../WorkbenchContext.tsx'
 import { CapabilityBadge } from '../components/CapabilityBadge.tsx'
 import formStyles from '../components/forms.module.css'
@@ -96,13 +97,12 @@ export function MapProperties() {
   const headingId = useId()
   const appearance = useAppearance()
   const mapView = useViewState((state) => state.map)
-  const lighting = mapView.lighting
-  const scene = buildLightingScene(
-    lighting,
-    appearance,
-    DISTRICT_CENTER[1],
-    DISTRICT_CENTER[0],
+  const location = useWorkbenchSnapshot(
+    (snapshot) => snapshot.state.project.location,
   )
+  const center = location?.center ?? currentDistrict().center
+  const lighting = mapView.lighting
+  const scene = buildLightingScene(lighting, appearance, center[1], center[0])
   const limits = LIGHTING_LIMITS
 
   return (

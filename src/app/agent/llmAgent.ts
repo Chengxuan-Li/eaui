@@ -407,6 +407,13 @@ export function createLlmAgent(options: LlmAgentOptions): AgentAdapter {
       }
     },
 
+    setPresets(presets) {
+      store.setState({
+        presets: presets.length > 0 ? presets : LLM_PRESETS,
+        ranSessionIds: [],
+      })
+    },
+
     setPermissionMode(mode) {
       if (store.getState().permissionMode === mode) return
       store.setState({ permissionMode: mode })

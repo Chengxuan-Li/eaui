@@ -17,6 +17,14 @@ import {
   type WorkbenchSnapshot,
 } from '../domain/workbench.ts'
 import { deriveStageStates } from '../domain/workflow.ts'
+import {
+  DATASETS,
+  DEFAULT_DATASET_ID,
+  getDataset,
+  loadDataset,
+  type Dataset,
+  type DatasetId,
+} from '../domain/datasets.ts'
 import { createScriptedAgent } from './agent/scriptedAgent.ts'
 import { createLlmAgent } from './agent/llmAgent.ts'
 import { createHttpTransport, type LlmHealth } from './agent/llm/transport.ts'
@@ -82,6 +90,12 @@ export type Services = CoreServices & {
   showInspection: (source?: CommandSource) => void
   /** The agent actually running: the scripted player or the language model. */
   agent: AgentAdapter
+  /** The fictional district currently open, and how to change it. */
+  dataset: Dataset
+  datasets: Dataset[]
+  openDataset: (id: DatasetId) => Promise<void>
+  /** True while a dataset's fixture is loading and its recipe is replaying. */
+  datasetLoading: boolean
   /** Which model drives the agent, and what can be chosen. */
   agentModel: string
   agentModels: ModelOption[]
@@ -163,6 +177,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
   const appearance = resolveAppearance(appearancePreference, systemDark)
   const [workedSurface, setWorkedSurface] = useState<WorkedSurface>(null)
+  const [datasetId, setDatasetId] = useState<DatasetId>(DEFAULT_DATASET_ID)
+  const [datasetLoading, setDatasetLoading] = useState(false)
   const [agentModel, setAgentModelState] = useState(SCRIPTED_MODEL)
   const [llmHealth, setLlmHealth] = useState<LlmHealth>({
     available: false,
@@ -202,6 +218,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     [core.workbench],
   )
 
+  // Suggestions should describe the place in front of you, not a fixed list.
+  useEffect(() => {
+    core.agents[LIVE_MODEL]?.setPresets(
+      getDataset(datasetId).questions.map((question) => ({
+        ...question,
+        description: '',
+      })),
+    )
+  }, [core.agents, datasetId])
+
   const services = useMemo<Services>(() => {
     const agentModels = modelOptions(llmHealth)
     const chosen = agentModels.find((option) => option.id === agentModel)
@@ -210,6 +236,25 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       chosen && chosen.unavailableReason === null ? agentModel : SCRIPTED_MODEL
     return {
       ...core,
+      dataset: getDataset(datasetId),
+      datasets: DATASETS,
+      datasetLoading,
+      openDataset: async (id) => {
+        setDatasetLoading(true)
+        try {
+          const dataset = getDataset(id)
+          const { state } = await loadDataset(dataset)
+          core.workbench.load(state, {
+            type: 'project.openDataset',
+            title: 'Open dataset',
+            input: { dataset: id },
+            summary: `Opened "${dataset.name}". ${dataset.stateLabel}.`,
+          })
+          setDatasetId(id)
+        } finally {
+          setDatasetLoading(false)
+        }
+      },
       agent: core.agents[activeModel] ?? core.agents[SCRIPTED_MODEL]!,
       agentModel: activeModel,
       agentModels,
@@ -259,6 +304,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     workedSurface,
     agentModel,
     llmHealth,
+    datasetId,
+    datasetLoading,
   ])
 
   return (

@@ -81,6 +81,13 @@ export type AgentAdapter = {
   /** Why this send mode cannot be used right now, or null. */
   sendBlocker: (mode: SendMode, text: string) => string | null
   startPreset: (presetId: string) => void
+  /**
+   * Replaces the starting prompts offered as suggestions. The scripted
+   * player ignores this: its prompts are its sessions, and no other prompt
+   * would match one. The model-driven agent takes them from the open
+   * dataset, so the suggestions describe the place in front of you.
+   */
+  setPresets: (presets: AgentPreset[]) => void
   setPermissionMode: (mode: PermissionMode) => void
   /** Drops a queued message that has not been delivered yet. */
   dropQueued: (index: number) => void

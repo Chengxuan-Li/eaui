@@ -444,6 +444,10 @@ export function createScriptedAgent(
       const session = SESSIONS.find((candidate) => candidate.id === presetId)
       if (session) start(session, session.prompt)
     },
+
+    setPresets() {
+      // Scripted sessions are the only prompts this player can answer.
+    },
     setPermissionMode(mode) {
       if (store.getState().permissionMode === mode) return
       store.setState({ permissionMode: mode })

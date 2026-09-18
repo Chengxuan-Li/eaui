@@ -1,5 +1,5 @@
 import { GROUP, upsertAsset } from './assets.ts'
-import backBayBuildings from './fixtures/back-bay-buildings.geo.json'
+import { currentDistrict } from './districts.ts'
 import type {
   Archetype,
   Building,
@@ -33,7 +33,6 @@ export type StageRunResult =
   | { ok: false; message: string }
 
 const SPACING_DEGREES = 0.0003
-const METERS_PER_DEGREE = 111_320
 const HOURS_PER_YEAR = 8760
 const PEAK_FACTOR = 1.9
 
@@ -52,54 +51,6 @@ function meanOf(points: LngLat[]): LngLat {
 function centroidOf(ring: LngLat[]): LngLat {
   return meanOf(ring.length > 1 ? ring.slice(0, -1) : ring)
 }
-
-/** Planar polygon area in square meters; accurate enough at district scale. */
-function ringAreaM2(ring: LngLat[]): number {
-  const [originLng, originLat] = ring[0] ?? [0, 0]
-  const metersPerLng = METERS_PER_DEGREE * Math.cos((originLat * Math.PI) / 180)
-  let sum = 0
-  for (let index = 1; index < ring.length; index++) {
-    const [x1, y1] = ring[index - 1] ?? [originLng, originLat]
-    const [x2, y2] = ring[index] ?? [originLng, originLat]
-    sum +=
-      (x1 - originLng) * (y2 - originLat) - (x2 - originLng) * (y1 - originLat)
-  }
-  return (Math.abs(sum) / 2) * metersPerLng * METERS_PER_DEGREE
-}
-
-type DistrictFootprint = { ring: LngLat[]; sourceRef: string; areaM2: number }
-
-// Real footprint geometry from the bundled OpenStreetMap extract, in file
-// order, which follows the street layout north to south.
-const DISTRICT_FOOTPRINTS: DistrictFootprint[] = backBayBuildings.features.map(
-  (feature) => {
-    const ring = (feature.geometry.coordinates[0] ?? []).map(
-      ([lng, lat]): LngLat => [lng ?? 0, lat ?? 0],
-    )
-    return {
-      ring,
-      sourceRef: `OpenStreetMap ${feature.properties.osm}`,
-      areaM2: ringAreaM2(ring),
-    }
-  },
-)
-
-const DISTRICT_BOUNDS = DISTRICT_FOOTPRINTS.flatMap(
-  (footprint) => footprint.ring,
-).reduce(
-  (bounds, [lng, lat]) => ({
-    west: Math.min(bounds.west, lng),
-    east: Math.max(bounds.east, lng),
-    south: Math.min(bounds.south, lat),
-    north: Math.max(bounds.north, lat),
-  }),
-  { west: Infinity, east: -Infinity, south: Infinity, north: -Infinity },
-)
-
-export const DISTRICT_CENTER: LngLat = [
-  (DISTRICT_BOUNDS.west + DISTRICT_BOUNDS.east) / 2,
-  (DISTRICT_BOUNDS.south + DISTRICT_BOUNDS.north) / 2,
-]
 
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 const MONTHLY_WEIGHTS = MONTH_DAYS.map(
@@ -184,7 +135,10 @@ function forEachBuilding(
 /** 0 south-west, 1 south-east, 2 north-west, 3 north-east of the district center. */
 function quadrantOf(building: Building): number {
   const [lng, lat] = centroidOf(building.footprint)
-  return (lng < DISTRICT_CENTER[0] ? 0 : 1) + (lat < DISTRICT_CENTER[1] ? 0 : 2)
+  return (
+    (lng < currentDistrict().center[0] ? 0 : 1) +
+    (lat < currentDistrict().center[1] ? 0 : 2)
+  )
 }
 
 function applyOverrides(
@@ -258,7 +212,7 @@ function captureFootprints(
   const provenance = fromStage(STAGE_IDS.location, context)
   const buildings: Record<string, Building> = {}
   const buildingIds: string[] = []
-  DISTRICT_FOOTPRINTS.forEach((source, index) => {
+  currentDistrict().footprints.forEach((source, index) => {
     const id = `B${String(index + 1).padStart(4, '0')}`
     buildings[id] = {
       id,
@@ -279,8 +233,8 @@ function captureFootprints(
     buildingIds.push(id)
   })
   state.project.location = {
-    name: 'Boston Back Bay (OpenStreetMap footprints, synthetic attributes)',
-    center: DISTRICT_CENTER,
+    name: currentDistrict().locationName,
+    center: currentDistrict().center,
   }
   state.buildings = buildings
   state.buildingIds = buildingIds
@@ -566,7 +520,9 @@ function setUpBaseline(
   upsertAsset(state, {
     id: 'asset:weather-typical-year',
     kind: 'weather',
-    name: 'Synthetic typical year (Boston stand-in)',
+    // Named after the district in front of you: calling it a Boston stand-in
+    // while the map shows Barcelona would be a small, avoidable lie.
+    name: `Synthetic typical year (${currentDistrict().shortName} stand-in)`,
     parentId: GROUP.weather,
     provenance,
     capability: 'workflow.stageRuns',
@@ -743,13 +699,13 @@ function defineGrid(
     return { ok: false, message: 'No buildings to connect to a grid.' }
   }
   const substation: LngLat = [
-    DISTRICT_BOUNDS.west - 2 * SPACING_DEGREES,
-    DISTRICT_CENTER[1],
+    currentDistrict().bounds.west - 2 * SPACING_DEGREES,
+    currentDistrict().center[1],
   ]
   // North of the district, toward the river; the plant itself is synthetic.
   const utilityPv: LngLat = [
-    DISTRICT_CENTER[0],
-    DISTRICT_BOUNDS.north + 1.5 * SPACING_DEGREES,
+    currentDistrict().center[0],
+    currentDistrict().bounds.north + 1.5 * SPACING_DEGREES,
   ]
   const buildingsByQuadrant: string[][] = [[], [], [], []]
   const centroidsByQuadrant: LngLat[][] = [[], [], [], []]
@@ -791,7 +747,7 @@ function defineGrid(
     const number = quadrant + 1
     const centroids = centroidsByQuadrant[quadrant] ?? []
     const center: LngLat =
-      centroids.length > 0 ? meanOf(centroids) : DISTRICT_CENTER
+      centroids.length > 0 ? meanOf(centroids) : currentDistrict().center
     add({
       id: `T${number}`,
       kind: 'transformer',
