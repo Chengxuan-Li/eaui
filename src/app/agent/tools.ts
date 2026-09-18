@@ -361,7 +361,9 @@ const READ_TOOLS = [
   {
     name: 'read.buildings',
     title: 'Read buildings',
-    description: `List buildings with their attributes, sorted and filtered, so you can point at specific ones. Returns at most ${MAX_BUILDING_ROWS} rows.`,
+    // Without this the model narrows by "use" unprompted, so "the five tallest
+    // buildings" comes back as the five tallest mixed-use ones.
+    description: `List buildings with their attributes so you can point at specific ones. Returns at most ${MAX_BUILDING_ROWS} rows. Only pass "use" when the user asked for that kind of building; leave it out to consider every building.`,
     input: z.object({
       limit: z.number().int().min(1).max(MAX_BUILDING_ROWS).optional(),
       sortBy: z

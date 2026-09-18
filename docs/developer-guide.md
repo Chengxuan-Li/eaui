@@ -1,6 +1,6 @@
 # Developer guide
 
-Date: 2026-09-15, after first-slice stage 4 (scripted agent) on the `feature/agentic` branch and the OpenFreeMap basemap over Back Bay footprints ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)) on the `feature/basemap` branch.
+Date: 2026-09-18, after the model-driven agent for presentation, styling, and layout ([decision 0020](decisions/0020-agentic-presentation-demo.md)) on the `feature/agentic` branch.
 
 This guide is for a developer or agent taking over without the original conversation. It describes the code as built, how to extend it without breaking the accepted rules, how it is tested, and what is still missing. Product intent and accepted choices live in the [decision records](decisions/README.md); evidence lives in the [first-slice implementation status](first-slice-proposal.md#implementation-status) and the [design alignment record](design-alignment.md#implementation-status).
 
@@ -20,14 +20,16 @@ A browser-only React application with one synthetic project that can be taken th
 - **Shell:** ribbon (menus, quick buttons, the ▶ Run ▾ split button, command palette), FlexLayout docking area, status bar with tasks, issues, notices, and simulated compute.
 - **Left border (icon side bar):** Assets tree and Workflow panel.
 - **Center pages:** Map, Table, Dashboard, Roadmap, Creator, Settings; Issues and Tasks open from the status bar.
-- **Right border:** two independent panels ([decision 0016](decisions/0016-reasoning-and-inspection-panels.md)). Reasoning runs scripted agent sessions with tool calls, approvals, send modes, and permission modes; Inspection is a read-only view of the shared selection. Each has its own Panels menu entry and can be docked anywhere.
+- **Right border:** two independent panels ([decision 0016](decisions/0016-reasoning-and-inspection-panels.md)). Reasoning runs the agent with tool calls, approvals, send modes, and permission modes; Inspection is a read-only view of the shared selection. Each has its own Panels menu entry and can be docked anywhere.
+- **Agent:** a scripted player by default, or a language model when the dev server is running to hold the key ([decision 0020](decisions/0020-agentic-presentation-demo.md)). The model drives presentation, styling, layout, and selection only; it cannot run a stage or change the project model.
+- **Districts:** four fictional places at different points in the workflow, opened from File > Open district.
 - **Appearance:** System or one of six curated appearances (Light, Dark, Technical monochrome, Lieflat-inspired, Clean technical light, Dark engineering), set in Geist with a three-size type scale.
 
 There is no server, no model provider, and no real engineering calculation. Every number comes from deterministic synthetic code in `src/domain/simulation.ts`, and the UI discloses it as simulated through the capability registry.
 
-Building geometry is real: 464 footprints from a bundled OpenStreetMap extract of Boston Back Bay (`src/domain/fixtures/`, ODbL), with synthetic attributes ([decision 0012](decisions/0012-openfreemap-basemap-back-bay.md)). The Map page loads an OpenFreeMap basemap from the public instance over the network, recolors it from the active appearance, and falls back to a plain background when it is off or cannot load. It can also show live terrain with hillshade from Mapterhorn ([decision 0015](decisions/0015-terrain.md)), for display only: terrain is never project data, and a failure falls back to a flat map.
+Building geometry is real: OpenStreetMap extracts of four districts (`src/domain/fixtures/`, ODbL) with synthetic attributes ([decisions 0012](decisions/0012-openfreemap-basemap-back-bay.md) and [0020](decisions/0020-agentic-presentation-demo.md)) — Boston Back Bay (464), Barcelona Eixample (453), Amsterdam Jordaan (593), and Manhattan Murray Hill (529). The Map page loads an OpenFreeMap basemap from the public instance over the network, recolors it from the active appearance, and falls back to a plain background when it is off or cannot load. It can also show live terrain with hillshade from Mapterhorn ([decision 0015](decisions/0015-terrain.md)), for display only: terrain is never project data, and a failure falls back to a flat map.
 
-Run it with `npm ci` then `npm run dev`. To walk the workflow manually: open the Workflow panel, run stages in order (Shading can be skipped), create a measure and a scenario on the Creator page before running Scenario definitions, and expect Grid modeling to fail on its first attempt by design; run it again to recover.
+Run it with `npm ci` then `npm run dev`. To use the language model, put `OPENAI_API_KEY` and `OPENAI_MODEL` in `.env.local` and pick the model in the Reasoning composer; the dev server holds the key and proxies `/api/llm`, so a built bundle has no route to a model and stays scripted. To walk the workflow manually: open the Workflow panel, run stages in order (Shading can be skipped), create a measure and a scenario on the Creator page before running Scenario definitions, and expect Grid modeling to fail on its first attempt by design; run it again to recover.
 
 ## Architecture
 
@@ -42,8 +44,10 @@ main.tsx ── Geist font CSS, src/index.css (fallback tokens, fonts, type scal
               ├─ layout        createLayoutController(workbench, storage): FlexLayout model
               ├─ task simulator startTaskSimulator(workbench): advances queued tasks as source "system"
               ├─ appearance    resolveAppearance(preference, system setting), applied to the root element
-              ├─ view          createViewStore(workbench): logged view operations, including context mode
-              └─ agent         createScriptedAgent(workbench, layout, view): sessions behind the agent adapter
+              ├─ view          createViewStore(workbench, storage): logged view operations, restored on load
+              ├─ appearance    createAppearanceController(workbench, storage): logged, so the agent drives it
+              └─ agents        scripted player and language model, both behind the agent adapter
+                                 the chosen model decides which one `services.agent` is
             WorkbenchShell (src/app/shell/WorkbenchShell.tsx)
               ├─ Ribbon, CommandPalette, dialogs ── useAppActions() (src/app/actions.ts)
               ├─ <Layout factory=renderTabContent> ── panels and pages by component id
@@ -73,7 +77,9 @@ View state that is not project state changes through the layout controller, the 
 | `assets.ts` | Asset tree skeleton, `GROUP` ids, `upsertAsset`, `assetPath`. |
 | `capabilities.ts` | Working/simulated/planned registry that every honest label reads. |
 | `initialState.ts` | Empty project. |
-| `fixtures/` | `back-bay-buildings.geo.json`, the OpenStreetMap footprint extract (one feature per line, excluded from Prettier), and its ODbL notice. Regenerate with `node scripts/fetch-osm-buildings.mjs` only when the extract must change; building ids follow the file order. |
+| `districts.ts` | `District` (footprints, centre, bounds, names), `parseDistrict`, and the current district a Location setup run captures. Back Bay is imported directly; the others load on demand. |
+| `datasets.ts` | The four districts as recipes: `DATASETS`, `loadDataset`, `materializeDataset`. Opening one replays real commands, so it can only be a state the workflow could reach. |
+| `fixtures/` | Four OpenStreetMap footprint extracts (one feature per line, excluded from Prettier) and their ODbL notice. Regenerate with `node scripts/fetch-osm-buildings.mjs [place]` only when an extract must change; building ids follow each file's order. |
 
 Key domain rules:
 
@@ -90,16 +96,16 @@ Key domain rules:
 | --- | --- |
 | Services and hooks | `WorkbenchContext.tsx`: `useServices` (including `view`, `agent`, `appearance`, `setAppearance`, `showInspection`, `workedSurface`, `claimWorked`), `useAppearance`, `useWorkbenchSnapshot`, `useViewState`, `useAgentSnapshot`, `useStageStates`, `useLayoutVersion` |
 | View state | `view/viewOperations.ts` (`ViewState`, operation registry, `describeViewOperations`), `view/viewStore.ts` (`createViewStore`), `view/chartSpec.ts` (chart specification schema, validation, and compilation) |
-| Agent | `agent/types.ts` (the `AgentAdapter` seam and transcript items), `agent/tools.ts` (tool calls, `requiresApproval`, `describeAgentTools`), `agent/sessions.ts` (scripted sessions), `agent/scriptedAgent.ts` (the player) |
+| Agent | `agent/types.ts` (the `AgentAdapter` seam and transcript items), `agent/tools.ts` (tool calls, `requiresApproval`, `describeAgentTools`), `agent/context.ts` (the bounded digest and `readBuildings`), `agent/toolDispatch.ts` (validates what a model asked for before anything runs), `agent/sessions.ts` + `agent/scriptedAgent.ts` (the scripted player), `agent/llmAgent.ts` + `agent/llm/` (the model-driven agent, its wire protocol, and its transport), `agent/agentPersistence.ts` |
 | App actions | `actions.ts` (the registry), `useShortcuts.ts`, `shortcuts.ts` (parsing and matching, unit-tested) |
 | Layout | `layout/layoutController.ts` (`PAGES`, `PANELS`, `DEFAULT_PAGES`, `openPage`, `togglePanel`, `toggleMaximize`, `setCompact`, `reset`, `placePage`, `splitActiveTab`, `moveActiveTabToNextGroup`, `handleUserAction`), `layout/flexlayout-theme.css` |
-| Appearance | `appearance/appearances.ts` (six appearances: chrome tokens, data palette, `resolveAppearance`), `appearance/contrast.ts`, `theme.ts` (stored preference, `applyAppearance`) |
+| Appearance | `appearance/appearances.ts` (six appearances: chrome tokens, data palette, `resolveAppearance`), `appearance/appearanceController.ts` (the logged store the agent drives), `appearance/contrast.ts`, `theme.ts` (stored preference, `applyAppearance`) |
 | Shell | `shell/WorkbenchShell.tsx`, `Ribbon.tsx` (menus, quick buttons, Run split button), `StatusBar.tsx`, `CommandPalette.tsx`, `HelpDialogs.tsx` |
 | Shared components | `components/ActionButton.tsx` (explains unavailable actions), `StateBadge.tsx` (semantic stage states), `CapabilityBadge.tsx` (`CapabilityBadge` and `StatusTag`), `CapabilityTable.tsx`, `EmptyState.tsx`, `forms.module.css` |
 | Panels | `panels/AssetsPanel.tsx` + `assetTree.ts`, `panels/WorkflowPanel.tsx`, `panels/InspectionPanel.tsx` + `inspection.ts` (read-only Inspection view model), `panels/MapProperties.tsx` (the map's scene lighting, shown by Inspection while the map is the worked surface), `panels/ReasoningPanel.tsx` (agent transcript, approvals, composer) + `agent/modes.ts` (send and permission modes) + `agent/suggestions.ts` (suggested next steps) |
 | Pages | `pages/*Page.tsx`; pure helpers `mapMetrics.ts`, `dashboardData.ts`, `dashboardCharts.ts`; `basemapStyle.ts` (recolors the OpenFreeMap style from appearance tokens, attribution) and `useBasemap.ts` (loading, failure, retry); `silhouette.ts` (projects a building's ground, roof, and walls with a camera matrix) and `SelectionSilhouette.tsx` (the 3D selection outline: a custom layer supplies the matrix every frame, and the silhouette's boundary is drawn on an overlay canvas); `terrain.ts` (the Mapterhorn source, hillshade paint from appearance tokens, attribution, legend wording) and `useTerrain.ts` (applies terrain once its source exists, with loading, failure, and retry); `sunPosition.ts` (`subsolarPoint`, the globe's one solar state from the season and the UTC time, and `sunFromSubsolar`, any place's own sun derived from it, on NOAA's equations), `lighting.ts` (the controls mapped onto MapLibre's light and sky, mixing colour from the appearance's `data.sky` tokens) and `useSceneLighting.ts` (applies both, and reapplies after a style swap) |
 | Visualization | `viz/EChart.tsx` (modular ECharts wrapper and `useChartFont`), `grid/agGrid.ts` (AG Grid theme from CSS tokens) |
-| Persistence and global styles | `persistence.ts`, `storage.ts`, `basemapPreference.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
+| Persistence and global styles | `persistence.ts` (the project save), `viewPersistence.ts` (view state, defensively restored), `agent/agentPersistence.ts` (transcript, model input stream, chosen model), `storage.ts`, `basemapPreference.ts`, `global.css` (radii, heading reset), `src/index.css` (fallback tokens, fonts, type scale) |
 
 ### Browser storage
 
@@ -109,6 +115,9 @@ Everything persists in `localStorage` of the current origin only:
 - `eaui.basemap`: `off` hides the OpenFreeMap basemap; anything else shows it. Changes are logged as `view.setBasemap`.
 - `eaui.layout.v1`: the FlexLayout model, saved on every layout change. An unreadable layout falls back to the default. Restored layouts take the current panel names from `PANELS`.
 - `eaui.theme`: the appearance preference, `system` or an appearance id. Values stored before curated appearances (`light`, `dark`) stay valid.
+- `eaui.view.v1`: view state (map, table, dashboard, added charts), written on every view operation. What comes back is untrusted, so `viewPersistence.ts` checks every field and drops a chart whose scenario the project no longer has.
+- `eaui.agent.<id>.v1`: the agent's transcript and, for the model, its own input stream. Re-sending that stream is the whole of remembering without a backend. A pending approval loads as `expired`.
+- `eaui.agent.model`: which agent answers. Without it a restored conversation would be stored but unreachable.
 
 To start clean, use File > New project and View > Reset layout, or clear the site data for `127.0.0.1:5173`. Playwright runs start with fresh storage.
 
@@ -135,7 +144,13 @@ Never mutate state outside a command. UI-only concerns (hover, open dialogs, dra
 
 Transient drafts that would flood the log, such as what-if slider positions or text being typed, stay in React state; commit them as a view operation once they settle, as the table filter does.
 
-### Add or change an agent session
+### Add or change an agent tool
+
+A tool reaches the agent through `describeAgentTools`, and a model's call reaches the app through `toolDispatch.ts`. Both matter: the catalog describes the limit, the dispatcher **is** the limit. Add a command to `PRESENTATION_COMMANDS` only if it changes what is shown or highlighted, never what the project is. Layout, appearance, and read tools are declared in `tools.ts` with a zod input, and `DIRECT_TOOL_SCHEMAS` exposes those schemas so the dispatcher can validate them. Anything a model sends is untrusted: the name may not exist, the arguments may not be JSON, the input may not fit.
+
+Wire names cannot contain a dot, so `appearance.set` travels as `appearance__set` ([decision 0020](decisions/0020-agentic-presentation-demo.md)). Keep `read.*` tools free of side effects; they are deliberately not logged, because a look is not an operation.
+
+### Add or change a scripted agent session
 
 Sessions live in `src/app/agent/sessions.ts`. Build steps with the local helpers (`say`, `reason`, `reference`, `tool`, `propose`, `ensure`); a step can be a function that reads the project when the step is reached. Tool calls use `command`, `viewCall`, or `layoutCall` from `src/app/agent/tools.ts`, which run through the shared paths with source `agent`; a session never changes state directly. Calls that run stages or change the project model always wait for approval (`requiresApproval`), and `ensure` offers missing stages as one approval ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)). Test sessions in `src/app/agent/scriptedAgent.test.ts` with `manualScheduler` and the task simulator, and cover the user flow in `e2e/agent.spec.ts`.
 
@@ -196,8 +211,8 @@ Only packages from decisions 0007, 0008, and 0010 are allowed. Record a reason i
 
 | Command | What it covers |
 | --- | --- |
-| `npm test` | 126 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions and tools, basemap recoloring and preference, 3D silhouette projection and terrain lift, terrain display helpers |
-| `npm run test:e2e` | 47 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
+| `npm test` | 235 Vitest tests: commands, undo, outdated propagation, simulator, shortcuts, asset tree, map metrics, dashboard data, appearance contrast and preferences, Inspection view model, view operations and chart specifications, layout operations, stage planning, scripted agent sessions, the agent tool surface and approval boundary, the context digest and read tools, the dispatch boundary, the model-driven agent against a fake transport, dataset recipes, view and conversation persistence, basemap recoloring and preference, 3D silhouette projection and terrain lift, terrain display helpers |
+| `npm run test:e2e` | 60 Playwright tests in Edge at 1280x800 with 4 local workers and axe (no serious or critical violations allowed on product pages) |
 | `npm run typecheck`, `npm run lint`, `npm run format:check` | Must be clean before committing |
 
 End-to-end specs:
@@ -211,6 +226,9 @@ End-to-end specs:
 - `e2e/appearance.spec.ts`: Geist loads, appearance switching persists, axe in all six appearances.
 - `e2e/context.spec.ts`: Inspection follows the shared selection, and the Inspect selection action opens it.
 - `e2e/agent.spec.ts`: the layout session with an approved stage run and a layout restore, a rejected model change, the answer to unmatched free text, and the data representation session with an added chart.
+- `e2e/llm-agent.spec.ts`: the model-driven agent against a stubbed provider route — tool calls that really change the appearance and the layout, a model change refused by name, the approval on `layout.reset`, the menu when no route to a model exists, and the conversation and view surviving a reload with an expired approval.
+- `e2e/datasets.spec.ts`: opening a district replaces the project, a district arrives at its own point in the workflow, a skipped stage leaves its metric unavailable and names what to run, and the suggestions belong to the open district.
+- `e2e/production.spec.ts` (run by `npm run test:e2e:preview`): the built bundle serves its emitted assets under the Pages base path, and has **no route to a model and no key in any shipped chunk**, so it stays on the scripted agent.
 - `e2e/spikes.spec.ts`, `e2e/spikes-flexlayout.spec.ts`: package spike baselines (`/?spike=`), kept as regression checks for library behavior.
 
 Conventions and pitfalls found while building:
@@ -247,13 +265,22 @@ Conventions and pitfalls found while building:
 - FlexLayout's hovering mini-scrollbars only wrap border strips and tab bars, never tab content: the containers report `scrollHeight === clientHeight` and their bars measure 0x0. Panels and pages therefore keep `height: 100%; overflow: auto` and rely on the overlay thumb in `global.css`, which reserves no width.
 - The splitter's drag affordance is FlexLayout's `.flexlayout__splitter_handle`, hidden by default through `--flexlayout-splitter-handle-visibility`. It is shown on hover and while dragging, drawn as a filled accent circle with a two-way arrow whose geometry comes from an SVG mask and whose color comes from `--color-on-accent`, so no color literal is needed.
 - react-maplibre control options such as `showCompass` apply only when the control is created, so the Map page remounts `NavigationControl` with a `key` when 3D changes. `maxPitch={0}` keeps 2D flat even with right-drag or Shift+arrow tilting, and fits pass the current pitch and bearing so zooming keeps the 3D camera.
+- No spec may reach a real provider. The shared fixture in `e2e/test.ts` answers `/api/llm/**`, reporting the model unavailable by default so the suite does not depend on whether the machine has a key; `serveModelStub` replays canned turns for the live-agent spec.
+- React Aria renders a menu with `selectionMode="single"` as `menuitemradio`, not `menuitem`. The model and permission menus both use it, so `getByRole('menuitem')` finds neither.
+- Tool names cannot contain a dot on the wire (`^[a-zA-Z0-9_-]+$`), so every operation travels with `__` in place of its dot. A probe caught this before any code depended on the wrong shape.
+- `vite preview` answers an unknown path with `index.html` and a 200, so the model health check requires a JSON content type rather than trusting the status.
+- The dev-server proxy is registered with `apply: (_config, env) => env.command === 'serve' && !env.isPreview`, so preview and the built bundle behave like GitHub Pages: no route, no model.
+- `loadEnv(mode, process.cwd(), '')` reads every variable, not only `VITE_`-prefixed ones. Those values stay in Node and must never reach `define`.
+- Materializing a dataset drives `workflow.runStage`, `task.start`, and `task.complete` in place rather than waiting for the simulator, so opening a district is instant. Scenario definitions blocks everything after it when no scenario exists, so a recipe that runs past it needs one.
 - In MapLibre 6 custom layers, `options.modelViewProjectionMatrix` expects world pixel coordinates (Mercator times `512 * 2 ** zoom`), not Mercator 0 to 1, despite its doc example. `options.defaultProjectionData.mainMatrix` takes Mercator 0 to 1 with conformal z, which `silhouette.ts` produces. Using the wrong one projects everything off screen without an error; the e2e pixel check on the silhouette overlay caught it.
 
 ## Known gaps and deviations
 
 Behavior promised by the plan or decisions but not built yet:
 
-- **Agent (stage 4):** scripted sessions only. Free text starts a session only when it matches a session's keywords, and otherwise the agent says so. Transcripts, view state, and added charts are not saved with the project, and a stage failure during an approved run ends the session. See [stage 4 status](first-slice-proposal.md#stage-4-scripted-agent-2026-09-15).
+- **Scripted agent:** free text starts a session only when it matches a session's keywords, and otherwise the agent says so. A stage failure during an approved run ends the session. See [stage 4 status](first-slice-proposal.md#stage-4-scripted-agent-2026-09-15).
+- **Model-driven agent** ([decision 0020](decisions/0020-agentic-presentation-demo.md)): presentation, styling, layout, and selection only, and only while the dev server is running to hold the key — the published site has no route to a model and stays scripted. No streaming: the transcript fills a tool call at a time rather than token by token. The model sometimes narrows a query it was not asked to narrow ("the five tallest buildings" came back filtered to mixed-use), which neither a sharper tool description nor an explicit instruction stopped; the transcript discloses the filter, so it is visible rather than silent.
+- **Datasets:** a saved project does not record which district produced it, so a restored project keeps its own buildings and location while a fresh Location setup run would use whichever district is current. Opening a district discards the view and the conversation.
 - **Design alignment:** the six-appearance reading of the palette answer is unconfirmed, axe runs in non-Light appearances on the default workbench only, the context mode resets on reload, and Inspection is read-only. See [remaining gaps](design-alignment.md#remaining-gaps).
 - **Keyboard docking:** the command palette splits the active tab and moves it to the next tab group; there is no keyboard way to pick a specific target group or side.
 - **View state:** layout, appearance, and view operations (context mode, map metric and overlay, map zoom, map 2D or 3D, terrain and its exaggeration, table view and filter, dashboard compare toggles, added charts) are logged. Dashboard what-if previews stay unlogged drafts, and view state resets on reload.

@@ -21,3 +21,4 @@ Keep short dated records of accepted decisions: status, context, decision, ratio
 - [0017: Publish the prototype to GitHub Pages through GitHub Actions](0017-github-pages-deployment.md)
 - [0018: Contextual lighting for the 3D map scene](0018-map-scene-lighting.md)
 - [0019: A globe with one solar state, and no area night lights](0019-globe-projection-and-solar-state.md)
+- [0020: A language model drives presentation, styling, and layout](0020-agentic-presentation-demo.md)

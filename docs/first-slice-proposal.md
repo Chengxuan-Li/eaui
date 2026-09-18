@@ -346,6 +346,15 @@ Compared with the plan above and the package constraints, the build so far:
 - **Fixture variants:** warning and error states are reached by walking the workflow (schema matching's warning, skipped shading with a PV measure, grid modeling's scripted first failure), not by a fixture picker.
 - **Verification breadth:** automated axe runs cover 1280x800 only; 1920x1080, narrow widths, and dark mode were checked by screenshots. The bundle has not been loaded in the reference ASP.NET or Eto host.
 
+### Agentic presentation demo (2026-09-18)
+
+Branch `feature/agentic`, following [decision 0020](decisions/0020-agentic-presentation-demo.md). Code in `src/app/agent/` (`context.ts`, `toolDispatch.ts`, `llmAgent.ts`, `llm/`, `agentPersistence.ts`), `src/app/appearance/appearanceController.ts`, `src/app/viewPersistence.ts`, `src/domain/districts.ts`, `src/domain/datasets.ts`, and the dev-server proxy in `vite.config.ts`. Tests in `src/app/agent/*.test.ts`, `src/domain/datasets.test.ts`, `src/app/persistence.test.ts`, `e2e/llm-agent.spec.ts`, and `e2e/datasets.spec.ts`.
+
+- **Real:** a language model drives presentation, styling, layout, and selection through the same logged operations a person uses; the full layout surface, appearance, and read tools; the bounded context digest; the dispatch boundary that refuses every model-changing command by name; approval on `layout.reset`; four fictional districts materialized by replaying real commands; view state, transcript, model input stream, and chosen model surviving a reload.
+- **Simulated:** every number, as before. The scripted player remains the default and cannot change course mid-session.
+- **Limited or planned:** the model is reachable only while the development server runs, because it holds the key; the published site has no route to one. No streaming, no attachments, no reasoning-effort control, and no document grounding.
+- **Verification (2026-09-18):** typecheck, lint, and format pass; 235 unit tests in 26 files; 60 browser tests; and a by-hand pass against the real model across three districts. See [decision 0020](decisions/0020-agentic-presentation-demo.md#verification-2026-09-18).
+
 ## Next steps
 
 Stage 4 is built on the `feature/agentic` branch; see [stage 4 status](#stage-4-scripted-agent-2026-09-15). The scope it implemented, from decisions 0006, 0009, and 0011 and the Reasoning row above:
@@ -368,4 +377,4 @@ Prerequisites and design questions, all resolved:
 4. Resolved 2026-09-15 ([decision 0011](decisions/0011-agent-view-specs-and-missing-state.md)): a session explains missing project state and offers to run the missing stages as one approval.
 5. Resolved and built 2026-09-15: the [design alignment](design-alignment.md) pass (decisions 0009 and [0010](decisions/0010-geist-typeface.md)) came before stage 4. The view state it added, appearance and context mode, is already logged like layout operations.
 
-Later candidates, not yet discussed with the user: reviewing and merging `feature/agentic` into `master`, saving added charts and layouts as View assets, remaining creators, zones table, fixture picker, saved layouts as View assets, report export, and a real model provider behind the adapter (variables already reserved in `.env.example`).
+Later candidates, not yet discussed with the user: reviewing and merging `feature/agentic` into `master`; saving added charts and layouts as View assets; remaining creators; a zones table; report export; streaming the model's answer; a key entered in Settings so the published demo can reach a model; and, if the product ever needs agentic data analysis rather than agentic presentation, the Python service discussed on 2026-09-18 and deliberately left out of this demo.

@@ -4,7 +4,7 @@ A standalone experiment for a coherent EnergyAtlas urban/building energy-modelin
 
 ## Status
 
-2026-09-15: first slice in progress. A browser-only workbench takes one synthetic project through a 12-stage workflow with docked panels, map, table, dashboard, roadmap, and creators. Built: stages 1 (domain state and commands), 2 (workbench shell), 3a (assets, creator, roadmap), 3b (map and table), and 3c (dashboard) ([status](docs/first-slice-proposal.md#implementation-status)). Next: stage 4, the scripted agent in the Reasoning panel, pending the user's go-ahead ([next steps](docs/first-slice-proposal.md#next-steps)). New contributors start with the [developer guide](docs/developer-guide.md).
+2026-09-18: an agentic presentation demo. A browser-only workbench takes four fictional districts through a 12-stage workflow with docked panels, map, table, dashboard, roadmap, and creators, and a language model drives its presentation, styling, and layout through the same operations a person uses ([decision 0020](docs/decisions/0020-agentic-presentation-demo.md)). There is no backend: the model is reached through the development server, which holds the key, so the published site has no route to one and stays on the scripted agent. New contributors start with the [developer guide](docs/developer-guide.md).
 
 Accepted decisions: web-only React + TypeScript + Vite ([0002](docs/decisions/0002-web-react-typescript-vite.md)); a combined shell ([0003](docs/decisions/0003-combined-product-shell.md)) in a docking workbench layout ([0004](docs/decisions/0004-workbench-layout-and-docking.md)) with a 12-stage default workflow ([0005](docs/decisions/0005-first-slice-workflow-and-panel-scope.md)) and a scripted agent ([0006](docs/decisions/0006-scripted-agent-and-layout-details.md)); packages ([0007](docs/decisions/0007-package-selection.md)) with FlexLayout for docking ([0008](docs/decisions/0008-flexlayout-docking.md)). The reference audit and package spikes are recorded in `docs/`.
 
@@ -30,7 +30,7 @@ Package spikes: run `npm run dev` and open `/?spike=` with `map`, `chart`, `grid
 
 Before committing, also run `git status --short --branch`, `git diff --check`, and `git diff --cached`.
 
-`.env.example` is the tracked configuration template; `.env.local` is its ignored local counterpart. It lists `OPENAI_API_KEY` and `OPENAI_MODEL`, reserved for a future model provider behind the agent adapter; the first slice reads no variables ([decision 0006](docs/decisions/0006-scripted-agent-and-layout-details.md)). Never expose keys through `VITE_`-prefixed variables, which Vite bundles into client code. On another machine, create the local counterpart if absent:
+`.env.example` is the tracked configuration template; `.env.local` is its ignored local counterpart. It lists `OPENAI_API_KEY`, `OPENAI_MODEL`, and an optional `OPENAI_BASE_URL`. The **development server** reads them in Node and proxies `/api/llm` for the browser ([decision 0020](docs/decisions/0020-agentic-presentation-demo.md)), so the key never enters the bundle; a built bundle has no such route and falls back to the scripted agent. Never expose keys through `VITE_`-prefixed variables, which Vite bundles into client code. On another machine, create the local counterpart if absent:
 
 ```powershell
 if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
