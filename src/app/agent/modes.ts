@@ -30,7 +30,7 @@ export const SEND_MODES: ModeOption<SendMode>[] = [
   },
 ]
 
-/** The model behind the agent. Only the scripted player exists in this slice. */
+/** What is driving the agent: the scripted player, or a language model. */
 export type ModelOption = {
   id: string
   label: string
@@ -38,21 +38,31 @@ export type ModelOption = {
   unavailableReason: string | null
 }
 
-export const MODEL_OPTIONS: ModelOption[] = [
-  { id: 'scripted', label: 'Scripted', unavailableReason: null },
-  {
-    id: 'opus-5',
-    label: 'Opus 5',
-    unavailableReason:
-      'Connecting a language model is planned; this prototype replays scripted sessions.',
-  },
-  {
-    id: 'gpt-5.6-sol',
-    label: 'GPT-5.6 Sol',
-    unavailableReason:
-      'Connecting a language model is planned; this prototype replays scripted sessions.',
-  },
-]
+export const SCRIPTED_MODEL = 'scripted'
+export const LIVE_MODEL = 'live'
+
+/**
+ * The live model reaches the provider through the dev server, which holds the
+ * key (decision 0020). Its label and availability are only known at run time,
+ * so the menu is built from the health check rather than fixed here.
+ */
+export function modelOptions(health: {
+  available: boolean
+  model: string | null
+  reason: string | null
+}): ModelOption[] {
+  return [
+    { id: SCRIPTED_MODEL, label: 'Scripted', unavailableReason: null },
+    {
+      id: LIVE_MODEL,
+      label: health.model ?? 'Language model',
+      unavailableReason: health.available
+        ? null
+        : (health.reason ??
+          'No language model is configured, so the scripted sessions are all this agent can run.'),
+    },
+  ]
+}
 
 export const PERMISSION_MODES: ModeOption<PermissionMode>[] = [
   {

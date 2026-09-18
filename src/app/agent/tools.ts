@@ -389,6 +389,34 @@ const READ_TOOLS = [
  */
 export const PRESENTATION_COMMANDS = ['selection.set', 'selection.clear']
 
+/**
+ * Input schemas for the tools that have no registry of their own, so a caller
+ * outside this module can validate a name and input before building a call.
+ * Commands and view operations are validated by their own registries.
+ */
+export type DirectToolSchema = {
+  kind: 'layout' | 'appearance' | 'read'
+  title: string
+  input: z.ZodType
+}
+
+function collectSchemas(
+  tools: { name: string; title: string; input: z.ZodType }[],
+  kind: DirectToolSchema['kind'],
+): Record<string, DirectToolSchema> {
+  const map: Record<string, DirectToolSchema> = {}
+  for (const tool of tools) {
+    map[tool.name] = { kind, title: tool.title, input: tool.input }
+  }
+  return map
+}
+
+export const DIRECT_TOOL_SCHEMAS: Record<string, DirectToolSchema> = {
+  ...collectSchemas(LAYOUT_TOOLS, 'layout'),
+  ...collectSchemas(APPEARANCE_TOOLS, 'appearance'),
+  ...collectSchemas(READ_TOOLS, 'read'),
+}
+
 export type AgentToolScope = 'all' | 'presentation'
 
 export type AgentToolDescription = {

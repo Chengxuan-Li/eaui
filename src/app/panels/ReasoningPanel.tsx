@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   CircleCheck,
+  Cloud,
   CircleX,
   CornerDownLeft,
   Info,
@@ -25,11 +26,12 @@ import {
 } from 'react-aria-components'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { capabilities } from '../../domain/capabilities.ts'
 import { useAgentSnapshot, useServices } from '../WorkbenchContext.tsx'
 import {
-  MODEL_OPTIONS,
   PERMISSION_MODES,
   permissionModeOption,
+  SCRIPTED_MODEL,
   SEND_MODES,
 } from '../agent/modes.ts'
 import { suggestNextSteps } from '../agent/suggestions.ts'
@@ -303,11 +305,17 @@ function PermissionMenu({
   )
 }
 
-/** Names the model answering. Only the scripted player can be chosen here. */
-function ModelMenu({ label }: { label: string }) {
-  const unavailable = MODEL_OPTIONS.filter(
-    (option) => option.unavailableReason !== null,
-  ).map((option) => option.id)
+/**
+ * Chooses what answers: the scripted player, or the language model when the
+ * development server is there to reach it (decision 0020).
+ */
+function ModelMenu() {
+  const { agentModel, agentModels, setAgentModel } = useServices()
+  const label =
+    agentModels.find((option) => option.id === agentModel)?.label ?? 'Scripted'
+  const unavailable = agentModels
+    .filter((option) => option.unavailableReason !== null)
+    .map((option) => option.id)
   return (
     <MenuTrigger>
       <Button className={styles.modeButton} aria-label={`Model: ${label}`}>
@@ -315,8 +323,14 @@ function ModelMenu({ label }: { label: string }) {
         <ChevronDown size={12} aria-hidden="true" />
       </Button>
       <Popover className={styles.popover} placement="top start">
-        <Menu className={styles.menu} disabledKeys={unavailable}>
-          {MODEL_OPTIONS.map((option) => (
+        <Menu
+          className={styles.menu}
+          disabledKeys={unavailable}
+          selectionMode="single"
+          selectedKeys={[agentModel]}
+          onAction={(key) => setAgentModel(String(key))}
+        >
+          {agentModels.map((option) => (
             <MenuItem
               key={option.id}
               id={option.id}
@@ -346,7 +360,8 @@ function ModelMenu({ label }: { label: string }) {
  * agent may do without asking (decisions 0005, 0006, 0011, and 0016).
  */
 export function ReasoningPanel() {
-  const { agent, layout, workbench, showInspection } = useServices()
+  const { agent, agentModel, agentModels, layout, workbench, showInspection } =
+    useServices()
   const status = useAgentSnapshot((snapshot) => snapshot.status)
   const transcript = useAgentSnapshot((snapshot) => snapshot.transcript)
   const presets = useAgentSnapshot((snapshot) => snapshot.presets)
@@ -410,12 +425,29 @@ export function ReasoningPanel() {
     (option) => option.id === DEFAULT_SEND_MODE,
   )!
   const defaultBlocked = agent.sendBlocker(DEFAULT_SEND_MODE, message) !== null
+  const scripted = agentModel === SCRIPTED_MODEL
+  const activeModelLabel =
+    agentModels.find((option) => option.id === agentModel)?.label ?? agent.label
 
   return (
     <section className={styles.reasoning} aria-label="Reasoning">
       <header className={styles.agentHeader}>
-        <p className={styles.agentName}>{agent.label}</p>
-        <CapabilityBadge id="agent.sessions" />
+        <p className={styles.agentName}>
+          {scripted ? agent.label : activeModelLabel}
+        </p>
+        {scripted ? (
+          <CapabilityBadge id="agent.sessions" />
+        ) : (
+          // Working behaviour carries no status label, but data leaving the
+          // browser is a disclosure the user should see, not a tooltip alone.
+          <span
+            className={cx(componentStyles.state, componentStyles.stateQuiet)}
+            title={capabilities['agent.languageModel'].explanation}
+          >
+            <Cloud size={12} aria-hidden="true" />
+            Sends a project summary
+          </span>
+        )}
       </header>
 
       {/* Scrollable once the composer takes height, so it must be reachable
@@ -534,7 +566,7 @@ export function ReasoningPanel() {
               selected={permissionMode}
               onSelect={(mode) => agent.setPermissionMode(mode)}
             />
-            <ModelMenu label="Scripted" />
+            <ModelMenu />
             {status !== 'idle' ? (
               <ActionButton
                 label="Stop the agent session"

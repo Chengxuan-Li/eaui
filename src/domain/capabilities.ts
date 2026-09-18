@@ -130,6 +130,12 @@ export const capabilities = {
     explanation:
       'Scripted replays of realistic tool calls; no language model is called.',
   },
+  'agent.languageModel': {
+    label: 'Language model',
+    status: 'working',
+    explanation:
+      'Your messages and a summary of this project (counts, stage states, view, layout, appearance, selection) are sent to the configured model provider through the development server. Building footprints and per-building results are never sent. The key stays on the development server and never reaches the browser.',
+  },
   'agent.documentGrounding': {
     label: 'Document grounding',
     status: 'planned',
@@ -139,7 +145,7 @@ export const capabilities = {
     label: 'Steering a running session',
     status: 'simulated',
     explanation:
-      'A scripted session cannot change course. A stirred message is recorded and answered when the session ends.',
+      'Neither agent changes course mid-answer. A stirred message is recorded and answered once the session or the current answer ends.',
   },
   'agent.attachments': {
     label: 'Attachments',
@@ -148,10 +154,10 @@ export const capabilities = {
       'Attaching documents, images, or selections to a message is planned.',
   },
   'agent.reasoningEffort': {
-    label: 'Model and reasoning effort',
+    label: 'Reasoning effort',
     status: 'planned',
     explanation:
-      'Choosing a language model and its reasoning effort is planned; the first slice replays scripted sessions.',
+      'The model can be chosen in the Reasoning composer; setting its reasoning effort is planned.',
   },
   'ribbon.comments': {
     label: 'Comments',
@@ -170,9 +176,9 @@ export const capabilities = {
   },
   'settings.modelProvider': {
     label: 'Model provider',
-    status: 'planned',
+    status: 'working',
     explanation:
-      'Connecting a real model provider is planned; the first slice uses scripted sessions.',
+      'A language model can be chosen in the Reasoning composer while the development server is running to hold the key. A built static bundle has no such route, so it stays on the scripted sessions.',
   },
 } as const satisfies Record<string, Capability>
 

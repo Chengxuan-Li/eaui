@@ -18,6 +18,14 @@ import {
 } from '../domain/workbench.ts'
 import { deriveStageStates } from '../domain/workflow.ts'
 import { createScriptedAgent } from './agent/scriptedAgent.ts'
+import { createLlmAgent } from './agent/llmAgent.ts'
+import { createHttpTransport, type LlmHealth } from './agent/llm/transport.ts'
+import {
+  modelOptions,
+  LIVE_MODEL,
+  SCRIPTED_MODEL,
+  type ModelOption,
+} from './agent/modes.ts'
 import type { AgentAdapter, AgentSnapshot } from './agent/types.ts'
 import {
   createAppearanceController,
@@ -50,8 +58,8 @@ type CoreServices = {
   view: ViewStore
   /** Appearance as a logged store, so the agent drives it like layout. */
   appearanceController: AppearanceController
-  /** The scripted agent behind the adapter a model provider can replace. */
-  agent: AgentAdapter
+  /** Both agents behind one adapter seam; the chosen model decides which runs. */
+  agents: Record<string, AgentAdapter>
 }
 
 /**
@@ -72,6 +80,12 @@ export type Services = CoreServices & {
   setBasemapEnabled: (enabled: boolean) => void
   /** Opens the Inspection panel, which follows the shared selection. */
   showInspection: (source?: CommandSource) => void
+  /** The agent actually running: the scripted player or the language model. */
+  agent: AgentAdapter
+  /** Which model drives the agent, and what can be chosen. */
+  agentModel: string
+  agentModels: ModelOption[]
+  setAgentModel: (id: string) => void
   /** The surface being worked in; Inspection shows its properties when nothing is selected. */
   workedSurface: WorkedSurface
   claimWorked: (surface: 'map') => void
@@ -117,13 +131,23 @@ function createCoreServices(): CoreServices {
     layout,
     view,
     appearanceController: appearance,
-    agent: createScriptedAgent({
-      workbench,
-      layout,
-      view,
-      appearance,
-      scheduler: browserScheduler,
-    }),
+    agents: {
+      [SCRIPTED_MODEL]: createScriptedAgent({
+        workbench,
+        layout,
+        view,
+        appearance,
+        scheduler: browserScheduler,
+      }),
+      [LIVE_MODEL]: createLlmAgent({
+        workbench,
+        layout,
+        view,
+        appearance,
+        transport: createHttpTransport(),
+        modelLabel: 'Language model',
+      }),
+    },
   }
 }
 
@@ -139,6 +163,26 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
   const appearance = resolveAppearance(appearancePreference, systemDark)
   const [workedSurface, setWorkedSurface] = useState<WorkedSurface>(null)
+  const [agentModel, setAgentModelState] = useState(SCRIPTED_MODEL)
+  const [llmHealth, setLlmHealth] = useState<LlmHealth>({
+    available: false,
+    model: null,
+    reason: null,
+  })
+
+  // The live model is only reachable through the dev server, so whether it can
+  // be chosen is a run-time fact, not a build-time one (decision 0020).
+  useEffect(() => {
+    let cancelled = false
+    void createHttpTransport()
+      .health()
+      .then((health) => {
+        if (!cancelled) setLlmHealth(health)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
@@ -159,8 +203,30 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   )
 
   const services = useMemo<Services>(() => {
+    const agentModels = modelOptions(llmHealth)
+    const chosen = agentModels.find((option) => option.id === agentModel)
+    // A model that stopped being available must not keep driving the agent.
+    const activeModel =
+      chosen && chosen.unavailableReason === null ? agentModel : SCRIPTED_MODEL
     return {
       ...core,
+      agent: core.agents[activeModel] ?? core.agents[SCRIPTED_MODEL]!,
+      agentModel: activeModel,
+      agentModels,
+      setAgentModel: (id) => {
+        const option = agentModels.find((candidate) => candidate.id === id)
+        if (!option || option.unavailableReason !== null) return
+        setAgentModelState(id)
+        core.workbench.record({
+          type: 'agent.setModel',
+          title: 'Set the agent model',
+          input: { model: id },
+          summary:
+            id === SCRIPTED_MODEL
+              ? 'The agent replays scripted sessions.'
+              : `The agent is driven by ${option.label}, which receives a summary of this project.`,
+        })
+      },
       appearancePreference,
       appearance,
       setAppearance: (next) => core.appearanceController.set(next),
@@ -185,7 +251,15 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       workedSurface,
       claimWorked: (surface) => setWorkedSurface(surface),
     }
-  }, [core, appearancePreference, appearance, basemapEnabled, workedSurface])
+  }, [
+    core,
+    appearancePreference,
+    appearance,
+    basemapEnabled,
+    workedSurface,
+    agentModel,
+    llmHealth,
+  ])
 
   return (
     <ServicesContext.Provider value={services}>

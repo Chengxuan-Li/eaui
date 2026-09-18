@@ -86,11 +86,52 @@ export async function blockBasemap(page: Page): Promise<void> {
   await page.route(OPENFREEMAP, (route) => route.abort('internetdisconnected'))
 }
 
+// The language model (decision 0020) is reached through this app's own
+// dev-server route. No spec may ever call a real provider, and the model menu
+// must not depend on whether the machine running the tests has a key, so every
+// page reports the model as unavailable unless the spec stubs it.
+const MODEL_ROUTE = '**/api/llm/**'
+
+export async function blockModel(page: Page): Promise<void> {
+  await page.unroute(MODEL_ROUTE)
+  await page.route(MODEL_ROUTE, (route) => {
+    if (route.request().url().includes('/health')) {
+      return route.fulfill({
+        json: {
+          available: false,
+          model: null,
+          reason: 'No model is configured in this test run.',
+        },
+      })
+    }
+    return route.abort('internetdisconnected')
+  })
+}
+
+/** Replays canned model turns in order, one per request. */
+export async function serveModelStub(
+  page: Page,
+  turns: unknown[][],
+  model = 'stub-model',
+): Promise<void> {
+  let index = 0
+  await page.unroute(MODEL_ROUTE)
+  await page.route(MODEL_ROUTE, (route) => {
+    if (route.request().url().includes('/health')) {
+      return route.fulfill({ json: { available: true, model, reason: null } })
+    }
+    const output = turns[index] ?? []
+    index += 1
+    return route.fulfill({ json: { output } })
+  })
+}
+
 export const test = base.extend<{ basemapStub: undefined }>({
   basemapStub: [
     async ({ page }, use) => {
       await serveBasemapStub(page)
       await serveTerrainStub(page)
+      await blockModel(page)
       await use(undefined)
     },
     { auto: true },
